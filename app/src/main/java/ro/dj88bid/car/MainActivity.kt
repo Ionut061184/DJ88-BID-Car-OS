@@ -79,9 +79,56 @@ class MainActivity : Activity() {
                     launchers.put(item)
                 }
                 put("availableHomeLaunchers", launchers)
+                val carApps = org.json.JSONArray()
+                val labels = packageManager.queryIntentActivities(
+                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
+                )
+                for (resolved in labels) {
+                    val name = resolved.loadLabel(packageManager).toString()
+                    val id = resolved.activityInfo.packageName
+                    val lookup = (name + " " + id).lowercase(java.util.Locale.ROOT)
+                    val keywords = listOf("radio", "bluetooth", "bt music", "bts", "dsp", "equalizer", "eq", "car settings", "music", "muzic", "vehicle")
+                    if (keywords.any { lookup.contains(it) }) {
+                        val info = JSONObject()
+                        info.put("label", name)
+                        info.put("package", id)
+                        info.put("activity", resolved.activityInfo.name)
+                        info.put("verifiedQf001Function", false)
+                        carApps.put(info)
+                    }
+                }
+                put("candidateCarApps", carApps)
                 put("qf001SystemIntegrationTested", false)
                 put("carBatteryVoltageAvailable", false)
             }.toString()
+        }
+
+        // Presents detected apps to the user; never invokes privileged QF001 actions.
+        @JavascriptInterface
+        fun showCarApps() = runOnUiThread {
+            val candidates = packageManager.queryIntentActivities(
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
+            ).filter {
+                val search = (it.loadLabel(packageManager).toString() + " " +
+                    it.activityInfo.packageName).lowercase(java.util.Locale.ROOT)
+                listOf("radio", "bluetooth", "bt music", "dsp", "equalizer", "car settings", "music", "muzic").any { key ->
+                    search.contains(key)
+                }
+            }.sortedBy { it.loadLabel(packageManager).toString() }
+            if (candidates.isEmpty()) {
+                Toast.makeText(this@MainActivity, "Nu sunt detectate aplicații auto lansabile", Toast.LENGTH_LONG).show()
+                return@runOnUiThread
+            }
+            android.app.AlertDialog.Builder(this@MainActivity)
+                .setTitle("DJ 88 BID · Aplicații auto detectate (netestate)")
+                .setItems(candidates.map { it.loadLabel(packageManager).toString() }.toTypedArray()) { _, pos ->
+                    val a = candidates[pos].activityInfo
+                    startSafely(Intent(Intent.ACTION_MAIN).apply {
+                        addCategory(Intent.CATEGORY_LAUNCHER)
+                        setClassName(a.packageName, a.name)
+                    })
+                }
+                .setNegativeButton("Renunță", null).show()
         }
 
         @JavascriptInterface
