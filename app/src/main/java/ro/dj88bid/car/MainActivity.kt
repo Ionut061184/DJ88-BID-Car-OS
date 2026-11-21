@@ -69,6 +69,26 @@ class MainActivity : Activity() {
         "dsp" to Pair("com.qf.soundeffect", "com.qf.soundeffect.SoundActivity")
     )
 
+    /**
+     * Matches OEM package names extracted from the K706 firmware. Only launches
+     * exported activities that Android exposes to a third-party application.
+     * Never requests system UID, hidden binder services or hardware privileges.
+     */
+    private fun originalQf001Intent(action: String): Intent? {
+        val component = knownQf001[action] ?: return null
+        // Preferred: Android's published launcher entry (not a private component).
+        val published = packageManager.getLaunchIntentForPackage(component.first)
+        if (published != null &&
+            published.resolveActivity(packageManager) != null) return published
+
+        // Fallback: firmware-declared activity, only if the current OS exports it.
+        val explicit = Intent(Intent.ACTION_MAIN)
+            .setClassName(component.first, component.second)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val resolved = packageManager.resolveActivity(explicit, 0)
+        return if (resolved != null && resolved.activityInfo.exported) explicit else null
+    }
+
     private fun assignedIntent(action: String): Intent? {
         val prefs = getSharedPreferences("bid_auto_shortcuts", MODE_PRIVATE)
         val pkg = prefs.getString(action + "_pkg", null) ?: return null
@@ -191,8 +211,8 @@ class MainActivity : Activity() {
                 for ((key, label) in autoActions) {
                     val info = JSONObject()
                     info.put("label", label)
-                    info.put("package", prefs.getString(key + "_pkg", "neconfigurat"))
-                    info.put("available", assignedIntent(key) != null)
+                    info.put("package", prefs.getString(key + "_pkg", null) ?: if (originalQf001Intent(key) != null) "QF001 detectat automat" else "neconfigurat")
+                    info.put("available", assignedIntent(key) != null || originalQf001Intent(key) != null)
                     shortcuts.put(key, info)
                 }
                 put("assignedAutoShortcuts", shortcuts)
@@ -226,10 +246,22 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun launchAuto(action: String) = runOnUiThread {
             if (!autoActions.containsKey(action)) return@runOnUiThread
-            val intent = assignedIntent(action)
-            if (intent != null) startSafely(intent)
-            else {
-                Toast.makeText(this@MainActivity, "Asociază o aplicație pentru " + autoActions[action], Toast.LENGTH_LONG).show()
+            val userSelected = assignedIntent(action)
+            // User's explicit selection takes precedence, otherwise use the actual
+            // installed OEM QF001 package when it is publicly launchable.
+            val intent = userSelected ?: originalQf001Intent(action)
+            if (intent != null) {
+                try { startActivity(intent) }
+                catch (_: Exception) {
+                    Toast.makeText(this@MainActivity,
+                        "Aplicația originală nu permite lansarea. Selectează alta.",
+                        Toast.LENGTH_LONG).show()
+                    chooseAutoApp(action)
+                }
+            } else {
+                Toast.makeText(this@MainActivity,
+                    "Nu există o aplicație OEM accesibilă pentru " + autoActions[action],
+                    Toast.LENGTH_LONG).show()
                 chooseAutoApp(action)
             }
         }
