@@ -32,30 +32,25 @@ jobs:
         with:
           gradle-version: '8.10.2'
       - name: Build debug APK
-        run: gradle --no-daemon --stacktrace assembleDebug
-      - name: Record APK checksum and signing certificate
+        run: gradle --no-daemon --stacktrace assembleLabSafeDebug assembleThemesCandidateDebug
+      - name: Verify both APKs and record checksums
         run: |
           set -euo pipefail
-          APK="app/build/outputs/apk/debug/app-debug.apk"
-          sha256sum "$APK" | tee app/build/outputs/apk/debug/SHA256SUMS.txt
+          mkdir -p dist
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
-          if [ -z "$APKSIGNER" ]; then echo "::error::apksigner missing"; exit 1; fi
-          "$APKSIGNER" verify --print-certs "$APK" | tee app/build/outputs/apk/debug/SIGNATURE.txt
-          {
-            echo "GitHub run: $GITHUB_RUN_NUMBER"
-            echo "Commit: $GITHUB_SHA"
-            echo "Version is set by Gradle via GITHUB_RUN_NUMBER."
-            echo "Warning: default debug keys can change between GitHub runners."
-            echo "An APK signed by a different key may require uninstall/reinstall."
-            echo "Uninstalling erases app data and configured auto shortcuts."
-            echo "Never overwrite system Themes or QF001 firmware."
-          } > app/build/outputs/apk/debug/BUILD-INFO.txt
+          for flavor in labSafe themesCandidate; do
+            file="app/build/outputs/apk/$flavor/debug/app-$flavor-debug.apk"
+            test -s "$file"
+            cp "$file" "dist/DJ88-BID-$flavor-debug.apk"
+            sha256sum "dist/DJ88-BID-$flavor-debug.apk" >> dist/SHA256SUMS.txt
+            "$APKSIGNER" verify --print-certs "$file" > "dist/$flavor-signature.txt"
+          done
+          echo "LAB SAFE: opens manually; does not register HOME." > dist/README.txt
+          echo "THEMES CANDIDATE: exposes HOME alias; OEM Themes recognition and signature NOT verified." >> dist/README.txt
+          echo "Do NOT modify system, set candidate as default HOME, or flash firmware." >> dist/README.txt
+          echo "GitHub commit: $GITHUB_SHA" >> dist/README.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: DJ88-BID-Launcher-debug
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/debug/SHA256SUMS.txt
-            app/build/outputs/apk/debug/SIGNATURE.txt
-            app/build/outputs/apk/debug/BUILD-INFO.txt
+          name: DJ88-BID-QF001-two-variants
+          path: dist/*
           if-no-files-found: error
