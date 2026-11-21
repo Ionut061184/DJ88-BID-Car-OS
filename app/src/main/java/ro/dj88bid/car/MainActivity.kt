@@ -63,6 +63,22 @@ class MainActivity : Activity() {
                 put("mapsInstalled", available("com.google.android.apps.maps"))
                 put("wazeInstalled", available("com.waze"))
                 put("youtubeInstalled", available("com.google.android.youtube"))
+                // Do not assume QF001 access based on a package being present.
+                put("deviceManufacturer", android.os.Build.MANUFACTURER)
+                put("deviceModel", android.os.Build.MODEL)
+                put("androidRelease", android.os.Build.VERSION.RELEASE)
+                put("originalSwoodGrainVisible", available("com.android.launcher.swood.grain"))
+                val homeApps = packageManager.queryIntentActivities(
+                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0
+                )
+                val launchers = org.json.JSONArray()
+                for (resolved in homeApps) {
+                    val item = JSONObject()
+                    item.put("label", resolved.loadLabel(packageManager).toString())
+                    item.put("package", resolved.activityInfo.packageName)
+                    launchers.put(item)
+                }
+                put("availableHomeLaunchers", launchers)
                 put("qf001SystemIntegrationTested", false)
                 put("carBatteryVoltageAvailable", false)
             }.toString()
