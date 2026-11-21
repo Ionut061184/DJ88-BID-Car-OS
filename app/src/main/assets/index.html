@@ -27,7 +27,7 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 <button class="hit" style="left:790px;top:610px;width:238px;height:98px" aria-label="Setări" onclick="launch('settings')">Setări</button>
 <button class="hit" style="left:1031px;top:610px;width:239px;height:98px" aria-label="Aplicații" onclick="launch('apps')">Aplicații</button>
 <div id="drive"><button class="close" onclick="closeAll()">↩ Luxury</button><h1>DJ 88 BID · Driving</h1><p>Navigația reală se deschide în aplicația aleasă. Harta din Luxury este ilustrativă.</p><button class="driveButton" onclick="launch('maps')">Google Maps</button><button class="driveButton" onclick="launch('waze')">Waze</button><button class="driveButton" onclick="launch('phone')">Telefon</button></div>
-<div id="overlay"><section id="panel"><button class="close" onclick="theme(false)">✕</button><h1>BID Themes</h1><p>Designul Luxury rămâne cel aprobat.</p><div class="row"><button onclick="closeAll()">👑 Luxury</button><button onclick="driving()">➤ Driving</button><button onclick="alert('Analog este în dezvoltare')">Analog</button><button onclick="alert('Veneer este în dezvoltare')">Veneer</button><button onclick="diagnostic()">Diagnostic</button><button onclick="autoApps()">Aplicații auto</button><button onclick="launch('original')">Launcher original</button></div></section></div>
+<div id="overlay"><section id="panel"><button class="close" onclick="theme(false)">✕</button><h1>BID Themes</h1><p>Designul Luxury rămâne cel aprobat.</p><div class="row"><button onclick="closeAll()">👑 Luxury</button><button onclick="driving()">➤ Driving</button><button onclick="alert('Analog este în dezvoltare')">Analog</button><button onclick="alert('Veneer este în dezvoltare')">Veneer</button><button onclick="diagnostic()">Diagnostic</button><button onclick="autoApps()">Aplicații auto</button><button onclick="autoConfig('radio')">Asociază Radio</button><button onclick="autoConfig('music')">Asociază Muzică</button><button onclick="autoConfig('btcar')">Asociază BT auto</button><button onclick="autoConfig('dsp')">Asociază DSP</button><button onclick="autoLaunch('radio')">▶ Radio</button><button onclick="autoLaunch('music')">▶ Muzică</button><button onclick="autoLaunch('btcar')">▶ BT auto</button><button onclick="autoLaunch('dsp')">▶ DSP</button><button onclick="launch('original')">Launcher original</button></div></section></div>
 <div id="diagnosticModal" role="dialog" aria-label="Diagnostic BID">
 <section id="diagnosticBox"><button class="close" onclick="document.getElementById('diagnosticModal').classList.remove('on')">Închide ✕</button><h2>DJ 88 BID · Diagnostic</h2><div id="diagnosticText"></div></section></div>
 </main><script>
@@ -37,6 +37,8 @@ function theme(on){document.getElementById('overlay').classList.toggle('on',on)}
 function closeAll(){document.getElementById('diagnosticModal').classList.remove('on');theme(false);document.getElementById('drive').classList.remove('on');localStorage.setItem('bid_mode','luxury')}
 function driving(){theme(false);document.getElementById('drive').classList.add('on');localStorage.setItem('bid_mode','driving')}
 function launch(cmd){if(window.BID&&typeof BID.open==='function'){BID.open(cmd);return}alert('Comanda '+cmd+' necesită aplicația Android.')}
+function autoConfig(action){if(window.BID&&typeof BID.configureAuto==='function')BID.configureAuto(action);else alert('Disponibil doar în aplicația Android.')}
+function autoLaunch(action){if(window.BID&&typeof BID.launchAuto==='function')BID.launchAuto(action);else alert('Disponibil doar în aplicația Android.')}
 function autoApps(){
  if(window.BID && typeof BID.showCarApps==='function') BID.showCarApps();
  else alert('Disponibil doar în aplicația Android.');
@@ -48,12 +50,13 @@ function diagnostic(){
    const d=JSON.parse(BID.diagnostics());
    const homes=Array.isArray(d.availableHomeLaunchers)?d.availableHomeLaunchers:[];
    const car=Array.isArray(d.candidateCarApps)?d.candidateCarApps:[];
+   const assigned=d.assignedAutoShortcuts||{};const bindings=Object.keys(assigned).map(k=>assigned[k].label+': '+assigned[k].package+(assigned[k].available?' (disponibil)':' (neconfigurat / indisponibil)')).join(', ');
    msg='Dispozitiv: '+(d.deviceManufacturer||'?')+' '+(d.deviceModel||'?')+
    '\nAndroid: '+(d.androidRelease||'?')+
    '\nSwoodGrain vizibil: '+(d.originalSwoodGrainVisible?'DA':'NU / necunoscut')+
    '\nLaunchere HOME detectate: '+homes.map(x=>x.label+' ['+x.package+']').join(', ')+
    '\nMaps: '+d.mapsInstalled+'; Waze: '+d.wazeInstalled+'; YouTube: '+d.youtubeInstalled+
-   '\nRadio/DSP/BT auto QF001: NETESTATE. Nu se modifică Themes original.';
+   '\nScurtături auto: '+bindings+'\nRadio/DSP/BT auto QF001: NETESTATE. Nu se modifică Themes original.';
   }
  } catch(e) { msg='Diagnostic indisponibil.'; }
  document.getElementById('diagnosticText').textContent=msg.replace(/\\n/g, '\n');
