@@ -46,3 +46,23 @@ Sursă: https://4pda.to/forum/index.php?showtopic=1065343&st=8960
 **Nu recomand flash imediat** cu `update.zip` deja recuperat, schimbarea MCU, scurtcircuitarea KEY2 ori utilizarea unui pachet PAC necunoscut. Sunt opțiuni de service numai după confirmarea modelului fizic, a firmware-ului compatibil și verificarea tensiunii unității sub sarcină.
 
 Alternativa practică: un atelier de electronice auto trebuie să observe alimentarea reală BATT/ACC/GND pe conector în timpul buclei și, dacă e stabilă, să verifice o cale de diagnostic/recuperare compatibilă, fără a introduce întâi modificări. Cere să se păstreze MCU QF05 BU32107 TEF6686 și datele OEM; nu folosi firmware pentru UIS8581A doar pentru că numele QF001 seamănă.
+
+
+## Rezultat nou — potrivire exactă software + MCU în comunitate
+
+Sursa QF001 conține un raport al unui utilizator cu **aceeași versiune exactă de software** `QF001.20250530.200511` și același MCU `QF05.V02.12.20250419.004121.05`, CPU `UIS7862S`, DSP `BU32107`, tuner `TEF6686`, dar cu **ecran 1024 × 600**, nu 1280 × 720:
+https://4pda.to/forum/index.php?showtopic=1065343&st=8000
+
+**Rezultat:** potrivirea software/MCU este confirmată independent; **nu** este o dovadă că un pachet de actualizare sau un driver de afișaj destinat celuilalt aparat este compatibil cu al nostru.
+
+### Variante firmware online identificate, NU recomandate automat
+Indexul comunității enumeră firmware-uri `QF001_7862s/Jitu2_version_horizontal_screen` din 12.06.2025, 20.06.2025, 14.08.2025, 02.09.2025, 25.11.2025, 26.12.2025 și 05.06.2026. Este un **catalog de versiuni**, nu dovada că una dintre ele repară bootloop-ul și nici o certificare a semnăturii:
+https://4pda.to/forum/index.php?showtopic=1065343&st=8000
+
+O altă discuție diferențiază explicit `UIS7862S` de `UIS8581A`: fișierele firmware nu sunt interschimbabile. 
+https://4pda.to/forum/index.php?showtopic=1065343&st=4840
+
+Procedurile de update cu `QF/auto` față de `update.zip` sunt distincte și apar în discuții; nu se combină și nu sunt teste neinvazive.
+https://4pda.to/forum/index.php?showtopic=1065343&st=4340
+
+**Stare:** am identificat o potrivire exactă de versiune QF001 și MCU, un catalog de firmware al aceleiași familii și două căi comunitare de recuperare. Niciuna nu a fost validată până la instalare pe unitatea proprietarului.
