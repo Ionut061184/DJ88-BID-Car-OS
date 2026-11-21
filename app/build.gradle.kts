@@ -26,7 +26,9 @@ android {
         }
         create("themesCandidate") {
             dimension = "activation"
-            manifestPlaceholders["bidAppLabel"] = "DJ 88 BID Luxury"
+            // Separate from past BID installations; must also match the QF001 lab config.
+            applicationIdSuffix = ".qf001theme"
+            manifestPlaceholders["bidAppLabel"] = "DJ 88 BID Luxury · QF001"
             manifestPlaceholders["bidHomeEnabled"] = "true"
         }
     }
