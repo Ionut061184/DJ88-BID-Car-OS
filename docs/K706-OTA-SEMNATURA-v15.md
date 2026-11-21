@@ -20,3 +20,14 @@ Validarea `openssl cms -verify -noverify` verifică semnătura criptografică pe
 `DJ88-BID-K706-VERIFICARE-SEMNATURA-OTA-v15.zip`: `verify_k706_ota.py` (citire, CRC, certificat, verificare CMS streaming), `test_verify_k706_ota.py` (6 teste), raport JSON real și README.
 
 **Nu este un firmware flashabil.** Nu repară de unul singur bootloop-ul. Verificarea completă `e2fsck` a copiei PRODUCT și compatibilitatea exactă K706/MCU/display rămân neconfirmate. Nu se încearcă KEY2/flash în absența validării.
+
+
+## Compatibilitate: limită verificată din metadata OTA
+Fișierul `META-INF/com/android/metadata` al originalului semnat declară:
+- `post-build=ROCO/K706/K706:10/QP1A.190711.020/55446:user/release-keys`
+- `post-sdk-level=29`, `post-security-patch-level=2020-06-05`
+- `post-build-incremental=55446`, `pre-device=K706`.
+
+Versiunea software fotografiată pe aparatul fizic este `QF001.20250530.200511`, însă OTA nu declară direct această versiune de UI. Prin urmare, verificarea criptografică și potrivirea numelui K706 **nu certifică** compatibilitatea cu configurația existentă.
+
+Scriptul OTA verifică `ro.qf.platform=7862` și apoi scrie direct uboot, vbmeta, boot și recreează dynamic partitions; nu include o verificare explicită în script a variantei de ecran 1280 × 720, a MCU QF05 sau a DSP BU32107. **Nu se recomandă flash pe dispozitiv.**
