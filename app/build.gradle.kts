@@ -19,10 +19,14 @@ android {
     productFlavors {
         create("labSafe") {
             dimension = "activation"
+            // Distinct app ID: installs beside any previous BID version, without uninstalling it.
+            applicationIdSuffix = ".labtest"
+            manifestPlaceholders["bidAppLabel"] = "DJ 88 BID TEST"
             manifestPlaceholders["bidHomeEnabled"] = "false"
         }
         create("themesCandidate") {
             dimension = "activation"
+            manifestPlaceholders["bidAppLabel"] = "DJ 88 BID Luxury"
             manifestPlaceholders["bidHomeEnabled"] = "true"
         }
     }
