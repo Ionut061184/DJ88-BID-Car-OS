@@ -10,7 +10,7 @@ android {
         // This does not solve Android's signing-certificate compatibility requirement.
         val ciBuild = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
         versionCode = ciBuild?.let { 10000 + it } ?: 15
-        versionName = "1.5-beta" + (ciBuild?.let { ".$it" } ?: "")
+        versionName = "1.6-oem-bridge-beta" + (ciBuild?.let { ".$it" } ?: "")
     }
 
     // The lab variant will never take over HOME. Themes candidate exposes an
