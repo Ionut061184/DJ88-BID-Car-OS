@@ -59,6 +59,16 @@ class MainActivity : Activity() {
         "dsp" to "DSP"
     )
 
+    // Identifiers extracted from the original ROCO K706 Android 10 firmware.
+    // Presence in a manifest does NOT prove this third-party launcher can operate
+    // the OEM hardware or that these activities are accessible on every device.
+    private val knownQf001 = mapOf(
+        "radio" to Pair("com.android.fmradio.ext", "com.android.fmradio.FmMainActivity"),
+        "music" to Pair("com.qf.musicplayer", "com.qf.musicplayer.ui.MainActivity"),
+        "btcar" to Pair("com.qf.bluetooth", "com.qf.bluetooth.BluetoothActivity"),
+        "dsp" to Pair("com.qf.soundeffect", "com.qf.soundeffect.SoundActivity")
+    )
+
     private fun assignedIntent(action: String): Intent? {
         val prefs = getSharedPreferences("bid_auto_shortcuts", MODE_PRIVATE)
         val pkg = prefs.getString(action + "_pkg", null) ?: return null
@@ -83,9 +93,13 @@ class MainActivity : Activity() {
             val text = (resolved.loadLabel(packageManager).toString() + " " +
                 resolved.activityInfo.packageName).lowercase(java.util.Locale.ROOT)
             resolved.activityInfo.packageName != packageName &&
-                keywords.any { keyword -> text.contains(keyword) }
+                (keywords.any { keyword -> text.contains(keyword) } ||
+                 resolved.activityInfo.packageName == knownQf001[action]?.first)
         }.distinctBy { it.activityInfo.packageName + "/" + it.activityInfo.name }
-         .sortedBy { it.loadLabel(packageManager).toString().lowercase(java.util.Locale.ROOT) }
+         .sortedWith(compareBy<android.content.pm.ResolveInfo>(
+             { if (it.activityInfo.packageName == knownQf001[action]?.first) 0 else 1 },
+             { it.loadLabel(packageManager).toString().lowercase(java.util.Locale.ROOT) }
+         ))
 
         if (matches.isEmpty()) {
             android.app.AlertDialog.Builder(this)
@@ -103,11 +117,13 @@ class MainActivity : Activity() {
 
         val names = arrayOf("Fără asociere (resetare)") +
             matches.map {
-                it.loadLabel(packageManager).toString() + " · " + it.activityInfo.packageName
+                (if (it.activityInfo.packageName == knownQf001[action]?.first)
+                    "QF001 original · " else "") +
+                    it.loadLabel(packageManager).toString() + " · " + it.activityInfo.packageName
             }
         android.app.AlertDialog.Builder(this)
             .setTitle("Asociază " + actionName + " · aplicații compatibile posibile")
-            .setMessage("Alege numai o aplicație a cărei funcție o cunoști. Detectarea după nume nu confirmă compatibilitatea QF001.")
+            .setMessage("Aplicațiile QF001 apar primele dacă sunt instalate. Identificarea din firmware nu confirmă funcționarea hardware; alegerea este manuală.")
             .setItems(names) { _, position ->
                 val prefs = getSharedPreferences("bid_auto_shortcuts", MODE_PRIVATE)
                 if (position == 0) {
@@ -180,6 +196,22 @@ class MainActivity : Activity() {
                     shortcuts.put(key, info)
                 }
                 put("assignedAutoShortcuts", shortcuts)
+                val known = JSONObject()
+                for ((action, component) in knownQf001) {
+                    val matches = packageManager.queryIntentActivities(
+                        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
+                    )
+                    val identified = matches.any {
+                        it.activityInfo.packageName == component.first &&
+                        it.activityInfo.name == component.second
+                    }
+                    known.put(action, JSONObject().apply {
+                        put("package", component.first)
+                        put("activity", component.second)
+                        put("launchableVisible", identified)
+                    })
+                }
+                put("originalQf001Apps", known)
                 put("qf001SystemIntegrationTested", false)
                 put("carBatteryVoltageAvailable", false)
             }.toString()
