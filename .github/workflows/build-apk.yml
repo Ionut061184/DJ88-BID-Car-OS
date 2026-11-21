@@ -1,0 +1,32 @@
+name: Build DJ88 BID Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Ensure approved image exists
+        run: |
+          test -s app/src/main/assets/bid_approved.png || { echo 'Missing approved BID image: upload bid_approved.png to app/src/main/assets before building'; exit 1; }
+      - name: Build debug APK
+        run: gradle --no-daemon --stacktrace assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DJ88-BID-Launcher-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
