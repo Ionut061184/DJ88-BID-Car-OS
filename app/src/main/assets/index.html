@@ -1,0 +1,37 @@
+<!doctype html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>DJ 88 BID Launcher</title><style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050305;color:#f5dfaf;font-family:Arial,sans-serif}button{font:inherit;cursor:pointer}
+#stage{position:absolute;width:1280px;height:720px;transform-origin:0 0;background:#090609 url('bid_approved.png') center/100% 100% no-repeat;overflow:hidden}
+.hit{position:absolute;background:transparent;border:0;color:transparent;z-index:2}.hit:focus-visible{outline:3px solid #e5c080;background:#300e1680;color:white}
+#clock{position:absolute;right:9px;top:76px;width:105px;height:44px;text-align:right;padding:4px 8px;background:#080508;color:white;font:bold 35px Arial;z-index:1}
+#overlay{position:absolute;inset:0;z-index:10;background:#070407e8;display:none;align-items:center;justify-content:center}#overlay.on{display:flex}
+#panel{width:790px;border:3px solid #b79561;border-radius:24px;padding:27px;background:linear-gradient(135deg,#210c17,#53152b,#190c12);text-align:center}
+h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-content:center;flex-wrap:wrap}.row button,.close,.driveButton{border:2px solid #c5a06a;background:#211015;color:#ffe3af;border-radius:13px;padding:16px 21px;font-size:23px}.close{float:right}
+#drive{display:none;position:absolute;inset:0;z-index:7;background:#0b0a12;color:#eed5a9;padding:45px}
+#drive.on{display:block}#drive h1{font-size:55px}#drive p{font-size:25px}#drive .driveButton{margin:20px;min-width:230px}
+</style></head><body><main id="stage" aria-label="DJ 88 BID Luxury">
+<div id="clock">--:--</div>
+<button class="hit" style="left:20px;top:14px;width:100px;height:92px" aria-label="Acasă" onclick="closeAll()">Home</button>
+<button class="hit" style="left:537px;top:0;width:190px;height:164px" aria-label="Meniul BID Themes" onclick="theme(true)">Themes</button>
+<button class="hit" style="left:32px;top:181px;width:213px;height:360px" aria-label="Deschide GPS" onclick="launch('maps')">GPS</button>
+<button class="hit" style="left:245px;top:306px;width:50px;height:50px" aria-label="Centrare - deschide Maps" onclick="launch('maps')">Centrare</button>
+<button class="hit" style="left:245px;top:358px;width:50px;height:50px" aria-label="Zoom plus - deschide Maps" onclick="launch('maps')">Zoom+</button>
+<button class="hit" style="left:245px;top:414px;width:50px;height:50px" aria-label="Zoom minus - deschide Maps" onclick="launch('maps')">Zoom-</button>
+<button class="hit" style="left:416px;top:548px;width:218px;height:52px" aria-label="BID Luxury" onclick="closeAll()">Luxury</button>
+<button class="hit" style="left:635px;top:548px;width:231px;height:52px" aria-label="BID Driving" onclick="driving()">Driving</button>
+<button class="hit" style="left:12px;top:610px;width:195px;height:98px" aria-label="Telefon" onclick="launch('phone')">Telefon</button>
+<button class="hit" style="left:210px;top:610px;width:147px;height:98px" aria-label="Bluetooth" onclick="launch('bluetooth')">Bluetooth</button>
+<button class="hit" style="left:358px;top:610px;width:151px;height:98px" aria-label="YouTube" onclick="launch('youtube')">YouTube</button>
+<button class="hit" style="left:790px;top:610px;width:238px;height:98px" aria-label="Setări" onclick="launch('settings')">Setări</button>
+<button class="hit" style="left:1031px;top:610px;width:239px;height:98px" aria-label="Aplicații" onclick="launch('apps')">Aplicații</button>
+<div id="drive"><button class="close" onclick="closeAll()">↩ Luxury</button><h1>DJ 88 BID · Driving</h1><p>Navigația reală se deschide în aplicația aleasă. Harta din Luxury este ilustrativă.</p><button class="driveButton" onclick="launch('maps')">Google Maps</button><button class="driveButton" onclick="launch('waze')">Waze</button><button class="driveButton" onclick="launch('phone')">Telefon</button></div>
+<div id="overlay"><section id="panel"><button class="close" onclick="theme(false)">✕</button><h1>BID Themes</h1><p>Designul Luxury rămâne cel aprobat.</p><div class="row"><button onclick="closeAll()">👑 Luxury</button><button onclick="driving()">➤ Driving</button><button onclick="alert('Analog este în dezvoltare')">Analog</button><button onclick="alert('Veneer este în dezvoltare')">Veneer</button><button onclick="diagnostic()">Diagnostic</button><button onclick="launch('original')">Launcher original</button></div></section></div>
+</main><script>
+function fit(){const el=document.getElementById('stage');const s=Math.min(innerWidth/1280,innerHeight/720);el.style.transform='scale('+s+')';el.style.left=((innerWidth-1280*s)/2)+'px';el.style.top=((innerHeight-720*s)/2)+'px'}addEventListener('resize',fit);fit();
+function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'})}tick();setInterval(tick,10000);
+function theme(on){document.getElementById('overlay').classList.toggle('on',on)}
+function closeAll(){theme(false);document.getElementById('drive').classList.remove('on');localStorage.setItem('bid_mode','luxury')}
+function driving(){theme(false);document.getElementById('drive').classList.add('on');localStorage.setItem('bid_mode','driving')}
+function launch(cmd){if(window.BID&&typeof BID.open==='function'){BID.open(cmd);return}alert('Comanda '+cmd+' necesită aplicația Android.')}
+function diagnostic(){let msg='Testarea pe QF001 nu a fost realizată.';try{if(window.BID){const d=JSON.parse(BID.diagnostics());msg='Maps: '+d.mapsInstalled+'; Waze: '+d.wazeInstalled+'; YouTube: '+d.youtubeInstalled+'; integrare QF001: NETESTATĂ.'}}catch(e){msg='Diagnostic indisponibil.'}alert(msg)}
+try{if(localStorage.getItem('bid_mode')==='driving')driving()}catch(e){}
+</script></body></html>
