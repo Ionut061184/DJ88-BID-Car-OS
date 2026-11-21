@@ -51,6 +51,51 @@ class MainActivity : Activity() {
         webView.loadUrl("file:///android_asset/index.html")
     }
 
+    // User-approved shortcuts only. Never invoke hidden OEM services or system intents.
+    private val autoActions = linkedMapOf(
+        "radio" to "Radio",
+        "music" to "Muzică",
+        "btcar" to "Bluetooth auto",
+        "dsp" to "DSP"
+    )
+
+    private fun assignedIntent(action: String): Intent? {
+        val prefs = getSharedPreferences("bid_auto_shortcuts", MODE_PRIVATE)
+        val pkg = prefs.getString(action + "_pkg", null) ?: return null
+        val activity = prefs.getString(action + "_activity", null) ?: return null
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            .setClassName(pkg, activity)
+        return if (packageManager.resolveActivity(intent, 0) != null) intent else null
+    }
+
+    private fun chooseAutoApp(action: String) {
+        val actionName = autoActions[action] ?: return
+        val launchables = packageManager.queryIntentActivities(
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
+        ).filter { it.activityInfo.packageName != packageName }
+         .sortedBy { it.loadLabel(packageManager).toString().lowercase(java.util.Locale.ROOT) }
+        if (launchables.isEmpty()) {
+            Toast.makeText(this, "Nu există aplicații lansabile", Toast.LENGTH_LONG).show()
+            return
+        }
+        val names = arrayOf("Fără asociere (resetare)") +
+            launchables.map { it.loadLabel(packageManager).toString() + " · " + it.activityInfo.packageName }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Asociază " + actionName + " cu aplicația originală")
+            .setItems(names) { _, position ->
+                val prefs = getSharedPreferences("bid_auto_shortcuts", MODE_PRIVATE)
+                if (position == 0) {
+                    prefs.edit().remove(action + "_pkg").remove(action + "_activity").apply()
+                    Toast.makeText(this, "Asocierea a fost anulată", Toast.LENGTH_SHORT).show()
+                } else {
+                    val app = launchables[position - 1].activityInfo
+                    prefs.edit().putString(action + "_pkg", app.packageName)
+                        .putString(action + "_activity", app.name).apply()
+                    Toast.makeText(this, "Asociere salvată: " + actionName, Toast.LENGTH_SHORT).show()
+                }
+            }.setNegativeButton("Renunță", null).show()
+    }
+
     inner class Bridge {
         @JavascriptInterface
         fun diagnostics(): String {
@@ -98,12 +143,38 @@ class MainActivity : Activity() {
                     }
                 }
                 put("candidateCarApps", carApps)
+                val shortcuts = JSONObject()
+                val prefs = getSharedPreferences("bid_auto_shortcuts", MODE_PRIVATE)
+                for ((key, label) in autoActions) {
+                    val info = JSONObject()
+                    info.put("label", label)
+                    info.put("package", prefs.getString(key + "_pkg", "neconfigurat"))
+                    info.put("available", assignedIntent(key) != null)
+                    shortcuts.put(key, info)
+                }
+                put("assignedAutoShortcuts", shortcuts)
                 put("qf001SystemIntegrationTested", false)
                 put("carBatteryVoltageAvailable", false)
             }.toString()
         }
 
         // Presents detected apps to the user; never invokes privileged QF001 actions.
+        @JavascriptInterface
+        fun configureAuto(action: String) = runOnUiThread {
+            if (autoActions.containsKey(action)) chooseAutoApp(action)
+        }
+
+        @JavascriptInterface
+        fun launchAuto(action: String) = runOnUiThread {
+            if (!autoActions.containsKey(action)) return@runOnUiThread
+            val intent = assignedIntent(action)
+            if (intent != null) startSafely(intent)
+            else {
+                Toast.makeText(this@MainActivity, "Asociază o aplicație pentru " + autoActions[action], Toast.LENGTH_LONG).show()
+                chooseAutoApp(action)
+            }
+        }
+
         @JavascriptInterface
         fun showCarApps() = runOnUiThread {
             val candidates = packageManager.queryIntentActivities(
