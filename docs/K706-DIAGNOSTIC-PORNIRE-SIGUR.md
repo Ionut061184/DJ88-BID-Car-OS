@@ -29,3 +29,21 @@
 
 ## Următorul rezultat util
 Se poate întocmi o fișă cu simptomele reale de pornire și măsurători. Până la acestea, verdictul corect este: **firmware-ul disponibil este analizabil, dar cauza nefuncționării K706 nu este determinată**.
+
+
+## Surse comunitare despre recuperare QF001 (cercetare suplimentară)
+
+**ATENȚIE:** Metodele de mai jos sunt descrise de utilizatori pe forumuri, **nu sunt validate pe unitatea noastră**. Nu sunt instrucțiuni de executat în starea actuală.
+
+- În discuția specializată **4PDA: „QF001 (ROCO K706) UIS7862S”** se descrie un mod de recuperare denumit „KEY2”, în care se folosește un suport USB FAT32 cu `update.zip`. Unii utilizatori susțin că o combinație KEY2–masă și RESET poate porni actualizarea automată: https://4pda.to/forum/index.php?showtopic=1065343&st=1080
+- Există și **rapoarte de nereușită**: unele unități rămân blocate și nu accesează stickul, inclusiv după manevrele menționate: https://4pda.to/forum/index.php?showtopic=1065343&st=9960
+- Există **rapoarte de eșec al actualizării după ce au fost scrise partiții de boot** (eroarea status 7 la actualizarea partițiilor dinamice); de aceea o încercare poate înrăutăți situația: https://4pda.to/forum/index.php?showtopic=1065343&st=5000
+- Comunitatea menționează și pachete de recuperare PC `QF001_PAC`, dar aceasta este o procedură complet diferită de un simplu `update.zip` și necesită stabilirea exactă a hardware-ului: https://4pda.to/forum/index.php?showtopic=1065343&st=2720
+
+### Concluzia pentru DJ 88 BID
+1. **Nu legăm KEY2 la masă**, nu încercăm scurtcircuite și nu forțăm actualizarea pe baza descrierii unui alt aparat. Firele pot avea culori și funcții diferite.
+2. Pachetul nostru original QF001 are verificare de platformă `7862`; asta este necesar, dar **nu suficient** pentru a certifica toate variantele hardware și afișajele.
+3. Trebuie mai întâi confirmate separat configurația exactă K706/QF05 și posibilitatea unui **acces neinvaziv** la jurnalul/meniul recovery. Doar ulterior se decide o procedură, preferabil cu asistență de service.
+4. Păstrăm distincte: firmware original, APK-ul DJ 88 BID separat și procedura de depanare hardware.
+
+**Stare:** metoda KEY2 este **documentată în comunitate**, dar **neconfirmată pe unitatea utilizatorului**.
