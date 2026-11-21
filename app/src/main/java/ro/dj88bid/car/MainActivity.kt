@@ -294,6 +294,47 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
+        fun openQfThemes() = runOnUiThread {
+            // OEM implementation identified in QF_CarSettings.apk from K706 firmware.
+            // Can open only if this particular device exports it to third-party apps.
+            val pkgs = listOf("com.qf.carsettings", "com.qf.carsetting")
+            val classes = listOf(
+                "com.qf.carsettings.activity.FactoryLauncherSelectActivity",
+                "com.qf.carsetting.activity.FactoryLauncherSelectActivity")
+            for (pkg in pkgs) {
+                for (cls in classes) {
+                    val intent = Intent(Intent.ACTION_MAIN)
+                        .setClassName(pkg, cls)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    val resolved = packageManager.resolveActivity(intent, 0)
+                    if (resolved?.activityInfo?.exported == true) {
+                        try {
+                            startActivity(intent)
+                            return@runOnUiThread
+                        } catch (_: Exception) { /* Try next exported component. */ }
+                    }
+                }
+            }
+            android.app.AlertDialog.Builder(this@MainActivity)
+                .setTitle("QF001 · Themes original")
+                .setMessage("Selectorul OEM nu este expus pentru această aplicație ori nu este instalat. " +
+                    "Nu modificăm firmware-ul și nu încercăm să ocolim protecțiile OEM. " +
+                    "Deschide Themes din Setările originale QF001.")
+                .setPositiveButton("Deschide setările QF001") { _, _ ->
+                    for (pkg in pkgs) {
+                        val intent = packageManager.getLaunchIntentForPackage(pkg)
+                        if (intent != null) {
+                            startSafely(intent)
+                            return@setPositiveButton
+                        }
+                    }
+                    startSafely(Intent(Settings.ACTION_SETTINGS))
+                }
+                .setNegativeButton("Închide", null)
+                .show()
+        }
+
+        @JavascriptInterface
         fun open(command: String) = runOnUiThread {
             when (command) {
                 "maps" -> openPreferred("com.google.android.apps.maps", "geo:0,0", "https://www.google.com/maps")
