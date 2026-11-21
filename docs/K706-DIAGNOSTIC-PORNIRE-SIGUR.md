@@ -47,3 +47,16 @@ Se poate întocmi o fișă cu simptomele reale de pornire și măsurători. Pân
 4. Păstrăm distincte: firmware original, APK-ul DJ 88 BID separat și procedura de depanare hardware.
 
 **Stare:** metoda KEY2 este **documentată în comunitate**, dar **neconfirmată pe unitatea utilizatorului**.
+
+
+## Clarificare esențială privind Android 14 afișat (21.11.2026)
+
+Fotografia cu setările unității afișează `QF001.20250530.200511`, `Android: 14`, `7862S`, `QF05.V02.12.20250419.004121.05`, `1280x720`, `DSP BU32107` și `Radio TEF6686 (NXP)`.
+
+**Noua dovadă externă:** pe forumul tehnic QF001/ROCO K706, utilizatori ai aceleiași familii declară că unele firmware-uri din 2025 afișează Android 14, deși baza este **Android 10, API 29**. Exemplu: https://4pda.to/forum/index.php?showtopic=1065343&st=7160 ; prezentarea familiei QF001: https://4pda.to/forum/index.php?showtopic=1065343&st=6700 .
+
+**Interpretare:** afișajul „Android 14” NU dovedește că unitatea rulează efectiv Android 14 și nici că pachetul Android 10 este incompatibil. În același timp, simpla asemănare între versiunile afișate NU garantează compatibilitatea! Versiunile de build, definițiile pentru afișaj, configurațiile DSP/radio și MCU trebuie verificate distinct.
+
+**Risc documentat extern:** un utilizator QF001 a raportat că recovery KEY2 a instalat firmware-ul, dar unitatea a rămas la sigla Android, iar ulterior KEY2 nu a mai intrat în recovery: https://4pda.to/forum/index.php?showtopic=1065343&st=10060 . Acesta este un raport individual, nu o predicție despre unitatea noastră.
+
+**Decizie:** fără scurtcircuitarea KEY2, fără flash de probă și fără presupunerea că firmware-ul disponibil este un pachet de recuperare verificat pentru exemplarul fizic.
