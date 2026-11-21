@@ -13,6 +13,20 @@ android {
         versionName = "1.5-beta" + (ciBuild?.let { ".$it" } ?: "")
     }
 
+    // The lab variant will never take over HOME. Themes candidate exposes an
+    // OEM-shaped HOME component but cannot grant OEM signature or privileges.
+    flavorDimensions += "activation"
+    productFlavors {
+        create("labSafe") {
+            dimension = "activation"
+            manifestPlaceholders["bidHomeEnabled"] = "false"
+        }
+        create("themesCandidate") {
+            dimension = "activation"
+            manifestPlaceholders["bidHomeEnabled"] = "true"
+        }
+    }
+
     // Stable release signing is enabled only when GitHub Actions injects the secrets.
     // Never put private keystore bytes or passwords in the repository.
     val stableStore = System.getenv("BID_KEYSTORE_PATH")
