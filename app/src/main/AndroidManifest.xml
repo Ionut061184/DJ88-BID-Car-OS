@@ -15,11 +15,18 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+        </activity>
+        <!-- LabSafe: alias disabled; ThemesCandidate: alias enabled. No replacement of QF launchers. -->
+        <activity-alias android:name="com.android.launcher3.Launcher"
+            android:targetActivity=".MainActivity"
+            android:enabled="${bidHomeEnabled}"
+            android:exported="true"
+            android:label="DJ 88 BID Luxury">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.HOME"/>
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
-        </activity>
+        </activity-alias>
     </application>
 </manifest>
