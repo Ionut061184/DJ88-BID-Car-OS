@@ -70,30 +70,57 @@ class MainActivity : Activity() {
 
     private fun chooseAutoApp(action: String) {
         val actionName = autoActions[action] ?: return
-        val launchables = packageManager.queryIntentActivities(
+        val keywords = when (action) {
+            "radio" -> listOf("radio", "fm", "tuner")
+            "music" -> listOf("music", "muzic", "audio player", "player", "media")
+            "btcar" -> listOf("bluetooth", "bt music", "bt phone", "handsfree", "hands-free", "car bt")
+            "dsp" -> listOf("dsp", "equalizer", "equaliser", "sound effect", "audio settings")
+            else -> emptyList()
+        }
+        val matches = packageManager.queryIntentActivities(
             Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
-        ).filter { it.activityInfo.packageName != packageName }
+        ).filter { resolved ->
+            val text = (resolved.loadLabel(packageManager).toString() + " " +
+                resolved.activityInfo.packageName).lowercase(java.util.Locale.ROOT)
+            resolved.activityInfo.packageName != packageName &&
+                keywords.any { keyword -> text.contains(keyword) }
+        }.distinctBy { it.activityInfo.packageName + "/" + it.activityInfo.name }
          .sortedBy { it.loadLabel(packageManager).toString().lowercase(java.util.Locale.ROOT) }
-        if (launchables.isEmpty()) {
-            Toast.makeText(this, "Nu există aplicații lansabile", Toast.LENGTH_LONG).show()
+
+        if (matches.isEmpty()) {
+            android.app.AlertDialog.Builder(this)
+                .setTitle("DJ 88 BID · " + actionName)
+                .setMessage("Nu am găsit o aplicație lansabilă potrivită pentru " +
+                    actionName + ". Pe Huawei este normal. Asocierea cu aplicația " +
+                    "originală trebuie verificată pe K706; nu alegem aplicații la întâmplare.")
+                .setPositiveButton("OK", null)
+                .setNeutralButton("Șterge asocierea") { _, _ ->
+                    getSharedPreferences("bid_auto_shortcuts", MODE_PRIVATE).edit()
+                        .remove(action + "_pkg").remove(action + "_activity").apply()
+                }.show()
             return
         }
+
         val names = arrayOf("Fără asociere (resetare)") +
-            launchables.map { it.loadLabel(packageManager).toString() + " · " + it.activityInfo.packageName }
+            matches.map {
+                it.loadLabel(packageManager).toString() + " · " + it.activityInfo.packageName
+            }
         android.app.AlertDialog.Builder(this)
-            .setTitle("Asociază " + actionName + " cu aplicația originală")
+            .setTitle("Asociază " + actionName + " · aplicații compatibile posibile")
+            .setMessage("Alege numai o aplicație a cărei funcție o cunoști. Detectarea după nume nu confirmă compatibilitatea QF001.")
             .setItems(names) { _, position ->
                 val prefs = getSharedPreferences("bid_auto_shortcuts", MODE_PRIVATE)
                 if (position == 0) {
                     prefs.edit().remove(action + "_pkg").remove(action + "_activity").apply()
                     Toast.makeText(this, "Asocierea a fost anulată", Toast.LENGTH_SHORT).show()
                 } else {
-                    val app = launchables[position - 1].activityInfo
+                    val app = matches[position - 1].activityInfo
                     prefs.edit().putString(action + "_pkg", app.packageName)
                         .putString(action + "_activity", app.name).apply()
                     Toast.makeText(this, "Asociere salvată: " + actionName, Toast.LENGTH_SHORT).show()
                 }
-            }.setNegativeButton("Renunță", null).show()
+            }
+            .setNegativeButton("Renunță", null).show()
     }
 
     inner class Bridge {
