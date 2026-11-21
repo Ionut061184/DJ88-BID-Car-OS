@@ -31,8 +31,29 @@ jobs:
           gradle-version: '8.10.2'
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace assembleDebug
+      - name: Record APK checksum and signing certificate
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          sha256sum "$APK" | tee app/build/outputs/apk/debug/SHA256SUMS.txt
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          if [ -z "$APKSIGNER" ]; then echo "::error::apksigner missing"; exit 1; fi
+          "$APKSIGNER" verify --print-certs "$APK" | tee app/build/outputs/apk/debug/SIGNATURE.txt
+          {
+            echo "GitHub run: $GITHUB_RUN_NUMBER"
+            echo "Commit: $GITHUB_SHA"
+            echo "Version is set by Gradle via GITHUB_RUN_NUMBER."
+            echo "Warning: default debug keys can change between GitHub runners."
+            echo "An APK signed by a different key may require uninstall/reinstall."
+            echo "Uninstalling erases app data and configured auto shortcuts."
+            echo "Never overwrite system Themes or QF001 firmware."
+          } > app/build/outputs/apk/debug/BUILD-INFO.txt
       - uses: actions/upload-artifact@v4
         with:
           name: DJ88-BID-Launcher-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/SHA256SUMS.txt
+            app/build/outputs/apk/debug/SIGNATURE.txt
+            app/build/outputs/apk/debug/BUILD-INFO.txt
           if-no-files-found: error
