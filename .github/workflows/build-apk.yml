@@ -14,6 +14,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Test read-only QF001 APK analyzer
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
       - name: Check approved BID image
         run: |
           if [ ! -s app/src/main/assets/bid_approved.png ]; then
