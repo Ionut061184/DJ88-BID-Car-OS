@@ -32,6 +32,21 @@ function theme(on){document.getElementById('overlay').classList.toggle('on',on)}
 function closeAll(){theme(false);document.getElementById('drive').classList.remove('on');localStorage.setItem('bid_mode','luxury')}
 function driving(){theme(false);document.getElementById('drive').classList.add('on');localStorage.setItem('bid_mode','driving')}
 function launch(cmd){if(window.BID&&typeof BID.open==='function'){BID.open(cmd);return}alert('Comanda '+cmd+' necesită aplicația Android.')}
-function diagnostic(){let msg='Testarea pe QF001 nu a fost realizată.';try{if(window.BID){const d=JSON.parse(BID.diagnostics());msg='Maps: '+d.mapsInstalled+'; Waze: '+d.wazeInstalled+'; YouTube: '+d.youtubeInstalled+'; integrare QF001: NETESTATĂ.'}}catch(e){msg='Diagnostic indisponibil.'}alert(msg)}
+function diagnostic(){
+ let msg='Testarea pe QF001 nu a fost realizată.';
+ try {
+  if(window.BID){
+   const d=JSON.parse(BID.diagnostics());
+   const homes=Array.isArray(d.availableHomeLaunchers)?d.availableHomeLaunchers:[];
+   msg='Dispozitiv: '+(d.deviceManufacturer||'?')+' '+(d.deviceModel||'?')+
+   '\\nAndroid: '+(d.androidRelease||'?')+
+   '\\nSwoodGrain vizibil: '+(d.originalSwoodGrainVisible?'DA':'NU / necunoscut')+
+   '\\nLaunchere HOME detectate: '+homes.map(x=>x.label+' ['+x.package+']').join(', ')+
+   '\\nMaps: '+d.mapsInstalled+'; Waze: '+d.wazeInstalled+'; YouTube: '+d.youtubeInstalled+
+   '\\nRadio/DSP/BT auto QF001: NETESTATE. Nu se modifică Themes original.';
+  }
+ } catch(e) { msg='Diagnostic indisponibil.'; }
+ alert(msg);
+}
 try{if(localStorage.getItem('bid_mode')==='driving')driving()}catch(e){}
 </script></body></html>
