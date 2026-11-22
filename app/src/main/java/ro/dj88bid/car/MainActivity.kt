@@ -340,7 +340,25 @@ class MainActivity : Activity() {
                 "maps" -> openPreferred("com.google.android.apps.maps", "geo:0,0", "https://www.google.com/maps")
                 "waze" -> openPreferred("com.waze", "waze://", "https://waze.com/ul")
                 "youtube" -> openPreferred("com.google.android.youtube", "https://www.youtube.com", "https://www.youtube.com")
-                "phone" -> startSafely(Intent(Intent.ACTION_DIAL, Uri.parse("tel:")))
+                "phone" -> {
+                    // K706 uses the OEM Bluetooth hands-free app for calls;
+                    // a SIM / Android dialer is not required.
+                    val handsFree = assignedIntent("btcar") ?: originalQf001Intent("btcar")
+                    if (handsFree != null) {
+                        try { startActivity(handsFree) }
+                        catch (_: Exception) {
+                            Toast.makeText(this@MainActivity,
+                                "Bluetooth auto nu a pornit; selectează aplicația pentru apeluri.",
+                                Toast.LENGTH_LONG).show()
+                            chooseAutoApp("btcar")
+                        }
+                    } else {
+                        Toast.makeText(this@MainActivity,
+                            "Asociază aplicația Bluetooth auto pentru apeluri.",
+                            Toast.LENGTH_LONG).show()
+                        chooseAutoApp("btcar")
+                    }
+                }
                 "bluetooth" -> startSafely(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
                 "settings" -> startSafely(Intent(Settings.ACTION_SETTINGS))
                 "apps" -> showApps()
