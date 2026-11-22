@@ -20,7 +20,7 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 <button class="hit" style="left:17px;top:283px;width:143px;height:94px" aria-label="Telefon" onclick="launch('phone')">Telefon</button>
 <button class="hit" style="left:17px;top:379px;width:143px;height:95px" aria-label="Navigație" onclick="launch('maps')">Navigație</button>
 <button class="hit" style="left:17px;top:477px;width:143px;height:127px" aria-label="Aplicații" onclick="launch('apps')">Aplicații</button>
-<button class="hit" style="left:1114px;top:84px;width:144px;height:106px" aria-label="Mașină" onclick="autoApps()">Mașină</button>
+<button class="hit" style="left:1114px;top:84px;width:144px;height:106px" aria-label="Mașină" onclick="vehicle()">Mașină</button>
 <button class="hit" style="left:1114px;top:191px;width:144px;height:90px" aria-label="Setări" onclick="launch('settings')">Setări</button>
 <button class="hit" style="left:1114px;top:283px;width:144px;height:94px" aria-label="Sunet" onclick="autoLaunch('dsp')">Sunet</button>
 <button class="hit" style="left:1114px;top:379px;width:144px;height:95px" aria-label="CarPlay" onclick="showUnsupported('CarPlay')">CarPlay</button>
@@ -60,6 +60,10 @@ function launch(cmd){if(window.BID&&typeof BID.open==='function'){BID.open(cmd);
 function autoConfig(action){if(window.BID&&typeof BID.configureAuto==='function')BID.configureAuto(action);else alert('Disponibil doar în aplicația Android.')}
 function autoLaunch(action){if(window.BID&&typeof BID.launchAuto==='function')BID.launchAuto(action);else alert('Disponibil doar în aplicația Android.')}
 function qfThemes(){if(window.BID&&typeof BID.openQfThemes==='function')BID.openQfThemes();else alert('Selectorul Themes QF001 este disponibil doar pe navigatia originala.')} 
+function vehicle(){
+ if(window.BID && typeof BID.openVehicle==='function') BID.openVehicle();
+ else alert('Aplicația Mașină originală este disponibilă numai pe navigația QF001.');
+}
 function autoApps(){
  if(window.BID && typeof BID.showCarApps==='function') BID.showCarApps();
  else alert('Disponibil doar în aplicația Android.');
