@@ -25,6 +25,10 @@ class ApprovedLuxuryLayout(unittest.TestCase):
     def test_youtube_is_media_shortcut(self):
         self.assertRegex(HTML, r'aria-label="Media YouTube"[^>]+onclick="launch\(\'youtube\'\)"')
 
+    def test_vehicle_opens_oem_app_not_random_app_list(self):
+        self.assertRegex(HTML, r'aria-label="Mașină"[^>]+onclick="vehicle\\(\\)"')
+        self.assertIn("BID.openVehicle()", HTML)
+
     def test_never_fake_car_hardware(self):
         self.assertRegex(HTML, r'aria-label="CarPlay"[^>]+showUnsupported')
         self.assertRegex(HTML, r'aria-label="Android Auto"[^>]+showUnsupported')
