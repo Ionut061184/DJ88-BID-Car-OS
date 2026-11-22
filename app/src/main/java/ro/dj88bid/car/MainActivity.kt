@@ -66,7 +66,8 @@ class MainActivity : Activity() {
         "radio" to Pair("com.android.fmradio.ext", "com.android.fmradio.FmMainActivity"),
         "music" to Pair("com.qf.musicplayer", "com.qf.musicplayer.ui.MainActivity"),
         "btcar" to Pair("com.qf.bluetooth", "com.qf.bluetooth.BluetoothActivity"),
-        "dsp" to Pair("com.qf.soundeffect", "com.qf.soundeffect.SoundActivity")
+        "dsp" to Pair("com.qf.soundeffect", "com.qf.soundeffect.SoundActivity"),
+        "vehicle" to Pair("com.qf.vehicle", "com.qf.vehicle.activities.VehicleMainActivity")
     )
 
     /**
@@ -291,6 +292,24 @@ class MainActivity : Activity() {
                     })
                 }
                 .setNegativeButton("Renunță", null).show()
+        }
+
+        @JavascriptInterface
+        fun openVehicle() = runOnUiThread {
+            val intent = originalQf001Intent("vehicle")
+            if (intent != null) {
+                try {
+                    startActivity(intent)
+                } catch (_: Exception) {
+                    Toast.makeText(this@MainActivity,
+                        "Aplicația Mașină originală nu permite lansarea din BID.",
+                        Toast.LENGTH_LONG).show()
+                }
+            } else {
+                Toast.makeText(this@MainActivity,
+                    "Mașină QF001 nu este disponibilă pentru un launcher extern.",
+                    Toast.LENGTH_LONG).show()
+            }
         }
 
         @JavascriptInterface

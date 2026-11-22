@@ -3,6 +3,8 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -22,6 +24,9 @@ jobs:
             echo "::error::Image missing: upload bid_approved.png into app/src/main/assets/"
             exit 1
           fi
+      - name: Enforce final user-approved BID design asset
+        run: |
+          echo "1c101d00470042fe5231de680472906804f5577da267e7444e4ef939324f9db3  app/src/main/assets/bid_approved.png" | sha256sum -c -
       - name: Install Android SDK components
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
