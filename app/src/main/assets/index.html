@@ -45,7 +45,7 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 <section id="diagnosticBox"><button class="close" onclick="document.getElementById('diagnosticModal').classList.remove('on')">Închide ✕</button><h2>DJ 88 BID · Diagnostic</h2><div id="diagnosticText"></div></section></div>
 </main><script>
 function fit(){const el=document.getElementById('stage');const s=Math.min(innerWidth/1280,innerHeight/720);el.style.transform='scale('+s+')';el.style.left=((innerWidth-1280*s)/2)+'px';el.style.top=((innerHeight-720*s)/2)+'px'}addEventListener('resize',fit);fit();
-function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'})}tick();setInterval(tick,10000);
+/* The approved graphic contains its own clock. No overlay is drawn over the design. */
 function luxury(on=true){
  document.getElementById('luxuryModal').classList.toggle('on',on);
  if(on){theme(false);document.getElementById('drive').classList.remove('on');document.getElementById('diagnosticModal').classList.remove('on');localStorage.setItem('bid_mode','luxury')}
