@@ -22,6 +22,12 @@ jobs:
             echo "::error::Image missing: upload bid_approved.png into app/src/main/assets/"
             exit 1
           fi
+          ACTUAL_SHA="$(sha256sum app/src/main/assets/bid_approved.png | cut -d' ' -f1)"
+          APPROVED_SHA="4619bdbb96fbb0f348dcb5c9c4cb66a8a03bb788d2affdfd5121b6191e257e57"
+          if [ "$ACTUAL_SHA" != "$APPROVED_SHA" ]; then
+            echo "::error::Wrong BID image. Expected final approved quilted design SHA256 $APPROVED_SHA, found $ACTUAL_SHA"
+            exit 1
+          fi
       - name: Install Android SDK components
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
