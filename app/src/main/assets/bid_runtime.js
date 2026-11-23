@@ -22,7 +22,20 @@ function refreshAndroidBattery(){
  out.textContent=pct===null?'🔋 —':'🔋 '+pct+'%';
  out.title=pct===null?'Baterie Android: senzor indisponibil':'Baterie Android: '+pct+'%';
  const car=document.getElementById('voltageLive');
- if(car){car.textContent='— V';car.title='Tensiunea mașinii: CANBUS neintegrat';}
+ if(car){
+  let realVolts=null;
+  try {
+   if(window.BID&&typeof BID.vehicleVoltageSnapshot==='function'){
+    const v=JSON.parse(BID.vehicleVoltageSnapshot());
+    if(v.available===true&&typeof v.volts==='number'&&
+       Number.isFinite(v.volts)&&v.volts>=9&&v.volts<=16.5) realVolts=v.volts;
+   }
+  }catch(e){realVolts=null}
+  car.textContent=realVolts===null?'— V':realVolts.toFixed(1)+' V';
+  car.title=realVolts===null?
+   'Tensiune auto: QF001 nu permite citirea sau nu furnizează date':
+   'Tensiune auto citită din QF001 · '+realVolts.toFixed(1)+' V';
+ }
 }
 refreshAndroidBattery();setInterval(refreshAndroidBattery,10000);
 
