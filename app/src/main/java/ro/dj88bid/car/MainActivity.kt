@@ -314,6 +314,13 @@ class MainActivity : Activity() {
                 }
                 put("originalQf001Apps", known)
                 put("qf001SystemIntegrationTested", false)
+                val vehiclePackage = "com.qf.vehicle"
+                put("canbusPackage", vehiclePackage)
+                put("canbusPackageVisible", available(vehiclePackage))
+                val vehicleLaunch = packageManager.getLaunchIntentForPackage(vehiclePackage)
+                put("canbusHasPublicLauncher", vehicleLaunch != null)
+                put("canbusDataBridgeVerified", false)
+                put("climatronicLiveAvailable", false)
                 put("carBatteryVoltageAvailable", false)
             }.toString()
         }
@@ -443,6 +450,23 @@ class MainActivity : Activity() {
                 "bluetooth" -> startSafely(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
                 "settings" -> startSafely(Intent(Settings.ACTION_SETTINGS))
                 "apps" -> showApps()
+                "canbus" -> {
+                    val diagnostic = "com.qf.vehicle"
+                    val app = packageManager.getLaunchIntentForPackage(diagnostic)
+                    if (app != null) {
+                        startSafely(app)
+                    } else {
+                        android.app.AlertDialog.Builder(this@MainActivity)
+                            .setTitle("BID · CANBUS QF001")
+                            .setMessage("Aplicația OEM CANBUS nu expune o activitate publică de lansare. Nu încercăm să accesăm servicii interne sau să modificăm configurația MCU. Deschide Setări auto originale pentru verificare.")
+                            .setPositiveButton("Setări auto") { _, _ ->
+                                val settings = packageManager.getLaunchIntentForPackage("com.qf.carsettings")
+                                    ?: packageManager.getLaunchIntentForPackage("com.qf.carsetting")
+                                if (settings != null) startSafely(settings)
+                                else startSafely(Intent(Settings.ACTION_SETTINGS))
+                            }.setNegativeButton("Închide", null).show()
+                    }
+                }
                 "car" -> {
                     val original = packageManager.getLaunchIntentForPackage("com.qf.carsettings")
                         ?: packageManager.getLaunchIntentForPackage("com.qf.carsetting")
