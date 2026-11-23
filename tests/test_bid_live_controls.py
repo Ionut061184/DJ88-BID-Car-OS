@@ -23,12 +23,28 @@ class TestBidLiveControls(unittest.TestCase):
         self.assertIn("Vreme indisponibilă", RUNTIME)
 
     def test_no_fake_canbus_data(self):
-        self.assertIn("#voltageLive,#mediaLive,#climateWarning", HTML)
-        self.assertIn("#climateLeftLive,#climateRightLive,#mediaTimeLive{display:none!important}", HTML)
-        self.assertIn("id=\"musicClean\"", HTML)
-        self.assertIn("id=\"climateClean\"", HTML)
+        # Keep approved artwork fully visible, including the app dock.
+        self.assertIn("#musicClean,#climateClean{display:none!important}", HTML)
+        self.assertNotIn('id="musicClean"', HTML)
+        self.assertNotIn('id="climateClean"', HTML)
+        # Android battery != vehicle CANBUS voltage.
+        self.assertIn('id="batteryAndroidLive"', HTML)
+        self.assertIn('id="voltageLive"', HTML)
+        self.assertIn("car.textContent='— V'", RUNTIME)
+        self.assertIn("vehicleVoltageAvailable", KOTLIN)
         self.assertNotIn('aria-label="Climatizare stânga"', HTML)
         self.assertIn("date CANBUS încă neverificate", RUNTIME)
+
+    def test_bottom_music_menu_has_discovered_qf001_categories(self):
+        self.assertIn('onclick="openMusicMenu()"', HTML)
+        self.assertIn("id=\"musicChoices\"", HTML)
+        for category in ("Multimedia", "Mașină", "Navigație și utilitare"):
+            self.assertIn("<h3>" + category + "</h3>", HTML)
+        for shortcut in ("tpms", "steering", "gps", "files", "gallery",
+                         "video", "weather", "manual", "music", "radio", "dsp"):
+            self.assertIn("musicChoose('" + shortcut + "')", HTML)
+        self.assertIn("fun openMediaOem(kind: String)", KOTLIN)
+        self.assertIn("Camera marșarier funcționează automat", RUNTIME)
 
     def test_media_transport_and_companion_icons(self):
         self.assertNotIn("mediaKey('previous')", HTML)
