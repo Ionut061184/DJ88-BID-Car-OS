@@ -2,7 +2,9 @@ function fit(){const el=document.getElementById('stage');const s=Math.min(innerW
 function tick(){
  const d=new Date();
  document.getElementById('clock').textContent=d.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'});
- document.getElementById('dateLive').textContent=d.toLocaleDateString('ro-RO',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+ // Fixed compact format fits the limited QF001 top status slot at 1280x720.
+ const dateText=d.toLocaleDateString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric'});
+ document.getElementById('dateLive').textContent=dateText;
  const hour=d.getHours(); const night=hour>=20||hour<7;
  document.getElementById('nightTint').style.opacity=night?'0.18':'0';
 }
