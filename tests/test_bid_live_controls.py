@@ -4,27 +4,29 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 HTML = (ROOT / "app/src/main/assets/index.html").read_text(encoding="utf-8")
+RUNTIME = (ROOT / "app/src/main/assets/bid_runtime.js").read_text(encoding="utf-8")
 KOTLIN = (ROOT / "app/src/main/java/ro/dj88bid/car/MainActivity.kt").read_text(encoding="utf-8")
 MANIFEST = (ROOT / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
 
 
 class TestBidLiveControls(unittest.TestCase):
     def test_clock_and_date_are_device_driven(self):
-        self.assertIn("new Date()", HTML)
+        self.assertIn('src="bid_runtime.js"', HTML)
+        self.assertIn("new Date()", RUNTIME)
         self.assertIn("dateLive", HTML)
-        self.assertIn("tick();setInterval(tick,10000)", HTML)
+        self.assertIn("tick();setInterval(tick,10000)", RUNTIME)
 
     def test_weather_requires_real_network_data(self):
         self.assertIn("api.open-meteo.com", KOTLIN)
         self.assertIn("android.permission.INTERNET", MANIFEST)
-        self.assertIn("updateWeather(", HTML)
+        self.assertIn("updateWeather(", RUNTIME)
         self.assertIn("Vreme indisponibilă", HTML)
 
     def test_no_fake_canbus_data(self):
         self.assertIn("CANBUS: neconectat", HTML)
         self.assertIn("Climatizare", HTML)
         self.assertIn("--.- V", HTML)
-        self.assertIn("date CANBUS încă neverificate", HTML)
+        self.assertIn("date CANBUS încă neverificate", RUNTIME)
 
     def test_media_transport_and_companion_icons(self):
         for action in ("previous", "playpause", "next"):
