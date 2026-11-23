@@ -20,7 +20,7 @@ class TestBidLiveControls(unittest.TestCase):
         self.assertIn("api.open-meteo.com", KOTLIN)
         self.assertIn("android.permission.INTERNET", MANIFEST)
         self.assertIn("updateWeather(", RUNTIME)
-        self.assertIn("Vreme indisponibilă", HTML)
+        self.assertIn("Vreme indisponibilă", RUNTIME)
 
     def test_no_fake_canbus_data(self):
         self.assertIn("CANBUS: neconectat", HTML)
