@@ -66,6 +66,22 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 #functionsDock .dockIcon i{display:block;width:11px;height:11px;border:2px solid #e6bc83;
   background:linear-gradient(#7b422e,#211014);box-shadow:0 0 4px #e3b37166;border-radius:2px}
 #functionsDock:active{filter:brightness(1.3)}
+
+/* Landscape phones are wider than the 16:9 QF001: fill outer screen
+   with blurred BID artwork, never stretch or crop OEM image/touch geometry. */
+html,body{background:#1b0911}
+body:before{content:"";position:fixed;inset:-40px;pointer-events:none;
+ background:url('bid_approved.png') center center/cover no-repeat;
+ filter:blur(36px) brightness(.50);transform:scale(1.06);z-index:0}
+#stage{z-index:1}
+/* Cover the BAKED-IN time and date before drawing live text.
+   Earlier clock started too far right and left a visible "1" behind. */
+#clock{left:132px;top:13px;width:139px;height:48px;
+ background:linear-gradient(90deg,#210811,#18070c);border-radius:4px;
+ font:34px Arial,sans-serif;padding:4px 0;white-space:nowrap}
+#dateLive{left:278px;top:13px;width:258px;height:48px;
+ background:linear-gradient(90deg,#18070c,#1d080f);
+ font:22px Arial,sans-serif;padding:10px 0 0 6px;border-radius:4px}
 </style></head><body><main id="stage" aria-label="DJ 88 BID Luxury">
 <div id="clock">--:--</div>
 <div id="dateLive" aria-label="Data actuală"></div>
