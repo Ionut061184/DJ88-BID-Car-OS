@@ -523,6 +523,186 @@ class MainActivity : Activity() {
             }
         }
 
+        /**
+         * QF001 functions drawer: same 5 x 2 paged app-grid presentation as Apps.
+         * Three fixed, swipeable sections; dynamically resolves real OEM icons
+         * from exported launcher entries. Missing apps remain clearly unavailable.
+         */
+        @JavascriptInterface
+        fun showFunctionsGrid() = runOnUiThread {
+            data class FunctionTile(val label: String, val key: String, val matches: List<String>)
+            val sections = listOf(
+                "Multimedia" to listOf(
+                    FunctionTile("Radio FM","radio",listOf("fmradio","radio")),
+                    FunctionTile("Muzică","music",listOf("musicplayer","muzică","music")),
+                    FunctionTile("Bluetooth / Telefon","btaudio",listOf("qf.bluetooth","bluetooth")),
+                    FunctionTile("Muzică Bluetooth","btaudio",listOf("bt music","bluetooth music")),
+                    FunctionTile("Video","video",listOf("videoplayer","video")),
+                    FunctionTile("DSP / Egalizator","dsp",listOf("soundeffect","dsp")),
+                    FunctionTile("Fișiere USB","files",listOf("fileexplorer","file manager")),
+                    FunctionTile("Galerie","gallery",listOf("imagebrowser","gallery")),
+                    FunctionTile("YouTube","youtube",listOf("youtube")),
+                    FunctionTile("AUX","aux",listOf("aux"))
+                ),
+                "Mașină" to listOf(
+                    FunctionTile("Setări auto","car",listOf("carsettings","carsetting")),
+                    FunctionTile("Informații CANBUS","canbus",listOf("qf.vehicle","canbus")),
+                    FunctionTile("Cameră marșarier","reverse",listOf("backcar","rear camera")),
+                    FunctionTile("TPMS","tpms",listOf("tpms")),
+                    FunctionTile("Comenzi volan","steering",listOf("keystudy","key study")),
+                    FunctionTile("Bluetooth auto","btaudio",listOf("qf.bluetooth","bluetooth")),
+                    FunctionTile("DSP auto","dsp",listOf("soundeffect","dsp"))
+                ),
+                "Navigație și utilitare" to listOf(
+                    FunctionTile("GPS / Sateliți","gps",listOf("beidougps","gpsinfo")),
+                    FunctionTile("Hărți","maps",listOf("maps")),
+                    FunctionTile("Waze","waze",listOf("waze")),
+                    FunctionTile("Fișiere / USB","files",listOf("fileexplorer","file manager")),
+                    FunctionTile("Galerie foto","gallery",listOf("imagebrowser","gallery")),
+                    FunctionTile("Vreme","weather",listOf("weather","vreme")),
+                    FunctionTile("Manual","manual",listOf("manual")),
+                    FunctionTile("Toate aplicațiile","apps",emptyList())
+                )
+            )
+            val launcherEntries = packageManager.queryIntentActivities(
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
+            ).filter { it.activityInfo.exported && it.activityInfo.packageName != packageName }
+            val screen = resources.displayMetrics
+            val width = screen.widthPixels
+            val height = screen.heightPixels
+            val density = screen.density
+            val px: (Float) -> Int = { (it * density).toInt() }
+            val dialog = android.app.Dialog(this@MainActivity)
+            val root = android.widget.LinearLayout(this@MainActivity).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setBackground(android.graphics.drawable.GradientDrawable(
+                    android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(0xFF180B12.toInt(),0xFF4D192B.toInt(),0xFF110A10.toInt())))
+            }
+            val heading = android.widget.TextView(this@MainActivity).apply {
+                text = "BID · Funcții originale QF001"
+                textSize = 23f
+                setTextColor(0xFFFFDEAE.toInt())
+                gravity = android.view.Gravity.CENTER
+                setOnClickListener { dialog.dismiss() }
+            }
+            root.addView(heading,android.widget.LinearLayout.LayoutParams(-1,px(56f)))
+            val carousel = android.widget.HorizontalScrollView(this@MainActivity).apply {
+                isHorizontalScrollBarEnabled = false
+                isFillViewport = false
+                overScrollMode = View.OVER_SCROLL_NEVER
+            }
+            val pages = android.widget.LinearLayout(this@MainActivity).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+            }
+            val pageHeight = (height - px(124f)).coerceAtLeast(px(250f))
+            sections.forEach { (category, tiles) ->
+                val page = android.widget.LinearLayout(this@MainActivity).apply {
+                    orientation = android.widget.LinearLayout.VERTICAL
+                }
+                val sectionLabel = android.widget.TextView(this@MainActivity).apply {
+                    text = category
+                    textSize = 19f
+                    gravity = android.view.Gravity.CENTER
+                    setTextColor(0xFFEAC189.toInt())
+                }
+                page.addView(sectionLabel,android.widget.LinearLayout.LayoutParams(-1,px(34f)))
+                val grid = android.widget.GridLayout(this@MainActivity).apply {
+                    columnCount = 5
+                    rowCount = 2
+                }
+                val cellWidth = width / 5
+                val cellHeight = (pageHeight - px(34f)) / 2
+                repeat(10) { i ->
+                    val tile = tiles.getOrNull(i)
+                    val cell = android.widget.LinearLayout(this@MainActivity).apply {
+                        orientation = android.widget.LinearLayout.VERTICAL
+                        gravity = android.view.Gravity.CENTER
+                        setPadding(px(4f),px(4f),px(4f),px(4f))
+                    }
+                    if(tile != null) {
+                        val matched = launcherEntries.firstOrNull { entry ->
+                            val haystack = (entry.activityInfo.packageName + " " +
+                                entry.loadLabel(packageManager)).lowercase(java.util.Locale.ROOT)
+                            tile.matches.any { haystack.contains(it.lowercase(java.util.Locale.ROOT)) }
+                        }
+                        val image = android.widget.ImageView(this@MainActivity).apply {
+                            setImageDrawable(matched?.loadIcon(packageManager)
+                                ?: getDrawable(android.R.drawable.ic_menu_manage))
+                            alpha = if(matched == null && tile.key !in listOf("apps","reverse","car","canbus")) .55f else 1f
+                            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                        }
+                        cell.addView(image,android.widget.LinearLayout.LayoutParams(
+                            minOf(px(110f),(cellWidth*.66f).toInt()),
+                            minOf(px(110f),(cellHeight*.60f).toInt())))
+                        val label = android.widget.TextView(this@MainActivity).apply {
+                            text = tile.label
+                            textSize = 16f
+                            maxLines = 2
+                            gravity = android.view.Gravity.CENTER
+                            setTextColor(android.graphics.Color.WHITE)
+                        }
+                        cell.addView(label,android.widget.LinearLayout.LayoutParams(-1,px(46f)))
+                        cell.setOnClickListener {
+                            dialog.dismiss()
+                            when(tile.key) {
+                                "reverse" -> Toast.makeText(this@MainActivity,
+                                    "Camera marșarier este controlată automat de QF001 în treapta R.",
+                                    Toast.LENGTH_LONG).show()
+                                "apps" -> showApps()
+                                "car","canbus","maps","waze","youtube" -> Bridge().open(tile.key)
+                                else -> Bridge().openMediaOem(tile.key)
+                            }
+                        }
+                    }
+                    grid.addView(cell,android.widget.GridLayout.LayoutParams(
+                        android.widget.GridLayout.spec(i/5),android.widget.GridLayout.spec(i%5)
+                    ).apply { this.width = cellWidth;this.height = cellHeight })
+                }
+                page.addView(grid,android.widget.LinearLayout.LayoutParams(-1,0,1f))
+                pages.addView(page,android.widget.LinearLayout.LayoutParams(width,pageHeight))
+            }
+            carousel.addView(pages)
+            root.addView(carousel,android.widget.LinearLayout.LayoutParams(-1,0,1f))
+            val dots = android.widget.LinearLayout(this@MainActivity).apply {
+                gravity = android.view.Gravity.CENTER
+            }
+            val dotLabels = sections.indices.map { index ->
+                android.widget.TextView(this@MainActivity).apply {
+                    text = "●"
+                    textSize = 21f
+                    setPadding(px(10f),0,px(10f),0)
+                    setOnClickListener { carousel.smoothScrollTo(index*width,0) }
+                    dots.addView(this)
+                }
+            }
+            fun updateDots() {
+                val active = ((carousel.scrollX+width/2)/width).coerceIn(0,sections.size-1)
+                dotLabels.forEachIndexed { index,v ->
+                    v.setTextColor(if(index==active)0xFFE7BA82.toInt() else 0xFF8B7180.toInt())
+                }
+            }
+            carousel.setOnTouchListener { _, event ->
+                if(event.actionMasked == android.view.MotionEvent.ACTION_UP ||
+                    event.actionMasked == android.view.MotionEvent.ACTION_CANCEL) {
+                    carousel.postDelayed({
+                        val page = ((carousel.scrollX+width/2)/width).coerceIn(0,sections.size-1)
+                        carousel.smoothScrollTo(page*width,0)
+                    },90)
+                }
+                false
+            }
+            carousel.setOnScrollChangeListener { _,_,_,_,_ -> updateDots() }
+            root.addView(dots,android.widget.LinearLayout.LayoutParams(-1,px(50f)))
+            dialog.setContentView(root)
+            dialog.show()
+            dialog.window?.apply {
+                setBackgroundDrawableResource(android.R.color.transparent)
+                setLayout(width,height)
+            }
+            updateDots()
+        }
+
         @JavascriptInterface
         fun showOemFunctions() = runOnUiThread {
             val categories = linkedMapOf(
