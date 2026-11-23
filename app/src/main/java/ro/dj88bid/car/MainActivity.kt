@@ -463,6 +463,61 @@ class MainActivity : Activity() {
          * Never invoke non-exported/system-only components or hidden MCU APIs.
          * Safety-critical OEM functions (reverse camera etc.) remain OEM controlled.
          */
+        /**
+         * BID multimedia menu: launch only published/exported OEM activities.
+         * No private MCU APIs, forced package installation, or privileged calls.
+         */
+        @JavascriptInterface
+        fun openMediaOem(kind: String) = runOnUiThread {
+            if (kind == "music" || kind == "radio" || kind == "dsp") {
+                val target = assignedIntent(kind) ?: originalQf001Intent(kind)
+                if (target != null) {
+                    startSafely(target)
+                } else chooseAutoApp(kind)
+                return@runOnUiThread
+            }
+            if (kind == "btaudio") {
+                val target = assignedIntent("btcar") ?: originalQf001Intent("btcar")
+                if (target != null) startSafely(target)
+                else chooseAutoApp("btcar")
+                return@runOnUiThread
+            }
+            val keys = when (kind) {
+                "video" -> listOf("videoplayer", "video player", "com.qf.video")
+                "files" -> listOf("fileexplorer", "file explorer", "file manager", "com.qf.file")
+                "gallery" -> listOf("imagebrowser", "image browser", "gallery")
+                else -> emptyList()
+            }
+            if (keys.isEmpty()) return@runOnUiThread
+            val candidates = packageManager.queryIntentActivities(
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
+            ).filter { result ->
+                result.activityInfo.exported && keys.any { key ->
+                    (result.loadLabel(packageManager).toString() + " " +
+                        result.activityInfo.packageName).lowercase(java.util.Locale.ROOT).contains(key)
+                }
+            }
+            if (candidates.isEmpty()) {
+                Toast.makeText(this@MainActivity,
+                    "Aplicația originală nu este disponibilă pentru lansare: " + kind,
+                    Toast.LENGTH_LONG).show()
+            } else if (candidates.size == 1) {
+                val a = candidates.first().activityInfo
+                startSafely(Intent(Intent.ACTION_MAIN)
+                    .addCategory(Intent.CATEGORY_LAUNCHER)
+                    .setClassName(a.packageName, a.name))
+            } else {
+                android.app.AlertDialog.Builder(this@MainActivity)
+                    .setTitle("BID · Selectează aplicația")
+                    .setItems(candidates.map { it.loadLabel(packageManager).toString() }.toTypedArray()) { _, pos ->
+                        val a = candidates[pos].activityInfo
+                        startSafely(Intent(Intent.ACTION_MAIN)
+                            .addCategory(Intent.CATEGORY_LAUNCHER)
+                            .setClassName(a.packageName, a.name))
+                    }.setNegativeButton("Închide", null).show()
+            }
+        }
+
         @JavascriptInterface
         fun showOemFunctions() = runOnUiThread {
             val categories = linkedMapOf(
@@ -561,6 +616,8 @@ class MainActivity : Activity() {
                 "maps" -> openPreferred("com.google.android.apps.maps", "geo:0,0", "https://www.google.com/maps")
                 "waze" -> openPreferred("com.waze", "waze://", "https://waze.com/ul")
                 "youtube" -> openPreferred("com.google.android.youtube", "https://www.youtube.com", "https://www.youtube.com")
+                "playstore" -> openPreferred("com.android.vending", "market://details?id=com.google.android.youtube", "https://play.google.com/store")
+                "chrome" -> openPreferred("com.android.chrome", "https://www.google.com", "https://www.google.com")
                 "phone" -> {
                     // K706 uses the OEM Bluetooth hands-free app for calls;
                     // a SIM / Android dialer is not required.
