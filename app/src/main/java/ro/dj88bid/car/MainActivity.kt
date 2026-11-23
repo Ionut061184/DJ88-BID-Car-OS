@@ -716,8 +716,8 @@ class MainActivity : Activity() {
                     android.widget.GridLayout.spec(slot / 5),
                     android.widget.GridLayout.spec(slot % 5)
                 ).apply {
-                    width = cellWidth
-                    height = cellHeight
+                    this.width = cellWidth
+                    this.height = cellHeight
                 })
             }
             pages.addView(grid, android.widget.LinearLayout.LayoutParams(width, pageHeight))
