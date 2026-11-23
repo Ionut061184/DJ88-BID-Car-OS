@@ -451,6 +451,7 @@ class MainActivity : Activity() {
                 "carplay" -> findCompanion(listOf("zlink", "tlink", "carlink", "carplay", "autokit"), "CarPlay")
                 "androidauto" -> findCompanion(listOf("zlink", "tlink", "carlink", "android auto", "autokit"), "Android Auto")
                 "wifi" -> startSafely(Intent(Settings.ACTION_WIFI_SETTINGS))
+                "dateSettings" -> startSafely(Intent(Settings.ACTION_DATE_SETTINGS))
                 "original" -> startSafely(Intent(Settings.ACTION_HOME_SETTINGS))
                 else -> Toast.makeText(this@MainActivity, "Comandă necunoscută", Toast.LENGTH_SHORT).show()
             }
