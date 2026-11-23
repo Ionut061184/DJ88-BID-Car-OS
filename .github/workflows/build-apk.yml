@@ -23,7 +23,7 @@ jobs:
             exit 1
           fi
           ACTUAL_SHA="$(sha256sum app/src/main/assets/bid_approved.png | cut -d' ' -f1)"
-          APPROVED_SHA="4619bdbb96fbb0f348dcb5c9c4cb66a8a03bb788d2affdfd5121b6191e257e57"
+          APPROVED_SHA="fed5ed0c5f8dc62feacd8f117b657345f39e0c2bd7d7d560f1c00f23d026f348"
           if [ "$ACTUAL_SHA" != "$APPROVED_SHA" ]; then
             echo "::error::Wrong BID image. Expected final approved quilted design SHA256 $APPROVED_SHA, found $ACTUAL_SHA"
             exit 1
