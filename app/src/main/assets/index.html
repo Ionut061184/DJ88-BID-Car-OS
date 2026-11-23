@@ -82,10 +82,14 @@ body:before{content:"";position:fixed;inset:-40px;pointer-events:none;
 #dateLive{left:278px;top:13px;width:258px;height:48px;
  background:linear-gradient(90deg,#18070c,#1d080f);
  font:22px Arial,sans-serif;padding:10px 0 0 6px;border-radius:4px}
+/* Make header icon hit zones independently tappable on K706 and phones.
+   Date/time and measured battery text MUST NOT intercept touches. */
+.topHit{z-index:6;touch-action:manipulation}
+#clock,#dateLive,#batteryAndroidLive,#voltageLive{pointer-events:none}
 </style></head><body><main id="stage" aria-label="DJ 88 BID Luxury">
 <div id="clock">--:--</div>
 <div id="dateLive" aria-label="Data actuală"></div>
-<button id="weatherLive" onclick="configureWeather()" aria-label="Vreme și oraș">Vreme: indisponibilă</button>
+<div id="weatherLive" aria-hidden="true"></div>
 <div id="batteryAndroidLive" aria-label="Baterie Android, nu bateria mașinii">🔋 —</div><div id="voltageLive" aria-label="Voltaj auto indisponibil fără CANBUS">— V</div>
 <div id="mediaLive" aria-label="Informații media"></div>
 <div id="climateWarning" aria-label="Date climatizare neconectate">CANBUS: neconectat</div>
@@ -94,10 +98,14 @@ body:before{content:"";position:fixed;inset:-40px;pointer-events:none;
 <div id="nightTint"></div><div id="statusNotice"></div>
 <button class="hit" style="left:555px;top:9px;width:173px;height:165px;z-index:5" aria-label="BID Bespoke Design – deschide meniul Luxury" onclick="luxury(true)">BID Bespoke Design</button>
 <button class="hit" style="left:283px;top:8px;width:275px;height:59px" aria-label="Data și ora" onclick="launch('dateSettings')">Dată și oră</button>
-<button class="hit" style="left:911px;top:13px;width:56px;height:55px" aria-label="Bluetooth" onclick="launch('bluetooth')">Bluetooth</button>
-<button class="hit" style="left:965px;top:13px;width:66px;height:55px" aria-label="Wi-Fi" onclick="launch('wifi')">Wi-Fi</button>
-<button class="hit" style="left:1030px;top:13px;width:72px;height:55px" aria-label="Conectivitate" onclick="launch('settings')">Conectivitate</button>
-<button class="hit" style="left:88px;top:7px;width:75px;height:70px" aria-label="Acasă" onclick="closeAll()">Acasă</button>
+<!-- Separate hit targets aligned with the final 1280x720 artwork.
+     All coordinates are in stage pixels and scale WITH the entire artwork. -->
+<button class="hit topHit" style="left:786px;top:13px;width:202px;height:62px" aria-label="Vreme: alege orașul" onclick="configureWeather()">Vreme</button>
+<button class="hit topHit" style="left:989px;top:13px;width:44px;height:62px" aria-label="Bluetooth: deschide setările" onclick="launch('bluetooth')">Bluetooth</button>
+<button class="hit topHit" style="left:1035px;top:13px;width:51px;height:62px" aria-label="Wi-Fi: deschide setările" onclick="launch('wifi')">Wi-Fi</button>
+<button class="hit topHit" style="left:1088px;top:13px;width:45px;height:62px" aria-label="Conectivitate" onclick="launch('settings')">Conectivitate</button>
+<button class="hit topHit" style="left:1140px;top:13px;width:124px;height:62px" aria-label="Starea bateriei și voltajul" onclick="batteryDetails()">Baterie și voltaj</button>
+<button class="hit topHit" style="left:25px;top:12px;width:90px;height:70px" aria-label="Acasă: BID Luxury" onclick="goHome()">Acasă</button>
 <button class="hit" style="left:20px;top:84px;width:158px;height:105px" aria-label="Radio" onclick="autoLaunch('radio')">Radio</button>
 <button class="hit" style="left:20px;top:191px;width:158px;height:92px" aria-label="Media YouTube" onclick="launch('youtube')">Media YouTube</button>
 <button class="hit" style="left:20px;top:286px;width:158px;height:95px" aria-label="Telefon" onclick="launch('phone')">Telefon</button>
