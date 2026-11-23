@@ -603,6 +603,51 @@ class MainActivity : Activity() {
         }
         top.addView(close, android.widget.LinearLayout.LayoutParams(px(68f), px(48f)))
         root.addView(top)
+        val trash = android.widget.TextView(this).apply {
+            text = "🗑  Trage aici pentru dezinstalare"
+            gravity = android.view.Gravity.CENTER
+            textSize = 18f
+            setTextColor(android.graphics.Color.WHITE)
+            setBackgroundColor(0xFF8F2028.toInt())
+            visibility = View.GONE
+            setOnDragListener { _, event ->
+                when (event.action) {
+                    android.view.DragEvent.ACTION_DRAG_ENTERED -> {
+                        setBackgroundColor(0xFFCF333D.toInt())
+                        true
+                    }
+                    android.view.DragEvent.ACTION_DRAG_EXITED -> {
+                        setBackgroundColor(0xFF8F2028.toInt())
+                        true
+                    }
+                    android.view.DragEvent.ACTION_DROP -> {
+                        val targetPkg = event.localState as? String
+                        if (targetPkg != null && targetPkg != packageName) {
+                            // ACTION_DELETE always delegates to the Android uninstall UI.
+                            // System apps may only offer disable, or refuse removal.
+                            try {
+                                startActivity(Intent(Intent.ACTION_DELETE,
+                                    Uri.parse("package:" + targetPkg)))
+                                dialog.dismiss()
+                            } catch (_: Exception) {
+                                Toast.makeText(this@MainActivity,
+                                    "Android nu permite dezinstalarea acestei aplicații",
+                                    Toast.LENGTH_LONG).show()
+                            }
+                        }
+                        true
+                    }
+                    android.view.DragEvent.ACTION_DRAG_ENDED -> {
+                        visibility = View.GONE
+                        setBackgroundColor(0xFF8F2028.toInt())
+                        true
+                    }
+                    else -> true
+                }
+            }
+        }
+        root.addView(trash, android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT, px(54f)))
 
         val carousel = android.widget.HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
@@ -647,6 +692,16 @@ class MainActivity : Activity() {
                     }
                     cell.addView(label, android.widget.LinearLayout.LayoutParams(
                         cellWidth - px(10f), px(44f)))
+                    cell.setOnLongClickListener { view ->
+                        trash.visibility = View.VISIBLE
+                        // Drag only package identity; never run silent uninstall.
+                        val pkg = info.activityInfo.packageName
+                        val clip = android.content.ClipData.newPlainText(
+                            "BID package", pkg)
+                        view.startDragAndDrop(clip,
+                            View.DragShadowBuilder(view), pkg, 0)
+                        true
+                    }
                     cell.setOnClickListener {
                         val activity = info.activityInfo
                         dialog.dismiss()
