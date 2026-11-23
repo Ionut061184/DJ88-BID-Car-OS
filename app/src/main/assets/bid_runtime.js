@@ -39,7 +39,10 @@ function diagnostic(){
    const car=Array.isArray(d.candidateCarApps)?d.candidateCarApps:[];
    const assigned=d.assignedAutoShortcuts||{};const bindings=Object.keys(assigned).map(k=>assigned[k].label+': '+assigned[k].package+(assigned[k].available?' (disponibil)':' (neconfigurat / indisponibil)')).join(', ');
    const oem=d.originalQf001Apps||{};const oemSummary=Object.keys(oem).map(k=>k+': '+oem[k].package+(oem[k].launchableVisible?' (detectat)':' (absent / invizibil)')).join(', ');
-   msg='Dispozitiv: '+(d.deviceManufacturer||'?')+' '+(d.deviceModel||'?')+
+   msg='CANBUS OEM: '+(d.canbusPackageVisible?'pachet vizibil':'pachet absent/invizibil')+
+   '; lansabil: '+(d.canbusHasPublicLauncher?'DA':'NU')+
+   '; date climatizare/tensiune: NECONECTATE\\n'+
+   'Dispozitiv: '+(d.deviceManufacturer||'?')+' '+(d.deviceModel||'?')+
    '\nAndroid: '+(d.androidRelease||'?')+
    '\nSwoodGrain vizibil: '+(d.originalSwoodGrainVisible?'DA':'NU / necunoscut')+
    '\nLaunchere HOME detectate: '+homes.map(x=>x.label+' ['+x.package+']').join(', ')+
