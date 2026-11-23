@@ -443,12 +443,39 @@ class MainActivity : Activity() {
                 "bluetooth" -> startSafely(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
                 "settings" -> startSafely(Intent(Settings.ACTION_SETTINGS))
                 "apps" -> showApps()
+                "car" -> {
+                    val original = packageManager.getLaunchIntentForPackage("com.qf.carsettings")
+                        ?: packageManager.getLaunchIntentForPackage("com.qf.carsetting")
+                    if (original != null) startSafely(original) else startSafely(Intent(Settings.ACTION_SETTINGS))
+                }
+                "carplay" -> findCompanion(listOf("zlink", "tlink", "carlink", "carplay", "autokit"), "CarPlay")
+                "androidauto" -> findCompanion(listOf("zlink", "tlink", "carlink", "android auto", "autokit"), "Android Auto")
+                "wifi" -> startSafely(Intent(Settings.ACTION_WIFI_SETTINGS))
                 "original" -> startSafely(Intent(Settings.ACTION_HOME_SETTINGS))
                 else -> Toast.makeText(this@MainActivity, "Comandă necunoscută", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
+    private fun findCompanion(keywords: List<String>, title: String) {
+        val candidates = packageManager.queryIntentActivities(
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
+        ).filter { resolved ->
+            val description = (resolved.loadLabel(packageManager).toString() + " " +
+                resolved.activityInfo.packageName).lowercase(java.util.Locale.ROOT)
+            keywords.any { key -> description.contains(key) }
+        }
+        if (candidates.isEmpty()) {
+            Toast.makeText(this, title + ": nu există o aplicație compatibilă instalată", Toast.LENGTH_LONG).show()
+            return
+        }
+        android.app.AlertDialog.Builder(this).setTitle(title + " · aplicații disponibile")
+            .setItems(candidates.map { it.loadLabel(packageManager).toString() }.toTypedArray()) { _, i ->
+                val app = candidates[i].activityInfo
+                startSafely(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                    .setClassName(app.packageName, app.name))
+            }.setNegativeButton("Renunță", null).show()
+    }
     private fun openPreferred(pkg: String, link: String, fallback: String) {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link)).apply { setPackage(pkg) }
         try { startActivity(intent) }
