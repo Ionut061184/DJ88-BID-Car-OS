@@ -34,6 +34,12 @@ function updateWeather(city,temperature,description){let el=document.getElementB
 function updateMedia(title,playing){const el=document.getElementById('mediaLive');el.textContent=title||'Media: fără date';}
 function openMusicMenu(){
  closeAll();
+ // Match the native 5x2 Apps drawer: large OEM icons and swipeable pages.
+ if(window.BID && typeof BID.showFunctionsGrid==='function'){
+  BID.showFunctionsGrid();
+  return;
+ }
+ // Browser-only preview fallback (no native Android integration).
  document.getElementById('musicMenu').classList.add('on');
 }
 function closeMusicMenu(){document.getElementById('musicMenu').classList.remove('on')}
