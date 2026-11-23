@@ -42,6 +42,18 @@ refreshAndroidBattery();setInterval(refreshAndroidBattery,10000);
 function statusNotice(msg){const el=document.getElementById('statusNotice');el.textContent=msg;el.style.display='block';clearTimeout(window.bidNoticeTimer);window.bidNoticeTimer=setTimeout(()=>el.style.display='none',3800)}
 function canUnsupported(name){statusNotice(name+': date CANBUS încă neverificate; comanda OEM nu este simulată.')}
 function mediaKey(action){if(window.BID && typeof BID.mediaKey==='function'){BID.mediaKey(action)}else statusNotice('Comanda media nu este disponibilă în browser.')}
+function goHome(){
+ closeAll();
+ try{window.scrollTo(0,0)}catch(e){}
+ statusNotice('BID Luxury · Acasă');
+}
+function batteryDetails(){
+ let voltage=document.getElementById('voltageLive');
+ let android=document.getElementById('batteryAndroidLive');
+ const v=voltage?voltage.textContent.trim():'— V';
+ const a=android?android.textContent.trim():'—';
+ statusNotice('Baterie Android: '+a+' · Baterie auto QF001: '+v);
+}
 function configureWeather(){if(window.BID && typeof BID.chooseWeatherCity==='function'){BID.chooseWeatherCity()}else statusNotice('Vremea live necesită conexiune și aplicația Android.')}
 function updateWeather(city,temperature,description){let el=document.getElementById('weatherLive');el.textContent=temperature===null?'Vreme indisponibilă · '+city:description+' '+temperature+'°C · '+city;}
 function updateMedia(title,playing){const el=document.getElementById('mediaLive');el.textContent=title||'Media: fără date';}
