@@ -44,6 +44,7 @@ function driving(){luxury(false);theme(false);document.getElementById('drive').c
 function launch(cmd){if(window.BID&&typeof BID.open==='function'){BID.open(cmd);return}alert('Comanda '+cmd+' necesită aplicația Android.')}
 function autoConfig(action){if(window.BID&&typeof BID.configureAuto==='function')BID.configureAuto(action);else alert('Disponibil doar în aplicația Android.')}
 function autoLaunch(action){if(window.BID&&typeof BID.launchAuto==='function')BID.launchAuto(action);else alert('Disponibil doar în aplicația Android.')}
+function oemFunctions(){if(window.BID&&typeof BID.showOemFunctions==='function')BID.showOemFunctions();else statusNotice('Funcțiile originale necesită navigația QF001.');}
 function qfThemes(){if(window.BID&&typeof BID.openQfThemes==='function')BID.openQfThemes();else alert('Selectorul Themes QF001 este disponibil doar pe navigatia originala.')} 
 function autoApps(){
  if(window.BID && typeof BID.showCarApps==='function') BID.showCarApps();
