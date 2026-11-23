@@ -16,6 +16,13 @@ class TestBidLiveControls(unittest.TestCase):
         self.assertIn("dateLive", HTML)
         self.assertIn("tick();setInterval(tick,10000)", RUNTIME)
 
+    def test_phone_layout_no_black_bars_and_no_duplicate_clock(self):
+        self.assertIn("body:before", HTML)
+        self.assertIn("filter:blur(36px)", HTML)
+        self.assertIn("#clock{left:132px", HTML)
+        self.assertIn("#dateLive{left:278px", HTML)
+        self.assertIn("Math.min(innerWidth/1280,innerHeight/720)", RUNTIME)
+
     def test_weather_requires_real_network_data(self):
         self.assertIn("api.open-meteo.com", KOTLIN)
         self.assertIn("android.permission.INTERNET", MANIFEST)
