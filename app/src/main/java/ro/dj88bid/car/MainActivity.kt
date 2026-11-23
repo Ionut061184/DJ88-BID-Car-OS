@@ -5,6 +5,10 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.view.KeyEvent
+import android.media.AudioManager
+import java.net.URL
+import java.net.HttpURLConnection
 import android.provider.Settings
 import android.view.View
 import android.webkit.JavascriptInterface
@@ -49,6 +53,7 @@ class MainActivity : Activity() {
         webView.addJavascriptInterface(Bridge(), "BID")
         setContentView(webView)
         webView.loadUrl("file:///android_asset/index.html")
+        webView.postDelayed({ refreshWeather() }, 1000)
     }
 
     // User-approved shortcuts only. Never invoke hidden OEM services or system intents.
@@ -159,7 +164,83 @@ class MainActivity : Activity() {
             .setNegativeButton("Renunță", null).show()
     }
 
+    // Weather: user-selected city, no location tracking or API key.
+    private val weatherCities = linkedMapOf(
+        "Craiova" to Pair(44.3302, 23.7949),
+        "Robăneștii de Sus" to Pair(44.316, 24.013),
+        "București" to Pair(44.4268, 26.1025),
+        "Iași" to Pair(47.1585, 27.6014)
+    )
+    private fun emitJs(script: String) {
+        runOnUiThread { if (::webView.isInitialized) webView.evaluateJavascript(script, null) }
+    }
+    private fun refreshWeather() {
+        val city = getSharedPreferences("bid_weather", MODE_PRIVATE).getString("city", "Craiova") ?: "Craiova"
+        val coordinates = weatherCities[city] ?: weatherCities.getValue("Craiova")
+        Thread {
+            var connection: HttpURLConnection? = null
+            try {
+                val url = URL("https://api.open-meteo.com/v1/forecast?latitude=${coordinates.first}&longitude=${coordinates.second}&current=temperature_2m,weather_code&timezone=auto")
+                connection = (url.openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                    requestMethod = "GET"
+                }
+                val raw = connection.inputStream.bufferedReader().use { it.readText() }
+                val current = JSONObject(raw).getJSONObject("current")
+                val value = current.getDouble("temperature_2m")
+                val code = current.getInt("weather_code")
+                val label = when (code) {
+                    0 -> "Senin"
+                    1,2,3 -> "Noros"
+                    45,48 -> "Ceață"
+                    in 51..67 -> "Ploaie"
+                    in 71..77 -> "Ninsoare"
+                    in 80..82 -> "Averse"
+                    in 95..99 -> "Furtună"
+                    else -> "Vreme"
+                }
+                emitJs("updateWeather(${JSONObject.quote(city)},${Math.round(value)},${JSONObject.quote(label)});")
+            } catch (_: Exception) {
+                emitJs("updateWeather(${JSONObject.quote(city)},null,'');")
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
+    }
+
     inner class Bridge {
+        @JavascriptInterface
+        fun chooseWeatherCity() = runOnUiThread {
+            val choices = weatherCities.keys.toTypedArray()
+            android.app.AlertDialog.Builder(this@MainActivity)
+                .setTitle("Vreme BID · alege localitatea")
+                .setItems(choices) { _, index ->
+                    getSharedPreferences("bid_weather", MODE_PRIVATE).edit()
+                        .putString("city", choices[index]).apply()
+                    refreshWeather()
+                }.setNegativeButton("Închide", null).show()
+        }
+
+        @JavascriptInterface
+        fun mediaKey(action: String) = runOnUiThread {
+            if (action == "open") {
+                val intent = assignedIntent("music") ?: originalQf001Intent("music")
+                if (intent != null) startSafely(intent) else chooseAutoApp("music")
+                return@runOnUiThread
+            }
+            val code = when(action) {
+                "previous" -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+                "next" -> KeyEvent.KEYCODE_MEDIA_NEXT
+                "playpause" -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                else -> return@runOnUiThread
+            }
+            val audio = getSystemService(AUDIO_SERVICE) as AudioManager
+            val uptime = android.os.SystemClock.uptimeMillis()
+            audio.dispatchMediaKeyEvent(KeyEvent(uptime, uptime, KeyEvent.ACTION_DOWN, code, 0))
+            audio.dispatchMediaKeyEvent(KeyEvent(uptime, uptime, KeyEvent.ACTION_UP, code, 0))
+        }
+
         @JavascriptInterface
         fun diagnostics(): String {
             fun available(pkg: String): Boolean = try {
