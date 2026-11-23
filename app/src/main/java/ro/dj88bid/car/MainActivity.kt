@@ -715,11 +715,31 @@ class MainActivity : Activity() {
      * the installed Android launcher activities, never hard-coded screenshots.
      */
     private fun showApps() {
-        val apps = packageManager.queryIntentActivities(
+        val appsDiscovered = packageManager.queryIntentActivities(
             Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
         ).filter { it.activityInfo.packageName != packageName }
             .distinctBy { it.activityInfo.packageName + "/" + it.activityInfo.name }
             .sortedBy { it.loadLabel(packageManager).toString().lowercase(java.util.Locale.ROOT) }
+        // The order survives app launches/restarts; newly installed apps append automatically.
+        val orderPrefs = getSharedPreferences("bid_app_grid_order", MODE_PRIVATE)
+        val savedOrder = orderPrefs.getString("ordered_components", "")!!
+            .split("\\n").filter { it.isNotBlank() }
+        val positions = savedOrder.withIndex().associate { it.value to it.index }
+        fun appKey(app: android.content.pm.ResolveInfo): String =
+            app.activityInfo.packageName + "/" + app.activityInfo.name
+        val apps = appsDiscovered.sortedWith(compareBy<android.content.pm.ResolveInfo>(
+            { positions[appKey(it)] ?: Int.MAX_VALUE },
+            { it.loadLabel(packageManager).toString().lowercase(java.util.Locale.ROOT) }
+        ))
+        fun moveApp(draggedKey: String, targetKey: String) {
+            val ordered = apps.map(::appKey).toMutableList()
+            val old = ordered.indexOf(draggedKey)
+            val target = ordered.indexOf(targetKey)
+            if (old < 0 || target < 0 || old == target) return
+            ordered.removeAt(old)
+            ordered.add(ordered.indexOf(targetKey), draggedKey)
+            orderPrefs.edit().putString("ordered_components", ordered.joinToString("\\n")).apply()
+        }
         if (apps.isEmpty()) {
             Toast.makeText(this, "Nu sunt aplicații lansabile vizibile", Toast.LENGTH_LONG).show()
             return
@@ -737,7 +757,7 @@ class MainActivity : Activity() {
             orientation = android.widget.LinearLayout.VERTICAL
             setBackground(android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(0xFF10141C.toInt(), 0xFF171A29.toInt(), 0xFF062C88.toInt())
+                intArrayOf(0xFF160910.toInt(), 0xFF431527.toInt(), 0xFF12080F.toInt())
             ))
         }
         val top = android.widget.LinearLayout(this).apply {
@@ -778,7 +798,8 @@ class MainActivity : Activity() {
                         true
                     }
                     android.view.DragEvent.ACTION_DROP -> {
-                        val targetPkg = event.localState as? String
+                        val targetKey = event.localState as? String
+                        val targetPkg = targetKey?.substringBefore("/")
                         if (targetPkg != null && targetPkg != packageName) {
                             // ACTION_DELETE always delegates to the Android uninstall UI.
                             // System apps may only offer disable, or refuse removal.
@@ -852,12 +873,38 @@ class MainActivity : Activity() {
                     cell.setOnLongClickListener { view ->
                         trash.visibility = View.VISIBLE
                         // Drag only package identity; never run silent uninstall.
-                        val pkg = info.activityInfo.packageName
+                        val key = appKey(info)
                         val clip = android.content.ClipData.newPlainText(
-                            "BID package", pkg)
+                            "BID component", key)
                         view.startDragAndDrop(clip,
-                            View.DragShadowBuilder(view), pkg, 0)
+                            View.DragShadowBuilder(view), key, 0)
                         true
+                    }
+                    // Drop onto another icon to reorder. No uninstall occurs here.
+                    cell.setOnDragListener { view, event ->
+                        when (event.action) {
+                            android.view.DragEvent.ACTION_DRAG_ENTERED -> {
+                                view.alpha = .65f
+                                true
+                            }
+                            android.view.DragEvent.ACTION_DRAG_EXITED,
+                            android.view.DragEvent.ACTION_DRAG_ENDED -> {
+                                view.alpha = 1f
+                                true
+                            }
+                            android.view.DragEvent.ACTION_DROP -> {
+                                view.alpha = 1f
+                                val dragged = event.localState as? String
+                                val target = appKey(info)
+                                if (dragged != null && dragged != target) {
+                                    moveApp(dragged, target)
+                                    dialog.dismiss()
+                                    showApps() // Reload saved order without changing wallpaper.
+                                }
+                                true
+                            }
+                            else -> true
+                        }
                     }
                     cell.setOnClickListener {
                         val activity = info.activityInfo
