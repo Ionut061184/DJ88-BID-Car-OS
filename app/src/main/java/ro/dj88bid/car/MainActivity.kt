@@ -338,7 +338,12 @@ class MainActivity : Activity() {
                                 put("type", kind)
                                 put("name", entry.name)
                                 put("exported", entry.exported)
-                                put("permission", entry.permission ?: "")
+                                put("permission", when (entry) {
+                                    is android.content.pm.ActivityInfo -> entry.permission
+                                    is android.content.pm.ServiceInfo -> entry.permission
+                                    is android.content.pm.ProviderInfo -> entry.readPermission
+                                    else -> null
+                                } ?: "")
                             })
                         }
                     }
