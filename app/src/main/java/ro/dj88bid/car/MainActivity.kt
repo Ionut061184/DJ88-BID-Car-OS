@@ -552,7 +552,11 @@ class MainActivity : Activity() {
         }
     }
 
-    /** Actual Android app drawer: all launchable installed apps with their real icons. */
+    /**
+     * BID app drawer mirrors the photographed QF001 layout: 5 icons across,
+     * 2 rows per page, horizontal swiping and page dots. All entries come from
+     * the installed Android launcher activities, never hard-coded screenshots.
+     */
     private fun showApps() {
         val apps = packageManager.queryIntentActivities(
             Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
@@ -561,70 +565,156 @@ class MainActivity : Activity() {
             .sortedBy { it.loadLabel(packageManager).toString().lowercase(java.util.Locale.ROOT) }
         if (apps.isEmpty()) {
             Toast.makeText(this, "Nu sunt aplicații lansabile vizibile", Toast.LENGTH_LONG).show()
-            startSafely(Intent(Settings.ACTION_APPLICATION_SETTINGS))
             return
         }
-        val grid = android.widget.GridView(this).apply {
-            numColumns = 5
-            horizontalSpacing = (8 * resources.displayMetrics.density).toInt()
-            verticalSpacing = (8 * resources.displayMetrics.density).toInt()
-            setPadding(16, 12, 16, 12)
-            clipToPadding = false
-            setBackgroundColor(android.graphics.Color.rgb(15, 16, 22))
-            selector = android.graphics.drawable.ColorDrawable(android.graphics.Color.rgb(80, 48, 55))
-        }
         val density = resources.displayMetrics.density
-        grid.adapter = object : android.widget.BaseAdapter() {
-            override fun getCount() = apps.size
-            override fun getItem(position: Int): Any = apps[position]
-            override fun getItemId(position: Int) = position.toLong()
-            override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
-                val column = convertView as? android.widget.LinearLayout
-                    ?: android.widget.LinearLayout(this@MainActivity).apply {
-                        orientation = android.widget.LinearLayout.VERTICAL
-                        gravity = android.view.Gravity.CENTER
-                        setPadding(5, 12, 5, 12)
-                        val icon = android.widget.ImageView(this@MainActivity)
-                        addView(icon, android.widget.LinearLayout.LayoutParams(
-                            (64*density).toInt(), (64*density).toInt()))
-                        val name = android.widget.TextView(this@MainActivity).apply {
-                            gravity = android.view.Gravity.CENTER
-                            setTextColor(android.graphics.Color.WHITE)
-                            textSize = 13f
-                            maxLines = 2
-                            ellipsize = android.text.TextUtils.TruncateAt.END
-                        }
-                        addView(name, android.widget.LinearLayout.LayoutParams(
-                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                            (42*density).toInt()))
+        val screen = resources.displayMetrics
+        val width = screen.widthPixels
+        val height = screen.heightPixels
+        val px: (Float) -> Int = { (it * density).toInt() }
+        val pageCount = (apps.size + 9) / 10
+        val dialog = android.app.Dialog(this).apply {
+            window?.setBackgroundDrawableResource(android.R.color.transparent)
+        }
+        val root = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setBackground(android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(0xFF10141C.toInt(), 0xFF171A29.toInt(), 0xFF062C88.toInt())
+            ))
+        }
+        val top = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(px(20f), px(6f), px(20f), px(4f))
+        }
+        val heading = android.widget.TextView(this).apply {
+            text = "⌂   DJ 88 BID  ·  Aplicații"
+            textSize = 21f
+            setTextColor(0xFFFFE3B2.toInt())
+        }
+        top.addView(heading, android.widget.LinearLayout.LayoutParams(0, px(48f), 1f))
+        val close = android.widget.TextView(this).apply {
+            text = "↩"
+            textSize = 35f
+            gravity = android.view.Gravity.CENTER
+            setTextColor(android.graphics.Color.WHITE)
+            setOnClickListener { dialog.dismiss() }
+        }
+        top.addView(close, android.widget.LinearLayout.LayoutParams(px(68f), px(48f)))
+        root.addView(top)
+
+        val carousel = android.widget.HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            isFillViewport = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val pages = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+        }
+        val pageHeight = (height - px(115f)).coerceAtLeast(px(260f))
+        for (page in 0 until pageCount) {
+            val grid = android.widget.GridLayout(this).apply {
+                columnCount = 5
+                rowCount = 2
+                setPadding(px(18f), px(12f), px(18f), px(6f))
+            }
+            val cellWidth = (width - px(36f)) / 5
+            val cellHeight = (pageHeight - px(18f)) / 2
+            for (slot in 0 until 10) {
+                val index = page * 10 + slot
+                val cell = android.widget.LinearLayout(this).apply {
+                    orientation = android.widget.LinearLayout.VERTICAL
+                    gravity = android.view.Gravity.CENTER
+                    setPadding(px(4f), px(4f), px(4f), px(4f))
+                }
+                if (index < apps.size) {
+                    val info = apps[index]
+                    val icon = android.widget.ImageView(this).apply {
+                        setImageDrawable(info.loadIcon(packageManager))
+                        scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
                     }
-                val app = apps[position]
-                (column.getChildAt(0) as android.widget.ImageView).setImageDrawable(
-                    app.loadIcon(packageManager))
-                (column.getChildAt(1) as android.widget.TextView).text =
-                    app.loadLabel(packageManager).toString()
-                return column
+                    cell.addView(icon, android.widget.LinearLayout.LayoutParams(
+                        minOf(px(132f), (cellWidth * .72f).toInt()),
+                        minOf(px(132f), (cellHeight * .66f).toInt())))
+                    val label = android.widget.TextView(this).apply {
+                        text = info.loadLabel(packageManager)
+                        textSize = 15f
+                        maxLines = 2
+                        gravity = android.view.Gravity.CENTER
+                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        setTextColor(android.graphics.Color.WHITE)
+                    }
+                    cell.addView(label, android.widget.LinearLayout.LayoutParams(
+                        cellWidth - px(10f), px(44f)))
+                    cell.setOnClickListener {
+                        val activity = info.activityInfo
+                        dialog.dismiss()
+                        startSafely(Intent(Intent.ACTION_MAIN).apply {
+                            addCategory(Intent.CATEGORY_LAUNCHER)
+                            setClassName(activity.packageName, activity.name)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        })
+                    }
+                }
+                grid.addView(cell, android.widget.GridLayout.LayoutParams(
+                    android.widget.GridLayout.spec(slot / 5),
+                    android.widget.GridLayout.spec(slot % 5)
+                ).apply {
+                    width = cellWidth
+                    height = cellHeight
+                })
+            }
+            pages.addView(grid, android.widget.LinearLayout.LayoutParams(width, pageHeight))
+        }
+        carousel.addView(pages)
+        root.addView(carousel, android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+
+        val dots = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER
+        }
+        val dotViews = (0 until pageCount).map { page ->
+            android.widget.TextView(this).apply {
+                text = "●"
+                textSize = 18f
+                gravity = android.view.Gravity.CENTER
+                setPadding(px(3f), 0, px(3f), 0)
+                setOnClickListener { carousel.smoothScrollTo(page * width, 0) }
+                dots.addView(this)
             }
         }
-        val dialog = android.app.AlertDialog.Builder(this)
-            .setTitle("DJ 88 BID · Toate aplicațiile (" + apps.size + ")")
-            .setView(grid)
-            .setNegativeButton("Închide", null)
-            .create()
-        grid.setOnItemClickListener { _, _, position, _ ->
-            val activity = apps[position].activityInfo
-            val launch = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                setClassName(activity.packageName, activity.name)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        fun updateDots() {
+            val index = ((carousel.scrollX + width / 2) / width).coerceIn(0, pageCount - 1)
+            dotViews.forEachIndexed { i, v ->
+                v.setTextColor(if (i == index) 0xFFD8B981.toInt() else 0xFFA9BDDF.toInt())
             }
-            dialog.dismiss()
-            startSafely(launch)
+        }
+        carousel.setOnTouchListener { _, event ->
+            if (event.actionMasked == android.view.MotionEvent.ACTION_UP ||
+                event.actionMasked == android.view.MotionEvent.ACTION_CANCEL) {
+                carousel.postDelayed({
+                    val nearest = ((carousel.scrollX + width / 2) / width)
+                        .coerceIn(0, pageCount - 1)
+                    carousel.smoothScrollTo(nearest * width, 0)
+                    carousel.postDelayed({ updateDots() }, 250)
+                }, 100)
+            }
+            false
+        }
+        carousel.setOnScrollChangeListener { _, _, _, _, _ -> updateDots() }
+        root.addView(dots, android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT, px(44f)))
+        dialog.setContentView(root)
+        dialog.window?.apply {
+            setBackgroundDrawableResource(android.R.color.transparent)
+            setLayout(width, height)
+            addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         }
         dialog.show()
-        dialog.window?.setLayout(
-            (resources.displayMetrics.widthPixels * 0.96f).toInt(),
-            (resources.displayMetrics.heightPixels * 0.93f).toInt())
+        dialog.window?.setLayout(width, height)
+        updateDots()
     }
 
     @Suppress("DEPRECATION")
