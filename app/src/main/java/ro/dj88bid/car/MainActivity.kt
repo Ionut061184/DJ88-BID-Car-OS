@@ -486,6 +486,11 @@ class MainActivity : Activity() {
                 "video" -> listOf("videoplayer", "video player", "com.qf.video")
                 "files" -> listOf("fileexplorer", "file explorer", "file manager", "com.qf.file")
                 "gallery" -> listOf("imagebrowser", "image browser", "gallery")
+                "gps" -> listOf("beidougps", "gps info", "gpsinfo", "gps test")
+                "tpms" -> listOf("tpms", "tire pressure", "tyre pressure")
+                "steering" -> listOf("keystudy", "key study", "steering wheel")
+                "weather" -> listOf("com.qf.weather", "weather", "vreme")
+                "manual" -> listOf("qf.manual", "manual")
                 else -> emptyList()
             }
             if (keys.isEmpty()) return@runOnUiThread
