@@ -38,6 +38,8 @@ function diagnostic(){
    const homes=Array.isArray(d.availableHomeLaunchers)?d.availableHomeLaunchers:[];
    const car=Array.isArray(d.candidateCarApps)?d.candidateCarApps:[];
    const assigned=d.assignedAutoShortcuts||{};const bindings=Object.keys(assigned).map(k=>assigned[k].label+': '+assigned[k].package+(assigned[k].available?' (disponibil)':' (neconfigurat / indisponibil)')).join(', ');
+   const canbusComponents=Array.isArray(d.canbusExportedComponents)?d.canbusExportedComponents:[];
+   const canbusEntries=canbusComponents.map(c=>c.type+': '+c.name+(c.permission?' [permisiune: '+c.permission+']':'')).join('\\n');
    const oem=d.originalQf001Apps||{};const oemSummary=Object.keys(oem).map(k=>k+': '+oem[k].package+(oem[k].launchableVisible?' (detectat)':' (absent / invizibil)')).join(', ');
    msg='CANBUS OEM: '+(d.canbusPackageVisible?'pachet vizibil':'pachet absent/invizibil')+
    '; lansabil: '+(d.canbusHasPublicLauncher?'DA':'NU')+
@@ -47,7 +49,7 @@ function diagnostic(){
    '\nSwoodGrain vizibil: '+(d.originalSwoodGrainVisible?'DA':'NU / necunoscut')+
    '\nLaunchere HOME detectate: '+homes.map(x=>x.label+' ['+x.package+']').join(', ')+
    '\nMaps: '+d.mapsInstalled+'; Waze: '+d.wazeInstalled+'; YouTube: '+d.youtubeInstalled+
-   '\nScurtături auto: '+bindings+'\nAplicații OEM QF001 din firmware: '+oemSummary+'\nRadio/DSP/BT auto QF001: NETESTATE. Nu se modifică Themes original.';
+   '\nComponente CANBUS exportate (inventar): '+(canbusEntries||'niciuna vizibilă')+'\nScurtături auto: '+bindings+'\nAplicații OEM QF001 din firmware: '+oemSummary+'\nRadio/DSP/BT auto QF001: NETESTATE. Nu se modifică Themes original.';
   }
  } catch(e) { msg='Diagnostic indisponibil.'; }
  document.getElementById('diagnosticText').textContent=msg.replace(/\\n/g, '\n');
