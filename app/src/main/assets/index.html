@@ -28,6 +28,13 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 <div id="mediaLive" aria-label="Informații media"></div>
 <div id="climateWarning" aria-label="Date climatizare neconectate">Climă: neconectată</div>
 <div id="nightTint"></div><div id="statusNotice"></div>
+<button class="hit" style="left:283px;top:8px;width:275px;height:59px" aria-label="Data și ora" onclick="launch('dateSettings')">Dată și oră</button>
+<button class="hit" style="left:911px;top:13px;width:56px;height:55px" aria-label="Bluetooth" onclick="launch('bluetooth')">Bluetooth</button>
+<button class="hit" style="left:965px;top:13px;width:66px;height:55px" aria-label="Wi-Fi" onclick="launch('wifi')">Wi-Fi</button>
+<button class="hit" style="left:1030px;top:13px;width:72px;height:55px" aria-label="Conectivitate" onclick="launch('settings')">Conectivitate</button>
+<button class="hit" style="left:1110px;top:13px;width:150px;height:55px" aria-label="Tensiune auto" onclick="canUnsupported('Tensiune baterie')">Tensiune auto</button>
+<button class="hit" style="left:1015px;top:539px;width:65px;height:42px" aria-label="Redare aleatorie" onclick="canUnsupported('Redare aleatorie: aplicația media trebuie să ofere această funcție')">Shuffle</button>
+<button class="hit" style="left:1080px;top:539px;width:65px;height:42px" aria-label="Repetare" onclick="canUnsupported('Repetare: aplicația media trebuie să ofere această funcție')">Repeat</button>
 <button class="hit" style="left:88px;top:7px;width:75px;height:70px" aria-label="Acasă" onclick="closeAll()">Acasă</button>
 <button class="hit" style="left:20px;top:84px;width:158px;height:105px" aria-label="Radio" onclick="autoLaunch('radio')">Radio</button>
 <button class="hit" style="left:20px;top:191px;width:158px;height:92px" aria-label="Media YouTube" onclick="launch('youtube')">Media YouTube</button>
@@ -43,7 +50,7 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 <button class="hit" style="left:519px;top:526px;width:58px;height:65px" aria-label="Anterior" onclick="mediaKey('previous')">Anterior</button>
 <button class="hit" style="left:594px;top:526px;width:77px;height:65px" aria-label="Pauză muzică" onclick="mediaKey('playpause')">Pauză muzică</button>
 <button class="hit" style="left:712px;top:526px;width:58px;height:65px" aria-label="Următor" onclick="mediaKey('next')">Următor</button>
-<button class="hit" style="left:940px;top:540px;width:194px;height:50px" aria-label="Progres muzică" onclick="mediaKey('open')">Progres muzică</button>
+<button class="hit" style="left:910px;top:540px;width:98px;height:50px" aria-label="Progres muzică" onclick="mediaKey('open')">Progres muzică</button>
 <button class="hit" style="left:104px;top:630px;width:155px;height:55px" aria-label="Climatizare stânga" onclick="canUnsupported('Climatizare')">Climatizare stânga</button>
 <button class="hit" style="left:310px;top:630px;width:260px;height:55px" aria-label="Ventilator" onclick="canUnsupported('Ventilator')">Ventilator</button>
 <button class="hit" style="left:580px;top:630px;width:160px;height:55px" aria-label="Aer condiționat" onclick="canUnsupported('A/C')">A/C</button>
