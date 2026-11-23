@@ -552,28 +552,79 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Actual Android app drawer: all launchable installed apps with their real icons. */
     private fun showApps() {
         val apps = packageManager.queryIntentActivities(
             Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
         ).filter { it.activityInfo.packageName != packageName }
-         .sortedBy { it.loadLabel(packageManager).toString().lowercase() }
-        val names = apps.map { it.loadLabel(packageManager).toString() }.toTypedArray()
-        if (names.isEmpty()) {
+            .distinctBy { it.activityInfo.packageName + "/" + it.activityInfo.name }
+            .sortedBy { it.loadLabel(packageManager).toString().lowercase(java.util.Locale.ROOT) }
+        if (apps.isEmpty()) {
+            Toast.makeText(this, "Nu sunt aplicații lansabile vizibile", Toast.LENGTH_LONG).show()
             startSafely(Intent(Settings.ACTION_APPLICATION_SETTINGS))
             return
         }
-        android.app.AlertDialog.Builder(this)
-            .setTitle("DJ 88 BID · Aplicații")
-            .setItems(names) { _, which ->
-                val a = apps[which].activityInfo
-                val intent = Intent(Intent.ACTION_MAIN).apply {
-                    addCategory(Intent.CATEGORY_LAUNCHER)
-                    setClassName(a.packageName, a.name)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                startSafely(intent)
+        val grid = android.widget.GridView(this).apply {
+            numColumns = 5
+            horizontalSpacing = (8 * resources.displayMetrics.density).toInt()
+            verticalSpacing = (8 * resources.displayMetrics.density).toInt()
+            setPadding(16, 12, 16, 12)
+            clipToPadding = false
+            setBackgroundColor(android.graphics.Color.rgb(15, 16, 22))
+            selector = android.graphics.drawable.ColorDrawable(android.graphics.Color.rgb(80, 48, 55))
+        }
+        val density = resources.displayMetrics.density
+        grid.adapter = object : android.widget.BaseAdapter() {
+            override fun getCount() = apps.size
+            override fun getItem(position: Int): Any = apps[position]
+            override fun getItemId(position: Int) = position.toLong()
+            override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
+                val column = convertView as? android.widget.LinearLayout
+                    ?: android.widget.LinearLayout(this@MainActivity).apply {
+                        orientation = android.widget.LinearLayout.VERTICAL
+                        gravity = android.view.Gravity.CENTER
+                        setPadding(5, 12, 5, 12)
+                        val icon = android.widget.ImageView(this@MainActivity)
+                        addView(icon, android.widget.LinearLayout.LayoutParams(
+                            (64*density).toInt(), (64*density).toInt()))
+                        val name = android.widget.TextView(this@MainActivity).apply {
+                            gravity = android.view.Gravity.CENTER
+                            setTextColor(android.graphics.Color.WHITE)
+                            textSize = 13f
+                            maxLines = 2
+                            ellipsize = android.text.TextUtils.TruncateAt.END
+                        }
+                        addView(name, android.widget.LinearLayout.LayoutParams(
+                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                            (42*density).toInt()))
+                    }
+                val app = apps[position]
+                (column.getChildAt(0) as android.widget.ImageView).setImageDrawable(
+                    app.loadIcon(packageManager))
+                (column.getChildAt(1) as android.widget.TextView).text =
+                    app.loadLabel(packageManager).toString()
+                return column
             }
-            .setNegativeButton("Închide", null).show()
+        }
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("DJ 88 BID · Toate aplicațiile (" + apps.size + ")")
+            .setView(grid)
+            .setNegativeButton("Închide", null)
+            .create()
+        grid.setOnItemClickListener { _, _, position, _ ->
+            val activity = apps[position].activityInfo
+            val launch = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setClassName(activity.packageName, activity.name)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            dialog.dismiss()
+            startSafely(launch)
+        }
+        dialog.show()
+        dialog.window?.setLayout(
+            (resources.displayMetrics.widthPixels * 0.96f).toInt(),
+            (resources.displayMetrics.heightPixels * 0.93f).toInt())
     }
 
     @Suppress("DEPRECATION")
