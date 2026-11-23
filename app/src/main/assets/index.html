@@ -23,6 +23,16 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 #diagnosticModal{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.84);display:none;align-items:center;justify-content:center}
 #diagnosticModal.on{display:flex}#diagnosticBox{width:900px;max-height:620px;overflow:auto;padding:25px 34px;border:3px solid #c4a36e;border-radius:20px;background:#280d1b;color:#f7e8cc;box-shadow:0 0 32px #000}
 #diagnosticBox h2{font:36px Georgia,serif;margin:8px 0 18px}#diagnosticText{white-space:pre-wrap;font:24px/1.5 Arial,sans-serif;overflow-wrap:anywhere;text-align:left;clear:both}
+/* BID clean mode: hide nonfunctional readouts and baked-in media/climate graphics.
+   Opaque leather panels keep decorative car and main shortcuts intact. */
+#weatherLive,#voltageLive,#mediaLive,#climateWarning,
+#climateLeftLive,#climateRightLive,#mediaTimeLive{display:none!important}
+#musicClean,#climateClean{position:absolute;pointer-events:none;z-index:1;
+ background:linear-gradient(145deg,#110e13 0%,#25171d 45%,#0b090d 100%);
+ box-shadow:inset 0 0 0 2px #86664a,inset 0 0 12px #050405;border-radius:15px}
+#musicClean{left:194px;top:514px;width:896px;height:91px}
+#climateClean{left:27px;top:610px;width:1226px;height:92px}
+#musicClean:after,#climateClean:after{content:"";position:absolute;left:3%;right:3%;top:50%;height:1px;background:linear-gradient(90deg,transparent,#a78159,transparent);opacity:.4}
 </style></head><body><main id="stage" aria-label="DJ 88 BID Luxury">
 <div id="clock">--:--</div>
 <div id="dateLive" aria-label="Data actuală"></div>
@@ -31,15 +41,13 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 <div id="mediaLive" aria-label="Informații media"></div>
 <div id="climateWarning" aria-label="Date climatizare neconectate">CANBUS: neconectat</div>
 <div id="climateLeftLive">-- °C</div><div id="climateRightLive">-- °C</div><div id="mediaTimeLive">--:-- / --:--</div>
+<div id="musicClean" aria-hidden="true"></div><div id="climateClean" aria-hidden="true"></div>
 <div id="nightTint"></div><div id="statusNotice"></div>
 <button class="hit" style="left:555px;top:9px;width:173px;height:165px;z-index:5" aria-label="BID Bespoke Design – deschide meniul Luxury" onclick="luxury(true)">BID Bespoke Design</button>
 <button class="hit" style="left:283px;top:8px;width:275px;height:59px" aria-label="Data și ora" onclick="launch('dateSettings')">Dată și oră</button>
 <button class="hit" style="left:911px;top:13px;width:56px;height:55px" aria-label="Bluetooth" onclick="launch('bluetooth')">Bluetooth</button>
 <button class="hit" style="left:965px;top:13px;width:66px;height:55px" aria-label="Wi-Fi" onclick="launch('wifi')">Wi-Fi</button>
 <button class="hit" style="left:1030px;top:13px;width:72px;height:55px" aria-label="Conectivitate" onclick="launch('settings')">Conectivitate</button>
-<button class="hit" style="left:1110px;top:13px;width:150px;height:55px" aria-label="Tensiune auto" onclick="canUnsupported('Tensiune baterie')">Tensiune auto</button>
-<button class="hit" style="left:1015px;top:539px;width:65px;height:42px" aria-label="Redare aleatorie" onclick="canUnsupported('Redare aleatorie: aplicația media trebuie să ofere această funcție')">Shuffle</button>
-<button class="hit" style="left:1080px;top:539px;width:65px;height:42px" aria-label="Repetare" onclick="canUnsupported('Repetare: aplicația media trebuie să ofere această funcție')">Repeat</button>
 <button class="hit" style="left:88px;top:7px;width:75px;height:70px" aria-label="Acasă" onclick="closeAll()">Acasă</button>
 <button class="hit" style="left:20px;top:84px;width:158px;height:105px" aria-label="Radio" onclick="autoLaunch('radio')">Radio</button>
 <button class="hit" style="left:20px;top:191px;width:158px;height:92px" aria-label="Media YouTube" onclick="launch('youtube')">Media YouTube</button>
@@ -51,31 +59,20 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 <button class="hit" style="left:1108px;top:286px;width:154px;height:95px" aria-label="Sunet" onclick="autoLaunch('dsp')">Sunet</button>
 <button class="hit" style="left:1108px;top:383px;width:154px;height:95px" aria-label="CarPlay" onclick="launch('carplay')">CarPlay</button>
 <button class="hit" style="left:1108px;top:481px;width:154px;height:124px" aria-label="Android Auto" onclick="launch('androidauto')">Android Auto</button>
-<button class="hit" style="left:200px;top:527px;width:298px;height:70px" aria-label="Muzică" onclick="autoLaunch('music')">Muzică</button>
-<button class="hit" style="left:519px;top:526px;width:58px;height:65px" aria-label="Anterior" onclick="mediaKey('previous')">Anterior</button>
-<button class="hit" style="left:594px;top:526px;width:77px;height:65px" aria-label="Pauză muzică" onclick="mediaKey('playpause')">Pauză muzică</button>
-<button class="hit" style="left:712px;top:526px;width:58px;height:65px" aria-label="Următor" onclick="mediaKey('next')">Următor</button>
-<button class="hit" style="left:910px;top:540px;width:98px;height:50px" aria-label="Progres muzică" onclick="mediaKey('open')">Progres muzică</button>
-<button class="hit" style="left:104px;top:630px;width:155px;height:55px" aria-label="Climatizare stânga" onclick="canUnsupported('Climatizare')">Climatizare stânga</button>
-<button class="hit" style="left:310px;top:630px;width:260px;height:55px" aria-label="Ventilator" onclick="canUnsupported('Ventilator')">Ventilator</button>
-<button class="hit" style="left:580px;top:630px;width:160px;height:55px" aria-label="Aer condiționat" onclick="canUnsupported('A/C')">A/C</button>
-<button class="hit" style="left:750px;top:630px;width:100px;height:55px" aria-label="Dezaburire față" onclick="canUnsupported('Dezaburire față')">Dezaburire</button>
-<button class="hit" style="left:860px;top:630px;width:100px;height:55px" aria-label="Dezaburire spate" onclick="canUnsupported('Dezaburire spate')">Dezaburire</button>
-<button class="hit" style="left:1010px;top:630px;width:140px;height:55px" aria-label="Climatizare dreapta" onclick="canUnsupported('Climatizare')">Climatizare dreapta</button>
 <div id="drive"><button class="close" onclick="closeAll()">↩ Luxury</button><h1>DJ 88 BID · Driving</h1><p>Navigația reală se deschide în aplicația aleasă. Harta din Luxury este ilustrativă.</p><button class="driveButton" onclick="launch('maps')">Google Maps</button><button class="driveButton" onclick="launch('waze')">Waze</button><button class="driveButton" onclick="launch('phone')">Telefon</button></div>
-<div id="overlay"><section id="panel"><button class="close" onclick="theme(false)">✕</button><h1>BID Themes</h1><p>Designul Luxury rămâne cel aprobat.</p><div class="row"><button onclick="closeAll()">👑 Luxury</button><button onclick="driving()">➤ Driving</button><button onclick="alert('Analog este în dezvoltare')">Analog</button><button onclick="alert('Veneer este în dezvoltare')">Veneer</button><button onclick="diagnostic()">Diagnostic</button><button onclick="launch('canbus')">CANBUS original QF001</button><button onclick="autoApps()">Aplicații auto</button><button onclick="autoConfig('radio')">Asociază Radio</button><button onclick="autoConfig('music')">Asociază Muzică</button><button onclick="autoConfig('btcar')">Asociază BT auto</button><button onclick="autoConfig('dsp')">Asociază DSP</button><button onclick="autoLaunch('radio')">▶ Radio</button><button onclick="autoLaunch('music')">▶ Muzică</button><button onclick="autoLaunch('btcar')">▶ BT auto</button><button onclick="autoLaunch('dsp')">▶ DSP</button><button onclick="qfThemes()">Themes originale QF001</button><button onclick="launch('original')">Launcher original</button></div></section></div>
+<div id="overlay"><section id="panel"><button class="close" onclick="theme(false)">✕</button><h1>BID Themes</h1><p>Designul Luxury rămâne cel aprobat.</p><div class="row"><button onclick="closeAll()">👑 Luxury</button><button onclick="driving()">➤ Driving</button><button onclick="alert('Analog este în dezvoltare')">Analog</button><button onclick="alert('Veneer este în dezvoltare')">Veneer</button><button onclick="diagnostic()">Diagnostic</button><button onclick="launch('canbus')">CANBUS original QF001</button><button onclick="autoApps()">Aplicații auto</button><button onclick="autoConfig('radio')">Asociază Radio</button><button onclick="autoConfig('btcar')">Asociază BT auto</button><button onclick="autoConfig('dsp')">Asociază DSP</button><button onclick="autoLaunch('radio')">▶ Radio</button><button onclick="autoLaunch('btcar')">▶ BT auto</button><button onclick="autoLaunch('dsp')">▶ DSP</button><button onclick="qfThemes()">Themes originale QF001</button><button onclick="launch('original')">Launcher original</button></div></section></div>
 <div id="luxuryModal" role="dialog" aria-label="DJ 88 BID Luxury">
 <section id="luxuryBox"><button class="close" onclick="luxury(false)">Închide ✕</button><h1>👑 BID Luxury</h1>
 <p>Mod Luxury activ · Comenzi rapide</p><div class="row">
 <button onclick="luxuryLaunch('maps')">🗺 GPS</button>
 <button onclick="luxuryLaunch('phone')">☎ Telefon</button>
 <button onclick="luxuryAuto('radio')">📻 Radio</button>
-<button onclick="luxuryAuto('music')">♫ Muzică</button>
+
 <button onclick="luxuryAuto('btcar')">Bluetooth auto</button>
 <button onclick="luxuryAuto('dsp')">DSP</button>
 <button onclick="luxury(false);theme(true)">BID Themes</button>
 <button onclick="luxury(false);driving()">➤ Driving</button></div>
-<p style="font-size:17px;opacity:.85">Radio, Muzică, Bluetooth auto și DSP pornesc aplicațiile asociate, dacă există.</p>
+<p style="font-size:17px;opacity:.85">Radio, Bluetooth auto și DSP pornesc aplicațiile asociate, dacă există.</p>
 </section></div>
 <div id="diagnosticModal" role="dialog" aria-label="Diagnostic BID">
 <section id="diagnosticBox"><button class="close" onclick="document.getElementById('diagnosticModal').classList.remove('on')">Închide ✕</button><h2>DJ 88 BID · Diagnostic</h2><div id="diagnosticText"></div></section></div>
