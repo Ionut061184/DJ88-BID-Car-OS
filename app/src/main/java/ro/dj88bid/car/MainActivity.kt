@@ -502,7 +502,6 @@ class MainActivity : Activity() {
             rows.add("Toate aplicațiile instalate" to null)
             android.app.AlertDialog.Builder(this@MainActivity)
                 .setTitle("BID · Funcții originale QF001")
-                .setMessage("Sunt afișate numai aplicațiile lansabile. Camera de marșarier și funcțiile MCU/CANBUS rămân gestionate de sistemul original; absența unui buton lansabil nu înseamnă că funcția OEM lipsește.")
                 .setItems(rows.map { it.first }.toTypedArray()) { _, index ->
                     if (index == rows.lastIndex) showApps()
                     else {
