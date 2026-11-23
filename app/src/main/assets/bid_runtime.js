@@ -40,6 +40,9 @@ function closeMusicMenu(){document.getElementById('musicMenu').classList.remove(
 function musicChoose(kind){
  closeMusicMenu();
  if(kind==='youtube'){launch('youtube');return}
+ if(kind==='maps'){launch('maps');return}
+ if(kind==='car'||kind==='canbus'){launch(kind);return}
+ if(kind==='reverse'){statusNotice('Camera marșarier funcționează automat la selectarea treptei R, prin sistemul original QF001.');return}
  if(kind==='oem'){oemFunctions();return}
  if(window.BID && typeof BID.openMediaOem==='function'){BID.openMediaOem(kind)}
  else statusNotice('Funcția multimedia necesită aplicația pe navigație.');
