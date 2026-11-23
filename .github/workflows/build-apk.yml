@@ -40,6 +40,8 @@ jobs:
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace assembleLabSafeDebug assembleThemesCandidateDebug
       - name: Verify both APKs and record checksums
+        env:
+          APPROVED_SHA: 853fdab81ac2676caaaaa5dad119455a609fc4f881efcd673ee7f66a0430ea32
         run: |
           set -euo pipefail
           mkdir -p dist
@@ -47,6 +49,16 @@ jobs:
           for flavor in labSafe themesCandidate; do
             file="app/build/outputs/apk/$flavor/debug/app-$flavor-debug.apk"
             test -s "$file"
+            # Compare the artwork IN the compiled APK against the approved source.
+            unzip -p "$file" assets/bid_approved.png > "dist/$flavor-bid-image.png"
+            test -s "dist/$flavor-bid-image.png"
+            actual="$(sha256sum "dist/$flavor-bid-image.png" | cut -d' ' -f1)"
+            if [ "$actual" != "$APPROVED_SHA" ]; then
+              echo "::error::APK $flavor embeds the wrong BID image: $actual"
+              exit 1
+            fi
+            unzip -p "$file" assets/bid_runtime.js | grep -q 'function luxury(on=true)'
+            unzip -p "$file" assets/index.html | grep -q 'onclick="luxury(true)"'
             cp "$file" "dist/DJ88-BID-$flavor-debug.apk"
             sha256sum "dist/DJ88-BID-$flavor-debug.apk" >> dist/SHA256SUMS.txt
             "$APKSIGNER" verify --print-certs "$file" > "dist/$flavor-signature.txt"
