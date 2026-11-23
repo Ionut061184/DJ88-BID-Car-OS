@@ -7,6 +7,25 @@ function tick(){
  document.getElementById('nightTint').style.opacity=night?'0.18':'0';
 }
 tick();setInterval(tick,10000);
+/* Read only the battery reported by Android, when supported by this head unit.
+   The CANBUS vehicle-voltage slot never shows a fabricated number. */
+function refreshAndroidBattery(){
+ const out=document.getElementById('batteryAndroidLive');
+ if(!out)return;
+ let pct=null;
+ try{
+  if(window.BID&&typeof BID.batterySnapshot==='function'){
+   const d=JSON.parse(BID.batterySnapshot());
+   if(Number.isInteger(d.percent)&&d.percent>=0&&d.percent<=100)pct=d.percent;
+  }
+ }catch(e){pct=null;}
+ out.textContent=pct===null?'🔋 —':'🔋 '+pct+'%';
+ out.title=pct===null?'Baterie Android: senzor indisponibil':'Baterie Android: '+pct+'%';
+ const car=document.getElementById('voltageLive');
+ if(car){car.textContent='— V';car.title='Tensiunea mașinii: CANBUS neintegrat';}
+}
+refreshAndroidBattery();setInterval(refreshAndroidBattery,10000);
+
 function statusNotice(msg){const el=document.getElementById('statusNotice');el.textContent=msg;el.style.display='block';clearTimeout(window.bidNoticeTimer);window.bidNoticeTimer=setTimeout(()=>el.style.display='none',3800)}
 function canUnsupported(name){statusNotice(name+': date CANBUS încă neverificate; comanda OEM nu este simulată.')}
 function mediaKey(action){if(window.BID && typeof BID.mediaKey==='function'){BID.mediaKey(action)}else statusNotice('Comanda media nu este disponibilă în browser.')}
