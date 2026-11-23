@@ -31,8 +31,14 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
  background:linear-gradient(145deg,#110e13 0%,#25171d 45%,#0b090d 100%);
  box-shadow:inset 0 0 0 2px #86664a,inset 0 0 12px #050405;border-radius:15px}
 #musicClean{left:194px;top:514px;width:896px;height:91px}
-#climateClean{left:27px;top:610px;width:1226px;height:92px}
-#musicClean:after,#climateClean:after{content:"";position:absolute;left:3%;right:3%;top:50%;height:1px;background:linear-gradient(90deg,transparent,#a78159,transparent);opacity:.4}
+/* Preserve the printed temperature artwork at both ends, as requested.
+   Middle climate controls stay covered and cannot be operated. */
+#climateClean{left:183px;top:610px;width:910px;height:92px}
+#climateClean:before{content:"";position:absolute;left:-156px;top:0;width:50px;height:92px;
+ background:linear-gradient(145deg,#110e13,#25171d,#0b090d);border-radius:12px}
+#climateClean:after{content:"";position:absolute;left:910px;top:0;width:50px;height:92px;
+ background:linear-gradient(145deg,#110e13,#25171d,#0b090d);border-radius:12px}
+ #musicClean:after{content:"";position:absolute;left:3%;right:3%;top:50%;height:1px;background:linear-gradient(90deg,transparent,#a78159,transparent);opacity:.4}
 </style></head><body><main id="stage" aria-label="DJ 88 BID Luxury">
 <div id="clock">--:--</div>
 <div id="dateLive" aria-label="Data actuală"></div>
