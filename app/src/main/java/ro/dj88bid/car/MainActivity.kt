@@ -209,7 +209,45 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    /**
+     * Android battery indicator, not vehicle 12 V CANBUS voltage.
+     * Car head units can have no Android battery sensor: unknown stays unknown.
+     */
+    private fun androidBatterySnapshot(): JSONObject {
+        val info = JSONObject().apply {
+            put("source", "ANDROID")
+            put("percent", JSONObject.NULL)
+            put("charging", JSONObject.NULL)
+            put("vehicleVoltage", JSONObject.NULL)
+            put("vehicleVoltageAvailable", false)
+        }
+        try {
+            val intent = registerReceiver(null,
+                android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            if (intent != null) {
+                val level = intent.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
+                val scale = intent.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1)
+                if (level >= 0 && scale > 0 && level <= scale) {
+                    info.put("percent", (level * 100.0 / scale).toInt())
+                }
+                val status = intent.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1)
+                if (status == android.os.BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == android.os.BatteryManager.BATTERY_STATUS_FULL)
+                    info.put("charging", true)
+                else if (status == android.os.BatteryManager.BATTERY_STATUS_DISCHARGING ||
+                    status == android.os.BatteryManager.BATTERY_STATUS_NOT_CHARGING)
+                    info.put("charging", false)
+            }
+        } catch (_: Exception) {
+            // Absent/unsupported Android battery sensor must not become car voltage.
+        }
+        return info
+    }
+
     inner class Bridge {
+        @JavascriptInterface
+        fun batterySnapshot(): String = androidBatterySnapshot().toString()
+
         @JavascriptInterface
         fun chooseWeatherCity() = runOnUiThread {
             val choices = weatherCities.keys.toTypedArray()
@@ -360,6 +398,7 @@ class MainActivity : Activity() {
                 put("canbusDataBridgeVerified", false)
                 put("climatronicLiveAvailable", false)
                 put("carBatteryVoltageAvailable", false)
+                put("androidBattery", androidBatterySnapshot())
             }.toString()
         }
 
