@@ -54,6 +54,18 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
  border-radius:7px;padding:6px 2px;pointer-events:none}
 #voltageLive{display:block!important;right:12px;top:19px;width:76px;height:38px;
  z-index:4;background:#110b10;color:#e7d8c5;font:18px Arial;padding-top:7px;border-radius:7px}
+/* Approved dock: the former Music shortcut now opens ALL QF001 functions.
+   Replace ONLY that tile, not the underlying luxury design or other app icons. */
+#functionsDock{display:flex;align-items:center;justify-content:center;gap:12px;
+  color:#f8e9d5;background:linear-gradient(155deg,#211017 0%,#100b0e 53%,#391521 100%);
+  border:1px solid #b99060;border-radius:15px;
+  box-shadow:inset 0 0 0 2px #2b1720,inset 0 2px 8px #aa784d45;
+  font:24px Arial,sans-serif;text-shadow:0 1px 1px #000}
+#functionsDock .dockIcon{display:grid;grid-template-columns:repeat(2,11px);
+  grid-template-rows:repeat(2,11px);gap:4px;flex-shrink:0}
+#functionsDock .dockIcon i{display:block;width:11px;height:11px;border:2px solid #e6bc83;
+  background:linear-gradient(#7b422e,#211014);box-shadow:0 0 4px #e3b37166;border-radius:2px}
+#functionsDock:active{filter:brightness(1.3)}
 </style></head><body><main id="stage" aria-label="DJ 88 BID Luxury">
 <div id="clock">--:--</div>
 <div id="dateLive" aria-label="Data actuală"></div>
@@ -80,7 +92,7 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 <button class="hit" style="left:1108px;top:286px;width:154px;height:95px" aria-label="Sunet" onclick="autoLaunch('dsp')">Sunet</button>
 <button class="hit" style="left:1108px;top:383px;width:154px;height:95px" aria-label="CarPlay" onclick="launch('carplay')">CarPlay</button>
 <button class="hit" style="left:1108px;top:481px;width:154px;height:124px" aria-label="Android Auto" onclick="launch('androidauto')">Android Auto</button>
-<button class="hit" style="left:174px;top:622px;width:187px;height:72px;z-index:5" aria-label="Deschide meniul Muzică și multimedia QF001" onclick="openMusicMenu()">Muzică</button>
+<button id="functionsDock" class="hit" style="left:174px;top:622px;width:187px;height:72px;z-index:5" aria-label="Funcții QF001: Multimedia, Mașină, Navigație și utilitare" onclick="openMusicMenu()"><span class="dockIcon" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Funcții</span></button>
 <button class="hit" style="left:362px;top:622px;width:170px;height:72px;z-index:5" aria-label="YouTube" onclick="launch('youtube')">YouTube</button>
 <button class="hit" style="left:533px;top:622px;width:148px;height:72px;z-index:5" aria-label="Waze" onclick="launch('waze')">Waze</button>
 <button class="hit" style="left:680px;top:622px;width:181px;height:72px;z-index:5" aria-label="Play Store" onclick="launch('playstore')">Play Store</button>
