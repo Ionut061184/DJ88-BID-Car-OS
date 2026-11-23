@@ -1,23 +1,35 @@
-# DJ 88 BID Car OS
+# DJ 88 BID Car OS — QF001 / ROCO K706
 
-Launcher Android separat pentru navigația QF001/K706, afișaj 1280 × 720.
+Launcher Android separat, proiectat pentru 1280 × 720, fără modificarea firmware-ului sau a celor 74 de teme OEM.
 
-## Stadiul real (21 noiembrie 2026)
+## Actualizare funcțională — 23 noiembrie 2026
 
-Sunt încărcate configurația Gradle, manifestul Android, `MainActivity.kt`, interfața `index.html` și fluxul GitHub Actions pentru compilarea `app-debug.apk`.
+Codul actual include:
+- dată și oră preluate din ceasul dispozitivului;
+- vreme prin HTTPS/Open-Meteo, pentru localitatea aleasă manual în bara meteo (Craiova, Robăneștii de Sus, București sau Iași); fără date se afișează indisponibil, nu o temperatură inventată;
+- reducere discretă a luminozității interfeței între 20:00–07:00, după ora locală a dispozitivului (nu controlează luminozitatea fizică a ecranului);
+- taste media Android anterior / play-pause / următor, transmise către aplicația media care le acceptă; compatibilitatea cu playerul OEM trebuie verificată;
+- comenzi Radio / Muzică / DSP / Bluetooth auto prin aplicații OEM exportate sau asocieri explicite;
+- butoane pentru Wi-Fi, Bluetooth, setări, listă de aplicații, Google Maps / Waze, YouTube și aplicațiile companion CarPlay / Android Auto dacă sunt instalate;
+- informațiile CANBUS necunoscute (tensiune și climatizare) afișate ca **neconectate**. Sunt disponibile doar explicații, nu acțiuni CAN inventate.
 
-**Lipsește încă imaginea originală aprobată:** `app/src/main/assets/bid_approved.png`. Workflow-ul oprește intenționat compilarea până când este adăugată, pentru a nu produce un APK cu ecranul BID gol. Imaginea a fost verificată local la 1280×720.
+## Blocaj de compilare: imaginea aprobată
 
-### Încărcarea imaginii
+Fișierul `app/src/main/assets/bid_approved.png` din depozit **nu este încă imaginea finală**, rezultată după corecțiile de culoare și linie laterală aprobate. Workflow-ul include deliberat o verificare strictă SHA-256 care blochează compilarea în această situație. Nu dezactivați controlul pentru a produce din nou un APK cu imaginea greșită.
 
-În GitHub: Add file → Upload files și încărcați `bid_approved.png` în directorul `app/src/main/assets/`. După aceea, deschideți Actions → Build DJ88 BID Android APK → Run workflow. APK-ul apare la **Artifacts** după o compilare reușită.
+Pentru următorul APK, fișierul trebuie înlocuit cu imaginea finală, apoi valoarea verificării SHA-256 trebuie actualizată exclusiv după compararea vizuală și confirmarea fișierului real. Ulterior se poate valida un nou build și extrage imaginea din APK pentru comparație.
 
-### Ce este implementat în sursele actuale
+## Actualizări Android
 
-Interfața Luxury cu zone tactile, mod Driving demonstrativ, aplicații Android (Maps, Waze, YouTube), telefon, Bluetooth, setări, lista aplicațiilor, comanda de revenire la selectorul de launcher și un diagnostic de bază.
+Flavorul `labSafe` folosește ID `ro.dj88bid.car.labtest`, iar `themesCandidate` folosește `ro.dj88bid.car.qf001theme`. Aceste variante nu sunt actualizări peste orice APK BID vechi. Android cere același applicationId, semnătură și un versionCode crescător pentru un update în loc. GitHub Actions generează APK-uri **debug**, iar semnătura lor nu este garantat persistentă între rulări. Semnarea release stabilă există ca posibilitate Gradle, dar trebuie configurată în CI prin secrete, fără a publica cheia privată.
 
-**Nu sunt încă implementate sau testate complet:** harta live în panoul ilustrativ, zoom/centrare în panoul desenat, vremea reală, tensiunea auto, radio/DSP și integrarea directă în aplicația Themes. Nici compilarea finală, nici testele pe K706 nu sunt confirmate.
+## Lucruri rămase netestate
 
-## Siguranță
+- sursa CANBUS / temperatura Climatronic / tensiune baterie;
+- starea de redare și titlul real al piesei în widget (lipsă integrare MediaSession verificată);
+- seek și mod shuffle/repeat în playerul OEM;
+- conectivitatea reală CarPlay/Android Auto prin aplicațiile QF001;
+- integrarea directă în Themes original;
+- instalarea și comportamentul pe dispozitivul ROCO K706.
 
-Themes original, celelalte launchere și firmware-ul QF001 **rămân nemodificate**. Proiectul nu este un firmware. Nu se înlocuiește un APK de sistem semnat de producător cu această versiune independentă.
+Nicio valoare demonstrativă nu trebuie prezentată ca citire reală a mașinii. Păstrați launcherul și Themes originale accesibile.
