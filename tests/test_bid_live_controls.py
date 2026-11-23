@@ -25,7 +25,7 @@ class TestBidLiveControls(unittest.TestCase):
 
     def test_top_status_controls_have_nonoverlapping_hit_zones(self):
         import re
-        hits = re.findall(r'<button class="hit topHit" style="left:(\\d+)px;top:13px;width:(\\d+)px;height:62px"', HTML)
+        hits = re.findall(r'<button class="hit topHit" style="left:(\d+)px;top:13px;width:(\d+)px;height:62px"', HTML)
         # Weather, Bluetooth, Wi-Fi, connectivity, battery: no horizontal overlaps
         self.assertEqual(len(hits), 5)
         pairs = [(int(x), int(w)) for x, w in hits]
