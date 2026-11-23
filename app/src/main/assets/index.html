@@ -39,11 +39,18 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 #climateClean:after{content:"";position:absolute;left:910px;top:0;width:50px;height:92px;
  background:linear-gradient(145deg,#110e13,#25171d,#0b090d);border-radius:12px}
  #musicClean:after{content:"";position:absolute;left:3%;right:3%;top:50%;height:1px;background:linear-gradient(90deg,transparent,#a78159,transparent);opacity:.4}
+/* Battery readings are live only if Android reports a real battery.
+   Vehicle voltage is NOT inferred from Android battery data. */
+#batteryAndroidLive{position:absolute;right:92px;top:22px;min-width:76px;height:34px;
+ z-index:4;background:#110b10;color:#ffe7bf;font:19px Arial;text-align:center;
+ border-radius:7px;padding:6px 2px;pointer-events:none}
+#voltageLive{display:block!important;right:12px;top:19px;width:76px;height:38px;
+ z-index:4;background:#110b10;color:#e7d8c5;font:18px Arial;padding-top:7px;border-radius:7px}
 </style></head><body><main id="stage" aria-label="DJ 88 BID Luxury">
 <div id="clock">--:--</div>
 <div id="dateLive" aria-label="Data actuală"></div>
 <button id="weatherLive" onclick="configureWeather()" aria-label="Vreme și oraș">Vreme: indisponibilă</button>
-<div id="voltageLive" aria-label="Tensiune auto neconfirmată">--.- V</div>
+<div id="batteryAndroidLive" aria-label="Baterie Android, nu bateria mașinii">🔋 —</div><div id="voltageLive" aria-label="Voltaj auto indisponibil fără CANBUS">— V</div>
 <div id="mediaLive" aria-label="Informații media"></div>
 <div id="climateWarning" aria-label="Date climatizare neconectate">CANBUS: neconectat</div>
 <div id="climateLeftLive">-- °C</div><div id="climateRightLive">-- °C</div><div id="mediaTimeLive">--:-- / --:--</div>
