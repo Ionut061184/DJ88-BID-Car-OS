@@ -15,6 +15,7 @@
         <package android:name="com.qf.bluetooth" />
         <package android:name="com.qf.soundeffect" />
         <package android:name="com.qf.carsettings" />
+        <package android:name="com.qf.vehicle" />
         <package android:name="com.qf.carsetting" />
     </queries>
     <application android:label="${bidAppLabel}" android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="false" android:allowBackup="false">
