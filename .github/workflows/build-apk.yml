@@ -16,6 +16,17 @@ jobs:
           java-version: '17'
       - name: Test read-only QF001 APK analyzer
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Install Android SDK components
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)"
+          if [ -z "$SDKMANAGER" ]; then echo "::error::Android sdkmanager not installed on runner"; exit 1; fi
+          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build debug APK
+        run: gradle --no-daemon --stacktrace assembleLabSafeDebug assembleThemesCandidateDebug
       - name: Verify final approved BID artwork by SHA256
         run: |
           if [ ! -s app/src/main/assets/bid_approved.png ]; then
@@ -28,17 +39,6 @@ jobs:
             echo "::error::Wrong BID image. Expected final approved quilted design SHA256 $APPROVED_SHA, found $ACTUAL_SHA"
             exit 1
           fi
-      - name: Install Android SDK components
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)"
-          if [ -z "$SDKMANAGER" ]; then echo "::error::Android sdkmanager not installed on runner"; exit 1; fi
-          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0" "platform-tools"
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10.2'
-      - name: Build debug APK
-        run: gradle --no-daemon --stacktrace assembleLabSafeDebug assembleThemesCandidateDebug
       - name: Verify both APKs and record checksums
         env:
           APPROVED_SHA: 853fdab81ac2676caaaaa5dad119455a609fc4f881efcd673ee7f66a0430ea32
