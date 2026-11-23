@@ -35,6 +35,15 @@ class TestBidLiveControls(unittest.TestCase):
         for action in ('"car"', '"carplay"', '"androidauto"', '"wifi"'):
             self.assertIn(action, KOTLIN)
 
+    def test_bid_crest_opens_original_luxury_menu(self):
+        self.assertIn('aria-label="BID Bespoke Design – deschide meniul Luxury"', HTML)
+        self.assertIn('onclick="luxury(true)"', HTML)
+        for command in ("luxuryLaunch('maps')", "luxuryLaunch('phone')",
+                        "luxuryAuto('radio')", "luxuryAuto('music')",
+                        "luxuryAuto('btcar')", "luxuryAuto('dsp')",
+                        "theme(true)", "driving()"):
+            self.assertIn(command, HTML)
+
     def test_safe_original_launcher_access(self):
         self.assertIn('applicationIdSuffix = ".labtest"', (ROOT / "app/build.gradle.kts").read_text())
         self.assertIn('bidHomeEnabled', MANIFEST)
