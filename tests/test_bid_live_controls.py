@@ -37,6 +37,10 @@ class TestBidLiveControls(unittest.TestCase):
 
     def test_bottom_music_menu_has_discovered_qf001_categories(self):
         self.assertIn('onclick="openMusicMenu()"', HTML)
+        self.assertIn('id="functionsDock"', HTML)
+        self.assertIn('<span>Funcții</span>', HTML)
+        self.assertIn('class="dockIcon"', HTML)
+        self.assertNotIn('onclick="openMusicMenu()">Muzică</button>', HTML)
         self.assertIn("id=\"musicChoices\"", HTML)
         for category in ("Multimedia", "Mașină", "Navigație și utilitare"):
             self.assertIn("<h3>" + category + "</h3>", HTML)
