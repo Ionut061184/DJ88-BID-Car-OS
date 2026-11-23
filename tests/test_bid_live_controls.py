@@ -23,14 +23,18 @@ class TestBidLiveControls(unittest.TestCase):
         self.assertIn("Vreme indisponibilă", RUNTIME)
 
     def test_no_fake_canbus_data(self):
-        self.assertIn("CANBUS: neconectat", HTML)
-        self.assertIn("Climatizare", HTML)
-        self.assertIn("--.- V", HTML)
+        self.assertIn("#voltageLive,#mediaLive,#climateWarning", HTML)
+        self.assertIn("#climateLeftLive,#climateRightLive,#mediaTimeLive{display:none!important}", HTML)
+        self.assertIn("id=\"musicClean\"", HTML)
+        self.assertIn("id=\"climateClean\"", HTML)
+        self.assertNotIn('aria-label="Climatizare stânga"', HTML)
         self.assertIn("date CANBUS încă neverificate", RUNTIME)
 
     def test_media_transport_and_companion_icons(self):
-        for action in ("previous", "playpause", "next"):
-            self.assertIn("mediaKey('"+action+"')", HTML)
+        self.assertNotIn("mediaKey('previous')", HTML)
+        self.assertNotIn("mediaKey('playpause')", HTML)
+        self.assertNotIn("mediaKey('next')", HTML)
+        self.assertNotIn('aria-label="Muzică"', HTML)
         self.assertIn("dispatchMediaKeyEvent", KOTLIN)
         for action in ('"car"', '"carplay"', '"androidauto"', '"wifi"'):
             self.assertIn(action, KOTLIN)
@@ -39,7 +43,7 @@ class TestBidLiveControls(unittest.TestCase):
         self.assertIn('aria-label="BID Bespoke Design – deschide meniul Luxury"', HTML)
         self.assertIn('onclick="luxury(true)"', HTML)
         for command in ("luxuryLaunch('maps')", "luxuryLaunch('phone')",
-                        "luxuryAuto('radio')", "luxuryAuto('music')",
+                        "luxuryAuto('radio')",
                         "luxuryAuto('btcar')", "luxuryAuto('dsp')",
                         "theme(true)", "driving()"):
             self.assertIn(command, HTML)
