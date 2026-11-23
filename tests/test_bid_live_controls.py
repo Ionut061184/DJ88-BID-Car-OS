@@ -30,7 +30,12 @@ class TestBidLiveControls(unittest.TestCase):
         # Android battery != vehicle CANBUS voltage.
         self.assertIn('id="batteryAndroidLive"', HTML)
         self.assertIn('id="voltageLive"', HTML)
-        self.assertIn("car.textContent='— V'", RUNTIME)
+        self.assertIn("realVolts===null?'— V':realVolts.toFixed(1)+' V'", RUNTIME)
+        self.assertIn("sys.qf.update_battery_power", KOTLIN)
+        self.assertIn("decivolts / 10.0", KOTLIN)
+        self.assertIn("decivolts !in 90..165", KOTLIN)
+        self.assertIn("fun vehicleVoltageSnapshot(): String", KOTLIN)
+        self.assertNotIn("Runtime.getRuntime().exec(\"su\"", KOTLIN)
         self.assertIn("vehicleVoltageAvailable", KOTLIN)
         self.assertNotIn('aria-label="Climatizare stânga"', HTML)
         self.assertIn("date CANBUS încă neverificate", RUNTIME)
