@@ -2,7 +2,14 @@
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050305;color:#f5dfaf;font-family:Arial,sans-serif}button{font:inherit;cursor:pointer}
 #stage{position:absolute;width:1280px;height:720px;transform-origin:0 0;background:#090609 url('bid_approved.png') center/100% 100% no-repeat;overflow:hidden}
 .hit{position:absolute;background:transparent;border:0;color:transparent;z-index:2}.hit:focus-visible{outline:3px solid #e5c080;background:#300e1680;color:white}
-#clock{position:absolute;left:199px;top:13px;width:110px;height:46px;text-align:center;padding:5px 2px;background:#080407;color:white;font:34px Arial;z-index:1}
+#clock{position:absolute;left:155px;top:12px;width:118px;height:49px;text-align:center;padding:5px 2px;background:#080407;color:white;font:34px Arial;z-index:3}
+#dateLive{position:absolute;left:294px;top:18px;width:204px;height:35px;background:#080407;color:#fff;font:23px Arial;z-index:3;white-space:nowrap}
+#weatherLive{position:absolute;left:720px;top:15px;width:194px;height:55px;background:#080407;color:#fff;z-index:3;font:20px Arial;text-align:center;line-height:23px;border:0;cursor:pointer}
+#voltageLive{position:absolute;right:42px;top:14px;width:83px;height:41px;background:#080407;color:#f6e4c9;font:20px Arial;z-index:3;text-align:center;padding-top:8px}
+#mediaLive{position:absolute;left:295px;top:554px;width:185px;max-height:34px;background:#090607;color:#fff;font:17px Arial;z-index:3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#climateWarning{position:absolute;left:1055px;top:632px;max-width:155px;background:#090607;color:#f7e6cf;font:13px Arial;z-index:4;text-align:center}
+#nightTint{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:8}
+#statusNotice{position:absolute;left:380px;top:490px;width:500px;background:#190d12;color:#fff;border:1px solid #b78c5c;border-radius:14px;padding:12px;font:18px Arial;text-align:center;display:none;z-index:9}
 #overlay{position:absolute;inset:0;z-index:10;background:#070407e8;display:none;align-items:center;justify-content:center}#overlay.on{display:flex}
 #panel{width:950px;max-height:630px;overflow-y:auto;border:3px solid #b79561;border-radius:24px;padding:22px;background:linear-gradient(135deg,#210c17,#53152b,#190c12);text-align:center}
 h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-content:center;flex-wrap:wrap}.row button,.close,.driveButton{border:2px solid #c5a06a;background:#211015;color:#ffe3af;border-radius:13px;padding:12px 16px;font-size:21px}.close{float:right}
@@ -15,6 +22,12 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 #diagnosticBox h2{font:36px Georgia,serif;margin:8px 0 18px}#diagnosticText{white-space:pre-wrap;font:24px/1.5 Arial,sans-serif;overflow-wrap:anywhere;text-align:left;clear:both}
 </style></head><body><main id="stage" aria-label="DJ 88 BID Luxury">
 <div id="clock">--:--</div>
+<div id="dateLive" aria-label="Data actuală"></div>
+<button id="weatherLive" onclick="configureWeather()" aria-label="Vreme și oraș">Vreme: indisponibilă</button>
+<div id="voltageLive" aria-label="Tensiune auto neconfirmată">--.- V</div>
+<div id="mediaLive" aria-label="Informații media"></div>
+<div id="climateWarning" aria-label="Date climatizare neconectate">Climă: neconectată</div>
+<div id="nightTint"></div><div id="statusNotice"></div>
 <button class="hit" style="left:88px;top:7px;width:75px;height:70px" aria-label="Acasă" onclick="closeAll()">Acasă</button>
 <button class="hit" style="left:20px;top:84px;width:158px;height:105px" aria-label="Radio" onclick="autoLaunch('radio')">Radio</button>
 <button class="hit" style="left:20px;top:191px;width:158px;height:92px" aria-label="Media YouTube" onclick="launch('youtube')">Media YouTube</button>
@@ -27,9 +40,16 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 <button class="hit" style="left:1108px;top:383px;width:154px;height:95px" aria-label="CarPlay" onclick="launch('carplay')">CarPlay</button>
 <button class="hit" style="left:1108px;top:481px;width:154px;height:124px" aria-label="Android Auto" onclick="launch('androidauto')">Android Auto</button>
 <button class="hit" style="left:200px;top:527px;width:298px;height:70px" aria-label="Muzică" onclick="autoLaunch('music')">Muzică</button>
-<button class="hit" style="left:519px;top:526px;width:58px;height:65px" aria-label="Anterior" onclick="autoLaunch('music')">Anterior</button>
-<button class="hit" style="left:594px;top:526px;width:77px;height:65px" aria-label="Pauză muzică" onclick="autoLaunch('music')">Pauză muzică</button>
-<button class="hit" style="left:712px;top:526px;width:58px;height:65px" aria-label="Următor" onclick="autoLaunch('music')">Următor</button>
+<button class="hit" style="left:519px;top:526px;width:58px;height:65px" aria-label="Anterior" onclick="mediaKey('previous')">Anterior</button>
+<button class="hit" style="left:594px;top:526px;width:77px;height:65px" aria-label="Pauză muzică" onclick="mediaKey('playpause')">Pauză muzică</button>
+<button class="hit" style="left:712px;top:526px;width:58px;height:65px" aria-label="Următor" onclick="mediaKey('next')">Următor</button>
+<button class="hit" style="left:940px;top:540px;width:194px;height:50px" aria-label="Progres muzică" onclick="mediaKey('open')">Progres muzică</button>
+<button class="hit" style="left:104px;top:630px;width:155px;height:55px" aria-label="Climatizare stânga" onclick="canUnsupported('Climatizare')">Climatizare stânga</button>
+<button class="hit" style="left:310px;top:630px;width:260px;height:55px" aria-label="Ventilator" onclick="canUnsupported('Ventilator')">Ventilator</button>
+<button class="hit" style="left:580px;top:630px;width:160px;height:55px" aria-label="Aer condiționat" onclick="canUnsupported('A/C')">A/C</button>
+<button class="hit" style="left:750px;top:630px;width:100px;height:55px" aria-label="Dezaburire față" onclick="canUnsupported('Dezaburire față')">Dezaburire</button>
+<button class="hit" style="left:860px;top:630px;width:100px;height:55px" aria-label="Dezaburire spate" onclick="canUnsupported('Dezaburire spate')">Dezaburire</button>
+<button class="hit" style="left:1010px;top:630px;width:140px;height:55px" aria-label="Climatizare dreapta" onclick="canUnsupported('Climatizare')">Climatizare dreapta</button>
 <div id="drive"><button class="close" onclick="closeAll()">↩ Luxury</button><h1>DJ 88 BID · Driving</h1><p>Navigația reală se deschide în aplicația aleasă. Harta din Luxury este ilustrativă.</p><button class="driveButton" onclick="launch('maps')">Google Maps</button><button class="driveButton" onclick="launch('waze')">Waze</button><button class="driveButton" onclick="launch('phone')">Telefon</button></div>
 <div id="overlay"><section id="panel"><button class="close" onclick="theme(false)">✕</button><h1>BID Themes</h1><p>Designul Luxury rămâne cel aprobat.</p><div class="row"><button onclick="closeAll()">👑 Luxury</button><button onclick="driving()">➤ Driving</button><button onclick="alert('Analog este în dezvoltare')">Analog</button><button onclick="alert('Veneer este în dezvoltare')">Veneer</button><button onclick="diagnostic()">Diagnostic</button><button onclick="autoApps()">Aplicații auto</button><button onclick="autoConfig('radio')">Asociază Radio</button><button onclick="autoConfig('music')">Asociază Muzică</button><button onclick="autoConfig('btcar')">Asociază BT auto</button><button onclick="autoConfig('dsp')">Asociază DSP</button><button onclick="autoLaunch('radio')">▶ Radio</button><button onclick="autoLaunch('music')">▶ Muzică</button><button onclick="autoLaunch('btcar')">▶ BT auto</button><button onclick="autoLaunch('dsp')">▶ DSP</button><button onclick="qfThemes()">Themes originale QF001</button><button onclick="launch('original')">Launcher original</button></div></section></div>
 <div id="luxuryModal" role="dialog" aria-label="DJ 88 BID Luxury">
@@ -49,7 +69,20 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 <section id="diagnosticBox"><button class="close" onclick="document.getElementById('diagnosticModal').classList.remove('on')">Închide ✕</button><h2>DJ 88 BID · Diagnostic</h2><div id="diagnosticText"></div></section></div>
 </main><script>
 function fit(){const el=document.getElementById('stage');const s=Math.min(innerWidth/1280,innerHeight/720);el.style.transform='scale('+s+')';el.style.left=((innerWidth-1280*s)/2)+'px';el.style.top=((innerHeight-720*s)/2)+'px'}addEventListener('resize',fit);fit();
-function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'})}tick();setInterval(tick,10000);
+function tick(){
+ const d=new Date();
+ document.getElementById('clock').textContent=d.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'});
+ document.getElementById('dateLive').textContent=d.toLocaleDateString('ro-RO',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+ const hour=d.getHours(); const night=hour>=20||hour<7;
+ document.getElementById('nightTint').style.opacity=night?'0.18':'0';
+}
+tick();setInterval(tick,10000);
+function statusNotice(msg){const el=document.getElementById('statusNotice');el.textContent=msg;el.style.display='block';clearTimeout(window.bidNoticeTimer);window.bidNoticeTimer=setTimeout(()=>el.style.display='none',3800)}
+function canUnsupported(name){statusNotice(name+': date CANBUS încă neverificate; comanda OEM nu este simulată.')}
+function mediaKey(action){if(window.BID && typeof BID.mediaKey==='function'){BID.mediaKey(action)}else statusNotice('Comanda media nu este disponibilă în browser.')}
+function configureWeather(){if(window.BID && typeof BID.chooseWeatherCity==='function'){BID.chooseWeatherCity()}else statusNotice('Vremea live necesită conexiune și aplicația Android.')}
+function updateWeather(city,temperature,description){let el=document.getElementById('weatherLive');el.textContent=temperature===null?'Vreme indisponibilă · '+city:description+' '+temperature+'°C · '+city;}
+function updateMedia(title,playing){const el=document.getElementById('mediaLive');el.textContent=title||'Media: fără date';}
 function luxury(on=true){
  document.getElementById('luxuryModal').classList.toggle('on',on);
  if(on){theme(false);document.getElementById('drive').classList.remove('on');document.getElementById('diagnosticModal').classList.remove('on');localStorage.setItem('bid_mode','luxury')}
