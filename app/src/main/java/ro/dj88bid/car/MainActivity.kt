@@ -213,6 +213,58 @@ class MainActivity : Activity() {
      * Android battery indicator, not vehicle 12 V CANBUS voltage.
      * Car head units can have no Android battery sensor: unknown stays unknown.
      */
+    /**
+     * Firmware QF001 verified from original SystemUI DEX:
+     * StatusBar.setBatteryPowerStatus reads sys.qf.update_battery_power (int),
+     * BatteryPowerView.updateBatteryPower converts decivolts to volts (value * 0.1).
+     *
+     * We invoke /system/bin/getprop READ-ONLY, without root or hidden API access.
+     * Android/SELinux may deny access to this system property for a normal app.
+     * Absence/denial/invalid values are not replaced with guessed voltage.
+     */
+    private fun readQf001VehicleVoltage(): JSONObject {
+        val result = JSONObject().apply {
+            put("available", false)
+            put("volts", JSONObject.NULL)
+            put("source", "QF001_SYSTEM_PROPERTY")
+            put("property", "sys.qf.update_battery_power")
+            put("reason", "unavailable")
+        }
+        var process: Process? = null
+        try {
+            process = ProcessBuilder(
+                "/system/bin/getprop", "sys.qf.update_battery_power"
+            ).redirectErrorStream(true).start()
+            val finished = process.waitFor(800, java.util.concurrent.TimeUnit.MILLISECONDS)
+            if (!finished) {
+                result.put("reason", "timeout")
+                return result
+            }
+            if (process.exitValue() != 0) {
+                result.put("reason", "getprop_denied")
+                return result
+            }
+            val raw = process.inputStream.bufferedReader().use { it.readText() }.trim()
+            val decivolts = raw.toIntOrNull()
+            // Sanity bounds for conventional 12 V car battery / charging system.
+            // 0, negative, non-numeric or unexpected values mean unverified.
+            if (decivolts == null || decivolts !in 90..165) {
+                result.put("reason", "missing_or_invalid_value")
+                return result
+            }
+            result.put("volts", decivolts / 10.0)
+            result.put("available", true)
+            result.put("reason", "ok")
+        } catch (_: SecurityException) {
+            result.put("reason", "permission_denied")
+        } catch (_: Exception) {
+            result.put("reason", "getprop_not_accessible")
+        } finally {
+            process?.destroy()
+        }
+        return result
+    }
+
     private fun androidBatterySnapshot(): JSONObject {
         val info = JSONObject().apply {
             put("source", "ANDROID")
@@ -247,6 +299,9 @@ class MainActivity : Activity() {
     inner class Bridge {
         @JavascriptInterface
         fun batterySnapshot(): String = androidBatterySnapshot().toString()
+
+        @JavascriptInterface
+        fun vehicleVoltageSnapshot(): String = readQf001VehicleVoltage().toString()
 
         @JavascriptInterface
         fun chooseWeatherCity() = runOnUiThread {
@@ -397,7 +452,9 @@ class MainActivity : Activity() {
 
                 put("canbusDataBridgeVerified", false)
                 put("climatronicLiveAvailable", false)
-                put("carBatteryVoltageAvailable", false)
+                val qfVoltage = readQf001VehicleVoltage()
+                put("carBatteryVoltageAvailable", qfVoltage.optBoolean("available", false))
+                put("qf001VehicleVoltage", qfVoltage)
                 put("androidBattery", androidBatterySnapshot())
             }.toString()
         }
