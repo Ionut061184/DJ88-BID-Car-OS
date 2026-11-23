@@ -458,6 +458,63 @@ class MainActivity : Activity() {
                 .setNegativeButton("Renunță", null).show()
         }
 
+        /**
+         * Discover original QF001 apps through the Android launcher registry.
+         * Never invoke non-exported/system-only components or hidden MCU APIs.
+         * Safety-critical OEM functions (reverse camera etc.) remain OEM controlled.
+         */
+        @JavascriptInterface
+        fun showOemFunctions() = runOnUiThread {
+            val categories = linkedMapOf(
+                "Radio FM" to listOf("radio", "fmradio", "tuner"),
+                "Muzică / Player audio" to listOf("music", "muzic", "audio player"),
+                "Bluetooth / Telefon" to listOf("bluetooth", "handsfree", "bt phone", "bt music"),
+                "DSP / Egalizator" to listOf("soundeffect", "dsp", "equalizer", "sound effect"),
+                "Setări auto / CANBUS" to listOf("carsettings", "carsetting", "canbus", "car settings"),
+                "Player video" to listOf("video player", "videoplayer"),
+                "Fișiere / USB" to listOf("fileexplorer", "file explorer", "files", "file manager"),
+                "Galerie imagini" to listOf("imagebrowser", "gallery", "image browser"),
+                "GPS / Sateliți" to listOf("beidougps", "gps info", "gpsinfo"),
+                "TPMS / Presiune pneuri" to listOf("tpms", "tire pressure", "tyre pressure"),
+                "Comenzi volan" to listOf("keystudy", "key study", "steering wheel"),
+                "Manual navigație" to listOf("qf.manual", "manual"),
+                "Vreme OEM" to listOf("weather", "vreme"),
+                "Cameră marșarier (OEM)" to listOf("backcar", "rear camera", "rearview")
+            )
+            val exported = packageManager.queryIntentActivities(
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0
+            ).filter { it.activityInfo.exported && it.activityInfo.packageName != packageName }
+            val rows = mutableListOf<Pair<String, Intent?>>()
+            categories.forEach { (name, keys) ->
+                val app = exported.firstOrNull { candidate ->
+                    val haystack = (candidate.loadLabel(packageManager).toString() +
+                        " " + candidate.activityInfo.packageName).lowercase(java.util.Locale.ROOT)
+                    keys.any { haystack.contains(it) }
+                }
+                if (app != null) {
+                    val activity = app.activityInfo
+                    val intent = Intent(Intent.ACTION_MAIN)
+                        .addCategory(Intent.CATEGORY_LAUNCHER)
+                        .setClassName(activity.packageName, activity.name)
+                    rows.add(name + " · disponibil" to intent)
+                } else rows.add(name + " · indisponibil pentru lansare" to null)
+            }
+            rows.add("Toate aplicațiile instalate" to null)
+            android.app.AlertDialog.Builder(this@MainActivity)
+                .setTitle("BID · Funcții originale QF001")
+                .setMessage("Sunt afișate numai aplicațiile lansabile. Camera de marșarier și funcțiile MCU/CANBUS rămân gestionate de sistemul original; absența unui buton lansabil nu înseamnă că funcția OEM lipsește.")
+                .setItems(rows.map { it.first }.toTypedArray()) { _, index ->
+                    if (index == rows.lastIndex) showApps()
+                    else {
+                        val selected = rows[index].second
+                        if (selected != null) startSafely(selected)
+                        else Toast.makeText(this@MainActivity,
+                            "Această funcție nu oferă o interfață publică de lansare.",
+                            Toast.LENGTH_LONG).show()
+                    }
+                }.setNegativeButton("Închide", null).show()
+        }
+
         @JavascriptInterface
         fun openQfThemes() = runOnUiThread {
             // OEM implementation identified in QF_CarSettings.apk from K706 firmware.
