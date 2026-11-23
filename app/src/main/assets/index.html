@@ -40,9 +40,10 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
  box-shadow:0 10px 44px rgba(0,0,0,.75);color:#ffe5be;text-align:center}
 #musicMenuBox h2{font:42px Georgia,serif;margin:6px 0 13px}
 #musicMenuBox p{font:19px Arial;line-height:1.3}
-#musicChoices{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin:22px auto}
+#musicChoices{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px auto} 
+#musicChoices h3{grid-column:1/-1;margin:8px 0 1px;text-align:left;font:23px Georgia,serif;color:#eac189;border-bottom:1px solid #8f6846;padding:5px 8px}
 #musicChoices button{border:2px solid #ad8756;border-radius:13px;color:#ffe9c2;
- background:linear-gradient(150deg,#120b11,#401321);padding:17px 8px;font:22px Arial;min-height:78px}
+ background:linear-gradient(150deg,#120b11,#401321);padding:11px 6px;font:19px Arial;min-height:62px}
 #musicChoices button:active{background:#754025}
 #musicMenuBox .musicClose{float:right;background:#170c13;color:#ffe6ba;
  border:1px solid #bc925f;border-radius:10px;padding:8px 18px;font-size:22px}
@@ -86,17 +87,29 @@ h1{font:42px Georgia,serif;margin:0 0 20px}.row{display:flex;gap:15px;justify-co
 <button class="hit" style="left:861px;top:622px;width:244px;height:72px;z-index:5" aria-label="Google Chrome" onclick="launch('chrome')">Google Chrome</button>
 <div id="musicMenu" role="dialog" aria-label="Muzică și multimedia BID">
 <section id="musicMenuBox"><button class="musicClose" onclick="closeMusicMenu()">Închide ✕</button>
-<h2>♫ Muzică & Multimedia</h2><p>Funcțiile originale QF001 se deschid doar dacă sunt disponibile pe navigație.</p>
+<h2>♫ Funcțiile originale QF001</h2><p>Din butonul Muzică: multimedia, mașină, navigație și utilitare. Disponibilitatea este verificată pe dispozitiv.</p>
 <div id="musicChoices">
-<button onclick="musicChoose('music')">♫ Muzică originală</button>
+<h3>Multimedia</h3>
+<button onclick="musicChoose('music')">♫ Muzică</button>
 <button onclick="musicChoose('radio')">📻 Radio FM</button>
-<button onclick="musicChoose('btaudio')">Bluetooth audio</button>
+<button onclick="musicChoose('btaudio')">☎ Bluetooth / Telefon</button>
 <button onclick="musicChoose('video')">▶ Player video</button>
-<button onclick="musicChoose('files')">📁 Fișiere / USB</button>
 <button onclick="musicChoose('dsp')">🎚 DSP / Egalizator</button>
-<button onclick="musicChoose('gallery')">▣ Galerie</button>
 <button onclick="musicChoose('youtube')">▶ YouTube</button>
-<button onclick="musicChoose('oem')">⚙ Toate funcțiile QF001</button>
+<h3>Mașină</h3>
+<button onclick="musicChoose('car')">🚘 Setări auto</button>
+<button onclick="musicChoose('canbus')">⚙ Informații CANBUS</button>
+<button onclick="musicChoose('reverse')">📷 Cameră marșarier (OEM)</button>
+<button onclick="musicChoose('tpms')">◉ TPMS</button>
+<button onclick="musicChoose('steering')">↪ Comenzi volan</button>
+<button onclick="musicChoose('oem')">☷ Funcții originale</button>
+<h3>Navigație și utilitare</h3>
+<button onclick="musicChoose('gps')">➤ GPS / Sateliți</button>
+<button onclick="musicChoose('files')">📁 Fișiere / USB</button>
+<button onclick="musicChoose('gallery')">▣ Galerie</button>
+<button onclick="musicChoose('weather')">☁ Vreme</button>
+<button onclick="musicChoose('manual')">▤ Manual aparat</button>
+<button onclick="musicChoose('maps')">⌖ Navigație</button>
 </div><p>▶ / ⏸ / ⏭ comenzile de redare rămân disponibile în aplicațiile media care le acceptă.</p>
 </section></div>
 <div id="drive"><button class="close" onclick="closeAll()">↩ Luxury</button><h1>DJ 88 BID · Driving</h1><p>Navigația reală se deschide în aplicația aleasă. Harta din Luxury este ilustrativă.</p><button class="driveButton" onclick="launch('maps')">Google Maps</button><button class="driveButton" onclick="launch('waze')">Waze</button><button class="driveButton" onclick="launch('phone')">Telefon</button></div>
