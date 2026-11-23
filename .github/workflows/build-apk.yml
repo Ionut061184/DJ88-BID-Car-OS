@@ -16,14 +16,14 @@ jobs:
           java-version: '17'
       - name: Test read-only QF001 APK analyzer
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
-      - name: Check approved BID image
+      - name: Verify final approved BID artwork by SHA256
         run: |
           if [ ! -s app/src/main/assets/bid_approved.png ]; then
             echo "::error::Image missing: upload bid_approved.png into app/src/main/assets/"
             exit 1
           fi
           ACTUAL_SHA="$(sha256sum app/src/main/assets/bid_approved.png | cut -d' ' -f1)"
-          APPROVED_SHA="fed5ed0c5f8dc62feacd8f117b657345f39e0c2bd7d7d560f1c00f23d026f348"
+          APPROVED_SHA="853fdab81ac2676caaaaa5dad119455a609fc4f881efcd673ee7f66a0430ea32"
           if [ "$ACTUAL_SHA" != "$APPROVED_SHA" ]; then
             echo "::error::Wrong BID image. Expected final approved quilted design SHA256 $APPROVED_SHA, found $ACTUAL_SHA"
             exit 1
