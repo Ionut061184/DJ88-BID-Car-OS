@@ -319,6 +319,39 @@ class MainActivity : Activity() {
                 put("canbusPackageVisible", available(vehiclePackage))
                 val vehicleLaunch = packageManager.getLaunchIntentForPackage(vehiclePackage)
                 put("canbusHasPublicLauncher", vehicleLaunch != null)
+                // Inventory only: inspect Android-declared components without sending
+                // broadcasts, binding to OEM services, or accessing MCU interfaces.
+                val qfComponents = org.json.JSONArray()
+                try {
+                    @Suppress("DEPRECATION")
+                    val pkg = packageManager.getPackageInfo(
+                        vehiclePackage,
+                        android.content.pm.PackageManager.GET_ACTIVITIES or
+                            android.content.pm.PackageManager.GET_SERVICES or
+                            android.content.pm.PackageManager.GET_RECEIVERS or
+                            android.content.pm.PackageManager.GET_PROVIDERS
+                    )
+                    fun addComponents(kind: String, entries: Array<out android.content.pm.ComponentInfo>?) {
+                        for (entry in entries ?: emptyArray()) {
+                            if (!entry.exported) continue
+                            qfComponents.put(JSONObject().apply {
+                                put("type", kind)
+                                put("name", entry.name)
+                                put("exported", entry.exported)
+                                put("permission", entry.permission ?: "")
+                            })
+                        }
+                    }
+                    addComponents("activity", pkg.activities)
+                    addComponents("service", pkg.services)
+                    addComponents("receiver", pkg.receivers)
+                    addComponents("provider", pkg.providers)
+                } catch (_: Exception) {
+                    // Package visibility and OEM restrictions can deny this inspection.
+                }
+                put("canbusExportedComponents", qfComponents)
+                put("canbusInventoryReadOnly", true)
+
                 put("canbusDataBridgeVerified", false)
                 put("climatronicLiveAvailable", false)
                 put("carBatteryVoltageAvailable", false)
