@@ -86,6 +86,17 @@ body:before{content:"";position:fixed;inset:-40px;pointer-events:none;
    Date/time and measured battery text MUST NOT intercept touches. */
 .topHit{z-index:6;touch-action:manipulation}
 #clock,#dateLive,#batteryAndroidLive,#voltageLive{pointer-events:none}
+/* QF001: mask the baked clock/date as a single strip before rendering live values.
+   Prevent text overflow, including longer Romanian weekday/month strings. */
+#stage:after{content:"";position:absolute;left:127px;top:12px;width:422px;height:55px;
+  background:linear-gradient(90deg,#1b0810 0%,#16080d 58%,#1b0810 100%);
+  border-radius:5px;pointer-events:none;z-index:2}
+#clock{left:143px;top:17px;width:127px;height:40px;padding:0;
+  font:30px/40px Arial,sans-serif;text-align:center;white-space:nowrap;
+  overflow:hidden;text-overflow:clip;background:transparent;z-index:3}
+#dateLive{left:289px;top:19px;width:244px;height:38px;padding:0;
+  font:19px/38px Arial,sans-serif;text-align:left;white-space:nowrap;
+  overflow:hidden;text-overflow:clip;background:transparent;z-index:3}
 </style></head><body><main id="stage" aria-label="DJ 88 BID Luxury">
 <div id="clock">--:--</div>
 <div id="dateLive" aria-label="Data actuală"></div>
