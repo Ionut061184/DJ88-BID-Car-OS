@@ -23,6 +23,14 @@ class TestBidLiveControls(unittest.TestCase):
         self.assertIn("#dateLive{left:278px", HTML)
         self.assertIn("Math.min(innerWidth/1280,innerHeight/720)", RUNTIME)
 
+    def test_clock_date_fit_without_image_double_print(self):
+        self.assertIn('#stage:after{content:""', HTML)
+        self.assertIn("left:127px;top:12px;width:422px;height:55px", HTML)
+        self.assertIn("#clock{left:143px;top:17px;width:127px", HTML)
+        self.assertIn("#dateLive{left:289px;top:19px;width:244px", HTML)
+        self.assertIn("overflow:hidden;text-overflow:clip", HTML)
+        self.assertIn("day:'2-digit',month:'2-digit',year:'numeric'", RUNTIME)
+
     def test_top_status_controls_have_nonoverlapping_hit_zones(self):
         import re
         hits = re.findall(r'<button class="hit topHit" style="left:(\d+)px;top:13px;width:(\d+)px;height:62px"', HTML)
