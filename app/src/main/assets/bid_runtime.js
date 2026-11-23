@@ -32,6 +32,18 @@ function mediaKey(action){if(window.BID && typeof BID.mediaKey==='function'){BID
 function configureWeather(){if(window.BID && typeof BID.chooseWeatherCity==='function'){BID.chooseWeatherCity()}else statusNotice('Vremea live necesită conexiune și aplicația Android.')}
 function updateWeather(city,temperature,description){let el=document.getElementById('weatherLive');el.textContent=temperature===null?'Vreme indisponibilă · '+city:description+' '+temperature+'°C · '+city;}
 function updateMedia(title,playing){const el=document.getElementById('mediaLive');el.textContent=title||'Media: fără date';}
+function openMusicMenu(){
+ closeAll();
+ document.getElementById('musicMenu').classList.add('on');
+}
+function closeMusicMenu(){document.getElementById('musicMenu').classList.remove('on')}
+function musicChoose(kind){
+ closeMusicMenu();
+ if(kind==='youtube'){launch('youtube');return}
+ if(kind==='oem'){oemFunctions();return}
+ if(window.BID && typeof BID.openMediaOem==='function'){BID.openMediaOem(kind)}
+ else statusNotice('Funcția multimedia necesită aplicația pe navigație.');
+}
 function luxury(on=true){
  document.getElementById('luxuryModal').classList.toggle('on',on);
  if(on){theme(false);document.getElementById('drive').classList.remove('on');document.getElementById('diagnosticModal').classList.remove('on');localStorage.setItem('bid_mode','luxury')}
@@ -39,7 +51,7 @@ function luxury(on=true){
 function luxuryLaunch(cmd){luxury(false);launch(cmd)}
 function luxuryAuto(action){luxury(false);autoLaunch(action)}
 function theme(on){document.getElementById('overlay').classList.toggle('on',on)}
-function closeAll(){luxury(false);document.getElementById('diagnosticModal').classList.remove('on');theme(false);document.getElementById('drive').classList.remove('on');localStorage.setItem('bid_mode','luxury')}
+function closeAll(){closeMusicMenu();luxury(false);document.getElementById('diagnosticModal').classList.remove('on');theme(false);document.getElementById('drive').classList.remove('on');localStorage.setItem('bid_mode','luxury')}
 function driving(){luxury(false);theme(false);document.getElementById('drive').classList.add('on');localStorage.setItem('bid_mode','driving')}
 function launch(cmd){if(window.BID&&typeof BID.open==='function'){BID.open(cmd);return}alert('Comanda '+cmd+' necesită aplicația Android.')}
 function autoConfig(action){if(window.BID&&typeof BID.configureAuto==='function')BID.configureAuto(action);else alert('Disponibil doar în aplicația Android.')}
