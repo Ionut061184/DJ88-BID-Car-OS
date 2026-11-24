@@ -113,3 +113,12 @@
 #clock{left:130px;top:17px;width:125px;height:34px;font:27px/34px Arial,sans-serif}
 #dateLive{left:321px;top:18px;width:179px;height:32px;font:18px/32px Arial,sans-serif}
 #bidStatusLive{left:808px;top:17px;width:445px;height:34px;background:#090609;overflow:hidden;white-space:nowrap}
+
+
+/* BID 2026-11-24 FINAL PHONE HEADER (matches last approved labSafe APK) */
+/* Exact effective coordinates from DJ88-BID-banda-dreapta-10px-stanga-labSafe.apk.
+   No changes to approved image, other buttons, touch mapping or OEM functions. */
+#stage:after{left:140px;top:16px;width:345px;height:36px;background:#10070b}
+#clock{left:160px;top:17px;width:125px;height:34px;font:27px/34px Arial,sans-serif}
+#dateLive{left:345px;top:18px;width:132px;height:32px;font:18px/32px Arial,sans-serif}
+#bidStatusLive{left:837px;top:17px;width:414px;height:34px;background:#090609;overflow:hidden;white-space:nowrap}
