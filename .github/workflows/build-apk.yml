@@ -30,11 +30,19 @@ jobs:
             echo "::error::Wrong BID image. Expected final approved 1280x720 BID image SHA256 $APPROVED_SHA, found $ACTUAL_SHA"
             exit 1
           fi
-      - name: Generate full-bleed BID from approved art (vehicle unchanged)
+      - name: Verify exact approved 1280x720 final BID image (no regeneration)
         run: |
-          python3 -m pip install --disable-pip-version-check Pillow==11.3.0
-          python3 scripts/build_bid_fullbleed.py
-          test -s app/src/main/assets/bid_fullbleed.png
+          set -euo pipefail
+          file="app/src/main/assets/bid_fullbleed.png"
+          test -s "$file"
+          expected="fbebff471162177ce8df8c7e7f157b29692e2750d3b3b3ba9f8a0eb3139bfc2b"
+          actual="$(sha256sum "$file" | cut -d' ' -f1)"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Incorrect BID final PNG: $actual (expected $expected)"
+            exit 1
+          fi
+          # PNG IHDR stores width/height as big-endian uint32. Verify with standard Python.
+          python3 -c 'import struct; from pathlib import Path; p=Path("app/src/main/assets/bid_fullbleed.png").read_bytes(); assert p[:8]==b"\\x89PNG\\r\\n\\x1a\\n" and struct.unpack(">II",p[16:24])==(1280,720)'
       - name: Install Android SDK components
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
@@ -49,6 +57,7 @@ jobs:
       - name: Verify both APKs and record checksums
         env:
           APPROVED_SHA: 746b42fecf45cdb9216b06ee996f3520a33f9a9cefe9d816927db349f4800202
+          FINAL_SHA: fbebff471162177ce8df8c7e7f157b29692e2750d3b3b3ba9f8a0eb3139bfc2b
         run: |
           set -euo pipefail
           mkdir -p dist
@@ -63,7 +72,13 @@ jobs:
             test -s "dist/$flavor-bid-image.png"
             actual="$(sha256sum "dist/$flavor-bid-image.png" | cut -d' ' -f1)"
             if [ "$actual" != "$APPROVED_SHA" ]; then
-              echo "::error::APK $flavor embeds the wrong BID image: $actual"
+              echo "::error::APK $flavor embeds the wrong BID source image: $actual"
+              exit 1
+            fi
+            # Verify the exact final full-screen PNG survives packaging byte-for-byte.
+            final_actual="$(sha256sum "dist/$flavor-bid-fullbleed.png" | cut -d' ' -f1)"
+            if [ "$final_actual" != "$FINAL_SHA" ]; then
+              echo "::error::APK $flavor embeds wrong final BID image: $final_actual"
               exit 1
             fi
             unzip -p "$file" assets/bid_runtime.js | grep -q 'function luxury(on=true)'
