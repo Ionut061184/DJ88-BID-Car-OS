@@ -296,7 +296,25 @@ class MainActivity : Activity() {
         return info
     }
 
+    /** Nullable states: do not claim Wi-Fi/Bluetooth is on when access is denied. */
+    private fun connectivitySnapshot(): JSONObject {
+        val result = JSONObject()
+        try {
+            result.put("wifi", android.provider.Settings.Global.getInt(
+                contentResolver, android.provider.Settings.Global.WIFI_ON, 0) == 1)
+        } catch (_: Exception) { result.put("wifi", JSONObject.NULL) }
+        try {
+            val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (adapter == null) result.put("bluetooth", JSONObject.NULL)
+            else result.put("bluetooth", adapter.isEnabled)
+        } catch (_: Exception) { result.put("bluetooth", JSONObject.NULL) }
+        return result
+    }
+
     inner class Bridge {
+        @JavascriptInterface
+        fun connectivitySnapshot(): String = this@MainActivity.connectivitySnapshot().toString()
+
         @JavascriptInterface
         fun batterySnapshot(): String = androidBatterySnapshot().toString()
 
