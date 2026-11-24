@@ -84,6 +84,14 @@ class BidHeaderContract(unittest.TestCase):
         self.assertIn('aria-label="Bluetooth: deschide setările"', self.html)
         self.assertIn('aria-label="Wi-Fi: deschide setările"', self.html)
 
+    def test_full_width_side_extension_preserves_approved_image_and_touches(self):
+        self.assertIn("#stage::before{", self.css)
+        self.assertIn("0 0/100px 100% no-repeat", self.css)
+        self.assertIn("1180px 0/100px 100% no-repeat", self.css)
+        self.assertIn("pointer-events:none", self.css)
+        self.assertIn("100+0.84375*x", self.js)
+        self.assertIn("bid_approved.png", self.html)
+
     def test_real_vehicle_voltage_preserved(self):
         self.assertIn("BID.vehicleVoltageSnapshot()", self.js)
         self.assertIn("vehicleVoltageSnapshot(): String = readQf001VehicleVoltage()", self.kotlin)
