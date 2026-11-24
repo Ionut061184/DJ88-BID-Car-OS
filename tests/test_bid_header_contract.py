@@ -65,6 +65,21 @@ class BidHeaderContract(unittest.TestCase):
         self.assertIn("background:transparent!important;border:0!important;box-shadow:none!important", self.css)
         self.assertIn("#functionsDock .dockIcon,#functionsDock > span{display:none!important}", self.css)
 
+    def test_music_uses_qf001_player_not_youtube(self):
+        self.assertIn('"music" to Pair("com.qf.musicplayer",', self.kotlin)
+        self.assertIn('originalQf001Intent(kind) ?: safeChoice', self.kotlin)
+        self.assertIn('!text.contains("youtube")', self.kotlin)
+        self.assertIn('"music" -> listOf("qf.musicplayer",', self.kotlin)
+        # Keep the separate approved YouTube button.
+        self.assertIn('aria-label="YouTube" onclick="launch(\'youtube\')"', self.html)
+
+    def test_bluetooth_wifi_icons_match_touch_zones(self):
+        self.assertIn('#bidStatusLive .bidWeather{flex:0 0 125px', self.css)
+        self.assertIn('#bidStatusLive .bidConnection{flex:0 0 auto;gap:18px}', self.css)
+        self.assertIn('#bidStatusLive .bidBattery{margin-left:auto}', self.css)
+        self.assertIn('aria-label="Bluetooth: deschide setările"', self.html)
+        self.assertIn('aria-label="Wi-Fi: deschide setările"', self.html)
+
     def test_real_vehicle_voltage_preserved(self):
         self.assertIn("BID.vehicleVoltageSnapshot()", self.js)
         self.assertIn("vehicleVoltageSnapshot(): String = readQf001VehicleVoltage()", self.kotlin)
