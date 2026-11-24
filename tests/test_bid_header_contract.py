@@ -110,7 +110,9 @@ class BidHeaderContract(unittest.TestCase):
         self.assertIn("button.style.left=dstStart+'px'", self.js)
         self.assertIn("button.style.width=Math.max(1,dstEnd-dstStart)+'px'", self.js)
         self.assertIn("#stage::before{display:none!important}", self.css)
-        self.assertIn("python3 scripts/build_bid_fullbleed.py", self.workflow)
+        # The final PNG is committed byte-for-byte; CI must never regenerate it.
+        self.assertIn("Verify exact approved 1280x720 final BID image (no regeneration)", self.workflow)
+        self.assertNotIn("python3 scripts/build_bid_fullbleed.py", self.workflow)
 
     def test_full_width_side_extension_preserves_approved_image_and_touches(self):
         self.assertIn("#stage::before{", self.css)
@@ -139,6 +141,19 @@ class BidHeaderContract(unittest.TestCase):
         self.assertIn("bid_approved.png", self.html)
         self.assertIn("100+0.84375*x", self.js)
         self.assertIn("0.84375*(x+w)", self.js)
+
+    def test_final_artwork_is_exact_approved_1280x720_binary(self):
+        import hashlib
+        import struct
+        binary = (ASSETS / "bid_fullbleed.png").read_bytes()
+        expected = "fbebff471162177ce8df8c7e7f157b29692e2750d3b3b3ba9f8a0eb3139bfc2b"
+        self.assertEqual(hashlib.sha256(binary).hexdigest(), expected)
+        self.assertEqual(binary[:8], bytes.fromhex("89504e470d0a1a0a"))
+        self.assertEqual(struct.unpack(">II", binary[16:24]), (1280, 720))
+        # Source and the embedded APK must both be protected by the same hash.
+        self.assertIn(expected, self.workflow)
+        self.assertIn('unzip -p "$file" assets/bid_fullbleed.png', self.workflow)
+        self.assertIn('if [ "$final_actual" != "$FINAL_SHA" ]', self.workflow)
 
     def test_ci_hash_guard_still_active(self):
         expected = "746b42fecf45cdb9216b06ee996f3520a33f9a9cefe9d816927db349f4800202"
