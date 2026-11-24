@@ -34,13 +34,26 @@ class BidHeaderContract(unittest.TestCase):
         status_rules = re.findall(r"#bidStatusLive\s*\{([^}]*)\}", self.css, re.S)
         self.assertTrue(status_rules)
         final = status_rules[-1]
-        self.assertIn("left:808px;top:17px;width:445px;height:34px", final)
+        self.assertIn("left:837px;top:17px;width:414px;height:34px", final)
         self.assertIn("background:#090609", final)
         # The approved original weather/cloud icon occupies the reserved area to its left.
-        self.assertGreaterEqual(int(re.search(r"left:(\d+)px", final).group(1)), 805)
-        self.assertLessEqual(808 + 445, 1280)
+        self.assertEqual(int(re.search(r"left:(\d+)px", final).group(1)), 837)
+        self.assertLessEqual(837 + 414, 1280)
         self.assertIn("background:#090609", self.css)
         self.assertIn("overflow:hidden;white-space:nowrap", self.css)
+
+
+    def test_approved_phone_banner_positions_are_last_effective_rules(self):
+        # Latest labSafe on-phone adjustment; no changes to original PNG.
+        def final_rule(selector):
+            import re
+            matches = re.findall(re.escape(selector) + r"\s*\{([^}]*)\}", self.css, re.S)
+            self.assertTrue(matches)
+            return matches[-1]
+        self.assertIn("left:140px;top:16px;width:345px;height:36px", final_rule("#stage:after"))
+        self.assertIn("left:160px;top:17px;width:125px;height:34px", final_rule("#clock"))
+        self.assertIn("left:345px;top:18px;width:132px;height:32px", final_rule("#dateLive"))
+        self.assertIn("left:837px;top:17px;width:414px;height:34px", final_rule("#bidStatusLive"))
 
     def test_bluetooth_left_of_wireless_with_separate_icons(self):
         # User-approved order: WEATHER, BLUETOOTH, WI-FI, BATTERY, VOLTAGE.
