@@ -30,9 +30,40 @@ class BidHeaderContract(unittest.TestCase):
 
     def test_status_strictly_clipped_inside_black_header(self):
         self.assertRegex(self.css, r"#bidStatusLive\s*\{[^}]*overflow:hidden")
-        self.assertIn("left:782px;top:15px;width:368px;height:36px", self.css)
+        # Verify the FINAL CSS rule, not an obsolete declaration earlier in the file.
+        status_rules = re.findall(r"#bidStatusLive\\s*\\{([^}]*)\\}", self.css, re.S)
+        self.assertTrue(status_rules)
+        final = status_rules[-1]
+        self.assertIn("left:808px;top:17px;width:340px;height:34px", final)
+        self.assertIn("background:#090609", final)
+        # The approved original weather/cloud icon occupies the reserved area to its left.
+        self.assertGreaterEqual(int(re.search(r"left:(\\d+)px", final).group(1)), 805)
+        self.assertLessEqual(808 + 340, 1150)
         self.assertIn("background:#090609", self.css)
         self.assertIn("overflow:hidden;white-space:nowrap", self.css)
+
+    def test_bluetooth_left_of_wireless_with_separate_icons(self):
+        # User-approved order: WEATHER, BLUETOOTH, WI-FI, BATTERY, VOLTAGE.
+        html_order = ["bidWeatherText", "bidBtText", "bidWifiText",
+                      "bidBatteryText", "bidVoltageText"]
+        positions = [self.html.index('id="' + key + '"') for key in html_order]
+        self.assertEqual(positions, sorted(positions))
+        # Native icons must be distinct rather than a duplicated 'BT' text.
+        self.assertIn("var bluetoothIcon='<svg", self.js)
+        self.assertIn("var wirelessIcon='<svg", self.js)
+        self.assertIn("bt.innerHTML=bluetoothIcon", self.js)
+        self.assertIn("wifi.innerHTML=wirelessIcon", self.js)
+        self.assertIn("s.bluetooth===true", self.js)
+        self.assertIn("s.wifi===true", self.js)
+        self.assertNotIn("bt.textContent='BT?'", self.js)
+        self.assertNotIn("wifi.textContent='WiFi?'", self.js)
+
+    def test_gold_frame_clock_weather_and_functions_not_covered(self):
+        self.assertIn("left:207px;top:16px;width:300px;height:36px", self.css)
+        self.assertIn("left:236px;top:17px;width:77px;height:34px", self.css)
+        self.assertIn("left:333px;top:18px;width:164px;height:32px", self.css)
+        self.assertIn("background:transparent!important;border:0!important;box-shadow:none!important", self.css)
+        self.assertIn("#functionsDock .dockIcon,#functionsDock > span{display:none!important}", self.css)
 
     def test_real_vehicle_voltage_preserved(self):
         self.assertIn("BID.vehicleVoltageSnapshot()", self.js)
