@@ -105,3 +105,11 @@
     radial-gradient(ellipse at 80% 49%,#60202c 0%,#2d0b17 52%,#14070c 100%) 0 0/100px 100% no-repeat,
     radial-gradient(ellipse at 20% 49%,#60202c 0%,#2d0b17 52%,#14070c 100%) 1180px 0/100px 100% no-repeat;
 }
+
+/* Full-bleed BID v1: the full-width asset has no side bands.
+   The previously drawn faux Bordeaux bands must not cover real buttons. */
+#stage::before{display:none!important}
+#stage:after{left:107px;top:16px;width:405px;height:36px;background:#10070b}
+#clock{left:130px;top:17px;width:125px;height:34px;font:27px/34px Arial,sans-serif}
+#dateLive{left:321px;top:18px;width:179px;height:32px;font:18px/32px Arial,sans-serif}
+#bidStatusLive{left:808px;top:17px;width:445px;height:34px}
