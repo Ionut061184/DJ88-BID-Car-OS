@@ -112,4 +112,4 @@
 #stage:after{left:107px;top:16px;width:405px;height:36px;background:#10070b}
 #clock{left:130px;top:17px;width:125px;height:34px;font:27px/34px Arial,sans-serif}
 #dateLive{left:321px;top:18px;width:179px;height:32px;font:18px/32px Arial,sans-serif}
-#bidStatusLive{left:808px;top:17px;width:445px;height:34px}
+#bidStatusLive{left:808px;top:17px;width:445px;height:34px;background:#090609;overflow:hidden;white-space:nowrap}
