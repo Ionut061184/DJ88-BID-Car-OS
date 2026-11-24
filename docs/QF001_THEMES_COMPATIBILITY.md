@@ -24,7 +24,7 @@ Niciuna nu trebuie instalată ca aplicație de sistem, nici să suprascrie launc
 ## Funcții de păstrat și de verificat
 
 - Ecranul BID aprobat la **1280 × 720** rămâne imuabil vizual. Ultimul PNG efectiv folosit de APK-ul de telefon (`assets/bid_fullbleed.png`) are SHA-256 `fbebff471162177ce8df8c7e7f157b29692e2750d3b3b3ba9f8a0eb3139bfc2b`. **Acest PNG final nu este încă sincronizat cu sursa GitHub**, care reconstruiește o imagine mai veche; nu publica drept „versiune finală” un APK CI până la sincronizarea verificată a artei.
-- Ultima corecție locală a benzii meteo/Bluetooth/Wi-Fi este `#bidStatusLive{left:837px;}`, în APK-ul de test local, nu încă în sursa GitHub.
+- Ultima corecție a benzii meteo/Bluetooth/Wi-Fi este `#bidStatusLive{left:837px;}` și **a fost sincronizată în sursa GitHub**; ultima poziționare a orei/datei este de asemenea sincronizată (`#stage:after` la `left:140px`, ceas `left:160px`, dată `left:345px`). Testele de regresie verifică aceste coordonate.
 - Butonul **Muzică** încearcă `com.qf.musicplayer`, nu YouTube. YouTube rămâne separat.
 - Meniul **Aplicații** folosește lansatoarele detectate din Android la deschidere, cu paginare 5 × 2, ordine persistentă și apăsare lungă. Tragerea în coș apelează dialogul de dezinstalare Android, **niciodată dezinstalare silențioasă**.
 - Radio, Bluetooth auto, DSP și setările auto pot porni numai activități publice/exportate ori asociate explicit; absența lor este afișată ca atare, nu simulată.
