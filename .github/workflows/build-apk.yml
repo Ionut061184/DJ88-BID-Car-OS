@@ -1,8 +1,10 @@
 name: Build DJ88 BID Android APK
 on:
   workflow_dispatch:
-  push:
+  pull_request:
     branches: [main]
+  push:
+    branches: [main, 'feature/bid-black-statusbar']
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -16,6 +18,31 @@ jobs:
           java-version: '17'
       - name: Test read-only QF001 APK analyzer
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Verify final approved BID artwork by SHA256
+        run: |
+          if [ ! -s app/src/main/assets/bid_approved.png ]; then
+            echo "::error::Image missing: upload bid_approved.png into app/src/main/assets/"
+            exit 1
+          fi
+          ACTUAL_SHA="$(sha256sum app/src/main/assets/bid_approved.png | cut -d' ' -f1)"
+          APPROVED_SHA="746b42fecf45cdb9216b06ee996f3520a33f9a9cefe9d816927db349f4800202"
+          if [ "$ACTUAL_SHA" != "$APPROVED_SHA" ]; then
+            echo "::error::Wrong BID image. Expected final approved 1280x720 BID image SHA256 $APPROVED_SHA, found $ACTUAL_SHA"
+            exit 1
+          fi
+      - name: Verify exact approved 1280x720 final BID image (no regeneration)
+        run: |
+          set -euo pipefail
+          file="app/src/main/assets/bid_fullbleed.png"
+          test -s "$file"
+          expected="fbebff471162177ce8df8c7e7f157b29692e2750d3b3b3ba9f8a0eb3139bfc2b"
+          actual="$(sha256sum "$file" | cut -d' ' -f1)"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Incorrect BID final PNG: $actual (expected $expected)"
+            exit 1
+          fi
+          # PNG IHDR stores width/height as big-endian uint32. Verify with standard Python.
+          python3 -c 'import struct; from pathlib import Path; p=Path("app/src/main/assets/bid_fullbleed.png").read_bytes(); assert p[:8]==bytes.fromhex("89504e470d0a1a0a") and struct.unpack(">II",p[16:24])==(1280,720)'
       - name: Install Android SDK components
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
@@ -27,21 +54,10 @@ jobs:
           gradle-version: '8.10.2'
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace assembleLabSafeDebug assembleThemesCandidateDebug
-      - name: Verify final approved BID artwork by SHA256
-        run: |
-          if [ ! -s app/src/main/assets/bid_approved.png ]; then
-            echo "::error::Image missing: upload bid_approved.png into app/src/main/assets/"
-            exit 1
-          fi
-          ACTUAL_SHA="$(sha256sum app/src/main/assets/bid_approved.png | cut -d' ' -f1)"
-          APPROVED_SHA="853fdab81ac2676caaaaa5dad119455a609fc4f881efcd673ee7f66a0430ea32"
-          if [ "$ACTUAL_SHA" != "$APPROVED_SHA" ]; then
-            echo "::error::Wrong BID image. Expected final approved quilted design SHA256 $APPROVED_SHA, found $ACTUAL_SHA"
-            exit 1
-          fi
       - name: Verify both APKs and record checksums
         env:
-          APPROVED_SHA: 853fdab81ac2676caaaaa5dad119455a609fc4f881efcd673ee7f66a0430ea32
+          APPROVED_SHA: 746b42fecf45cdb9216b06ee996f3520a33f9a9cefe9d816927db349f4800202
+          FINAL_SHA: fbebff471162177ce8df8c7e7f157b29692e2750d3b3b3ba9f8a0eb3139bfc2b
         run: |
           set -euo pipefail
           mkdir -p dist
@@ -51,10 +67,18 @@ jobs:
             test -s "$file"
             # Compare the artwork IN the compiled APK against the approved source.
             unzip -p "$file" assets/bid_approved.png > "dist/$flavor-bid-image.png"
+            unzip -p "$file" assets/bid_fullbleed.png > "dist/$flavor-bid-fullbleed.png"
+            test -s "dist/$flavor-bid-fullbleed.png"
             test -s "dist/$flavor-bid-image.png"
             actual="$(sha256sum "dist/$flavor-bid-image.png" | cut -d' ' -f1)"
             if [ "$actual" != "$APPROVED_SHA" ]; then
-              echo "::error::APK $flavor embeds the wrong BID image: $actual"
+              echo "::error::APK $flavor embeds the wrong BID source image: $actual"
+              exit 1
+            fi
+            # Verify the exact final full-screen PNG survives packaging byte-for-byte.
+            final_actual="$(sha256sum "dist/$flavor-bid-fullbleed.png" | cut -d' ' -f1)"
+            if [ "$final_actual" != "$FINAL_SHA" ]; then
+              echo "::error::APK $flavor embeds wrong final BID image: $final_actual"
               exit 1
             fi
             unzip -p "$file" assets/bid_runtime.js | grep -q 'function luxury(on=true)'

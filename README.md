@@ -33,3 +33,12 @@ Flavorul `labSafe` folosește ID `ro.dj88bid.car.labtest`, iar `themesCandidate`
 - instalarea și comportamentul pe dispozitivul ROCO K706.
 
 Nicio valoare demonstrativă nu trebuie prezentată ca citire reală a mașinii. Păstrați launcherul și Themes originale accesibile.
+
+## Dezvoltare BID — antetul negru, 24 noiembrie 2026 (PR #2, neintegrat încă)
+
+- Imaginea aprobată pentru acest pas are **1280 × 720 PNG**, SHA-256 `746b42fecf45cdb9216b06ee996f3520a33f9a9cefe9d816927db349f4800202`. Raportul inițial este păstrat prin margini laterale; nu se întinde vehiculul.
+- Ora/data, vremea, Bluetooth, Wi-Fi, bateria Android și **voltatul auto real** se afișează exclusiv în zonele negre ale antetului, fără text peste pielea bordeaux sau emblema BID.
+- Citirea voltajului `vehicleVoltageSnapshot()` rămâne conectată la proprietatea QF001 `sys.qf.update_battery_power`. Dacă dispozitivul nu raportează tensiunea validă, nu se inventează o valoare.
+- Geometria zonelor tactile este recalibrată la versiunea cu margini laterale; rezultatul necesită încă verificare pe ecranul K706.
+- Contractele de interfață au teste în `tests/test_bid_header_contract.py`, executate automat în workflow.
+- **Atenție:** fișierul binar din depozit `app/src/main/assets/bid_approved.png` nu a fost încă înlocuit cu imaginea finală. Verificarea SHA-256 blochează în continuare intenționat publicarea unui APK cu imaginea greșită. Nu există un APK nou validat din acest PR.

@@ -1,0 +1,124 @@
+/* BID 1280×720: dynamic data must stay INSIDE the black right header.
+   All coordinates refer to the unchanged approved artwork and scale with #stage. */
+#bidStatusLive{
+ position:absolute;left:787px;top:18px;width:463px;height:43px;
+ display:flex;align-items:center;justify-content:space-between;gap:7px;
+ padding:0 10px;z-index:5;overflow:hidden;white-space:nowrap;
+ background:linear-gradient(90deg,#0b070a,#090609);border-radius:7px;
+ color:#fff;font:17px/1.1 Arial,sans-serif;pointer-events:none;
+}
+#bidStatusLive .bidWeather{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:left;font-size:16px}
+#bidStatusLive .bidConnection{flex:0 0 auto;display:flex;align-items:center;gap:9px}
+#bidStatusLive .bidConnection span{display:inline-block;max-width:65px;overflow:hidden}
+#bidStatusLive .bidBattery{flex:0 0 auto;text-align:right;font-size:16px;min-width:38px}
+#weatherLive,#batteryAndroidLive,#voltageLive{display:none!important}
+/* Override obsolete overlays which could intrude on the border/crest. */
+#clock,#dateLive{overflow:hidden;white-space:nowrap}
+
+/* Keep measured vehicle voltage inside the existing black header. */
+#bidStatusLive .bidVoltage{flex:0 0 auto;min-width:37px;max-width:70px;overflow:hidden;text-align:right;font-size:16px;color:#f6d69c}
+
+/* Approved 1536×1024 art uses contain-fit at 1280×720:
+   painted area x=100..1180. Dynamic strips and touch targets must match. */
+#stage:after{left:209px;top:9px;width:310px;height:53px;border-radius:5px}
+#clock{left:221px;top:13px;width:100px;height:38px;font:28px/38px Arial,sans-serif}
+#dateLive{left:337px;top:13px;width:163px;height:38px;font:18px/38px Arial,sans-serif}
+#bidStatusLive{
+ left:782px;top:15px;width:368px;height:36px;
+ gap:5px;padding:0 5px;background:#090609;border-radius:5px;
+ font-size:14px;
+}
+#bidStatusLive .bidWeather{font-size:14px}
+#bidStatusLive .bidConnection{gap:5px}
+#bidStatusLive .bidBattery,#bidStatusLive .bidVoltage{font-size:13px}
+#bidStatusLive .bidVoltage{min-width:34px;max-width:51px}
+
+/* BID phone screenshot corrections — approved 1280×720 artwork.
+   Never paint over champagne borders, original weather icon, or the lower dock. */
+#stage:after{
+  left:207px;top:16px;width:300px;height:36px;
+  border-radius:3px;background:#10070b;z-index:2;
+}
+#clock{
+  left:236px;top:17px;width:77px;height:34px;
+  padding:0;background:transparent;z-index:3;
+  font:27px/34px Arial,sans-serif;text-align:left;
+}
+#dateLive{
+  left:333px;top:18px;width:164px;height:32px;
+  padding:0;background:transparent;z-index:3;
+  font:18px/32px Arial,sans-serif;text-align:left;
+}
+/* Keep x=767..804 free for the original sun-and-cloud graphic. */
+#bidStatusLive{
+  left:808px;top:17px;width:340px;height:34px;
+  padding:0 4px 0 5px;gap:4px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:#090609;border-radius:3px;
+  overflow:hidden;white-space:nowrap;z-index:5;
+}
+#bidStatusLive .bidWeather{
+  flex:1 1 auto;min-width:75px;
+  font:15px/30px Arial,sans-serif;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#bidStatusLive .bidConnection{flex:0 0 auto;gap:5px;display:flex;align-items:center}
+#bidStatusLive .bidConnection span{
+  max-width:35px;min-width:21px;overflow:hidden;text-align:center;
+  font:16px/30px Arial,sans-serif;color:white;
+}
+#bidStatusLive .bidBattery{
+  flex:0 0 auto;min-width:40px;
+  font:14px/30px Arial,sans-serif;color:white;
+}
+#bidStatusLive .bidVoltage{
+  flex:0 0 auto;min-width:38px;max-width:59px;
+  font:14px/30px Arial,sans-serif;color:#f6d69c;
+}
+/* The artwork ALREADY contains the beautiful Funcții tile.
+   Retain its hit target, remove only the duplicated painted overlay. */
+#functionsDock{
+  background:transparent!important;border:0!important;box-shadow:none!important;
+  color:transparent!important;text-shadow:none!important;
+  padding:0!important;
+}
+#functionsDock .dockIcon,#functionsDock > span{display:none!important}
+#functionsDock:active{filter:none!important}
+#functionsDock:focus-visible{outline:2px solid #e5c080!important;background:#300e1640!important}
+
+/* Match the Bluetooth and wireless marks with the already working
+   touch slots; leave image and hit-area geometry untouched. */
+#bidStatusLive .bidWeather{flex:0 0 125px;min-width:0}
+#bidStatusLive .bidConnection{flex:0 0 auto;gap:18px}
+#bidStatusLive .bidConnection span{min-width:21px;max-width:21px}
+#bidStatusLive .bidBattery{margin-left:auto}
+
+/* Full-width BID treatment on 1280x720 QF001:
+   The APPROVED 1280px picture itself has ~100px dark margins on either side.
+   Fill only those margins with matching Bordeaux/bronze ambient trim.
+   Preserve the photographed 1080px center, OEM car proportions and every hitbox. */
+#stage::before{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:
+    linear-gradient(90deg,rgba(223,159,80,.45),rgba(223,159,80,0)) 99px 0/2px 100% no-repeat,
+    linear-gradient(270deg,rgba(223,159,80,.45),rgba(223,159,80,0)) 1179px 0/2px 100% no-repeat,
+    radial-gradient(ellipse at 80% 49%,#60202c 0%,#2d0b17 52%,#14070c 100%) 0 0/100px 100% no-repeat,
+    radial-gradient(ellipse at 20% 49%,#60202c 0%,#2d0b17 52%,#14070c 100%) 1180px 0/100px 100% no-repeat;
+}
+
+/* Full-bleed BID v1: the full-width asset has no side bands.
+   The previously drawn faux Bordeaux bands must not cover real buttons. */
+#stage::before{display:none!important}
+#stage:after{left:107px;top:16px;width:405px;height:36px;background:#10070b}
+#clock{left:130px;top:17px;width:125px;height:34px;font:27px/34px Arial,sans-serif}
+#dateLive{left:321px;top:18px;width:179px;height:32px;font:18px/32px Arial,sans-serif}
+#bidStatusLive{left:808px;top:17px;width:445px;height:34px;background:#090609;overflow:hidden;white-space:nowrap}
+
+
+/* BID 2026-11-24 FINAL PHONE HEADER (matches last approved labSafe APK) */
+/* Exact effective coordinates from DJ88-BID-banda-dreapta-10px-stanga-labSafe.apk.
+   No changes to approved image, other buttons, touch mapping or OEM functions. */
+#stage:after{left:140px;top:16px;width:345px;height:36px;background:#10070b}
+#clock{left:160px;top:17px;width:125px;height:34px;font:27px/34px Arial,sans-serif}
+#dateLive{left:345px;top:18px;width:132px;height:32px;font:18px/32px Arial,sans-serif}
+#bidStatusLive{left:837px;top:17px;width:414px;height:34px;background:#090609;overflow:hidden;white-space:nowrap}

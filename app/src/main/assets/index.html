@@ -1,6 +1,6 @@
 <!doctype html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>DJ 88 BID Launcher</title><style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050305;color:#f5dfaf;font-family:Arial,sans-serif}button{font:inherit;cursor:pointer}
-#stage{position:absolute;width:1280px;height:720px;transform-origin:0 0;background:#090609 url('bid_approved.png') center/100% 100% no-repeat;overflow:hidden}
+#stage{position:absolute;width:1280px;height:720px;transform-origin:0 0;background:#090609 url('bid_fullbleed.png') center/100% 100% no-repeat;overflow:hidden}
 .hit{position:absolute;background:transparent;border:0;color:transparent;z-index:2}.hit:focus-visible{outline:3px solid #e5c080;background:#300e1680;color:white}
 #clock{position:absolute;left:155px;top:12px;width:118px;height:49px;text-align:center;padding:5px 2px;background:#080407;color:white;font:34px Arial;z-index:3}
 #dateLive{position:absolute;left:294px;top:18px;width:204px;height:35px;background:#080407;color:#fff;font:23px Arial;z-index:3;white-space:nowrap;pointer-events:none}
@@ -97,7 +97,7 @@ body:before{content:"";position:fixed;inset:-40px;pointer-events:none;
 #dateLive{left:289px;top:19px;width:244px;height:38px;padding:0;
   font:19px/38px Arial,sans-serif;text-align:left;white-space:nowrap;
   overflow:hidden;text-overflow:clip;background:transparent;z-index:3}
-</style></head><body><main id="stage" aria-label="DJ 88 BID Luxury">
+</style><link rel="stylesheet" href="bid_status.css"></head><body><main id="stage" aria-label="DJ 88 BID Luxury">
 <div id="clock">--:--</div>
 <div id="dateLive" aria-label="Data actuală"></div>
 <div id="weatherLive" aria-hidden="true"></div>
@@ -106,6 +106,11 @@ body:before{content:"";position:fixed;inset:-40px;pointer-events:none;
 <div id="climateWarning" aria-label="Date climatizare neconectate">CANBUS: neconectat</div>
 <div id="climateLeftLive">-- °C</div><div id="climateRightLive">-- °C</div><div id="mediaTimeLive">--:-- / --:--</div>
 
+<div id="bidStatusLive" aria-label="Stare reală navigație">
+<span id="bidWeatherText" class="bidWeather">Vreme indisponibilă</span>
+<span class="bidConnection"><span id="bidBtText"></span><span id="bidWifiText"></span></span>
+<span id="bidBatteryText" class="bidBattery"></span><span id="bidVoltageText" class="bidVoltage" aria-label="Tensiune auto reală"></span>
+</div>
 <div id="nightTint"></div><div id="statusNotice"></div>
 <button class="hit" style="left:555px;top:9px;width:173px;height:165px;z-index:5" aria-label="BID Bespoke Design – deschide meniul Luxury" onclick="luxury(true)">BID Bespoke Design</button>
 <button class="hit" style="left:283px;top:8px;width:275px;height:59px" aria-label="Data și ora" onclick="launch('dateSettings')">Dată și oră</button>
@@ -118,7 +123,7 @@ body:before{content:"";position:fixed;inset:-40px;pointer-events:none;
 <button class="hit topHit" style="left:1140px;top:13px;width:124px;height:62px" aria-label="Starea bateriei și voltajul" onclick="batteryDetails()">Baterie și voltaj</button>
 <button class="hit topHit" style="left:25px;top:12px;width:90px;height:70px" aria-label="Acasă: BID Luxury" onclick="goHome()">Acasă</button>
 <button class="hit" style="left:20px;top:84px;width:158px;height:105px" aria-label="Radio" onclick="autoLaunch('radio')">Radio</button>
-<button class="hit" style="left:20px;top:191px;width:158px;height:92px" aria-label="Media YouTube" onclick="launch('youtube')">Media YouTube</button>
+<button class="hit" style="left:20px;top:191px;width:158px;height:92px" aria-label="Muzică: player audio original QF001" onclick="musicChoose('music')">Muzică</button>
 <button class="hit" style="left:20px;top:286px;width:158px;height:95px" aria-label="Telefon" onclick="launch('phone')">Telefon</button>
 <button class="hit" style="left:20px;top:383px;width:158px;height:95px" aria-label="Navigație" onclick="launch('maps')">Navigație</button>
 <button class="hit" style="left:20px;top:481px;width:158px;height:124px" aria-label="Aplicații" onclick="launch('apps')">Aplicații</button>
@@ -176,4 +181,4 @@ body:before{content:"";position:fixed;inset:-40px;pointer-events:none;
 </section></div>
 <div id="diagnosticModal" role="dialog" aria-label="Diagnostic BID">
 <section id="diagnosticBox"><button class="close" onclick="document.getElementById('diagnosticModal').classList.remove('on')">Închide ✕</button><h2>DJ 88 BID · Diagnostic</h2><div id="diagnosticText"></div></section></div>
-</main><script src="bid_runtime.js"></script></body></html>
+</main><script src="bid_runtime.js"></script><script src="bid_status.js"></script></body></html>

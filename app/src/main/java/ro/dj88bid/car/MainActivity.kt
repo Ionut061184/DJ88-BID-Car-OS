@@ -107,7 +107,8 @@ class MainActivity : Activity() {
         val actionName = autoActions[action] ?: return
         val keywords = when (action) {
             "radio" -> listOf("radio", "fm", "tuner")
-            "music" -> listOf("music", "muzic", "audio player", "player", "media")
+            // Avoid generic "media"/"player": they can match YouTube.
+            "music" -> listOf("qf.musicplayer", "music player", "musicplayer", "muzic", "audio player")
             "btcar" -> listOf("bluetooth", "bt music", "bt phone", "handsfree", "hands-free", "car bt")
             "dsp" -> listOf("dsp", "equalizer", "equaliser", "sound effect", "audio settings")
             else -> emptyList()
@@ -118,6 +119,8 @@ class MainActivity : Activity() {
             val text = (resolved.loadLabel(packageManager).toString() + " " +
                 resolved.activityInfo.packageName).lowercase(java.util.Locale.ROOT)
             resolved.activityInfo.packageName != packageName &&
+                (action != "music" ||
+                    (!text.contains("youtube") && !text.contains("google.android.apps.youtube"))) &&
                 (keywords.any { keyword -> text.contains(keyword) } ||
                  resolved.activityInfo.packageName == knownQf001[action]?.first)
         }.distinctBy { it.activityInfo.packageName + "/" + it.activityInfo.name }
@@ -296,7 +299,25 @@ class MainActivity : Activity() {
         return info
     }
 
+    /** Nullable states: do not claim Wi-Fi/Bluetooth is on when access is denied. */
+    private fun connectivitySnapshot(): JSONObject {
+        val result = JSONObject()
+        try {
+            result.put("wifi", android.provider.Settings.Global.getInt(
+                contentResolver, android.provider.Settings.Global.WIFI_ON, 0) == 1)
+        } catch (_: Exception) { result.put("wifi", JSONObject.NULL) }
+        try {
+            val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (adapter == null) result.put("bluetooth", JSONObject.NULL)
+            else result.put("bluetooth", adapter.isEnabled)
+        } catch (_: Exception) { result.put("bluetooth", JSONObject.NULL) }
+        return result
+    }
+
     inner class Bridge {
+        @JavascriptInterface
+        fun connectivitySnapshot(): String = this@MainActivity.connectivitySnapshot().toString()
+
         @JavascriptInterface
         fun batterySnapshot(): String = androidBatterySnapshot().toString()
 
@@ -527,7 +548,14 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun openMediaOem(kind: String) = runOnUiThread {
             if (kind == "music" || kind == "radio" || kind == "dsp") {
-                val target = assignedIntent(kind) ?: originalQf001Intent(kind)
+                // The OEM QF001 music player wins over an old accidental YouTube association.
+                val userChoice = assignedIntent(kind)
+                val safeChoice = if (kind == "music" && userChoice != null &&
+                    (userChoice.component?.packageName ?: "").contains("youtube", ignoreCase = true))
+                    null else userChoice
+                val target = if (kind == "music")
+                    originalQf001Intent(kind) ?: safeChoice
+                else safeChoice ?: originalQf001Intent(kind)
                 if (target != null) {
                     startSafely(target)
                 } else chooseAutoApp(kind)
