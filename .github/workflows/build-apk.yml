@@ -42,7 +42,7 @@ jobs:
             exit 1
           fi
           # PNG IHDR stores width/height as big-endian uint32. Verify with standard Python.
-          python3 -c 'import struct; from pathlib import Path; p=Path("app/src/main/assets/bid_fullbleed.png").read_bytes(); assert p[:8]==b"\\x89PNG\\r\\n\\x1a\\n" and struct.unpack(">II",p[16:24])==(1280,720)'
+          python3 -c 'import struct; from pathlib import Path; p=Path("app/src/main/assets/bid_fullbleed.png").read_bytes(); assert p[:8]==bytes.fromhex("89504e470d0a1a0a") and struct.unpack(">II",p[16:24])==(1280,720)'
       - name: Install Android SDK components
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
