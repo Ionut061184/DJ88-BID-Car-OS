@@ -30,6 +30,11 @@ jobs:
             echo "::error::Wrong BID image. Expected final approved 1280x720 BID image SHA256 $APPROVED_SHA, found $ACTUAL_SHA"
             exit 1
           fi
+      - name: Generate full-bleed BID from approved art (vehicle unchanged)
+        run: |
+          python3 -m pip install --disable-pip-version-check Pillow==11.3.0
+          python3 scripts/build_bid_fullbleed.py
+          test -s app/src/main/assets/bid_fullbleed.png
       - name: Install Android SDK components
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
@@ -53,6 +58,8 @@ jobs:
             test -s "$file"
             # Compare the artwork IN the compiled APK against the approved source.
             unzip -p "$file" assets/bid_approved.png > "dist/$flavor-bid-image.png"
+            unzip -p "$file" assets/bid_fullbleed.png > "dist/$flavor-bid-fullbleed.png"
+            test -s "dist/$flavor-bid-fullbleed.png"
             test -s "dist/$flavor-bid-image.png"
             actual="$(sha256sum "dist/$flavor-bid-image.png" | cut -d' ' -f1)"
             if [ "$actual" != "$APPROVED_SHA" ]; then
