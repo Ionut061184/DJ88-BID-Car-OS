@@ -40,5 +40,17 @@
      }else{bt.textContent='';wifi.textContent='';}
    }catch(_){bt.textContent='';wifi.textContent='';}
  }
+ // Approved image is contain-fitted: 1536x1024 artwork -> 1080x720,
+ // centered horizontally with 100 px side padding. Remap existing touches,
+ // without modifying launcher behavior or the underlying screenshot.
+ document.querySelectorAll('#stage .hit').forEach(function(button){
+   if(button.dataset.bidFitted==='1')return;
+   var x=parseFloat(button.style.left);
+   var w=parseFloat(button.style.width);
+   if(!Number.isFinite(x)||!Number.isFinite(w))return;
+   button.style.left=(100+0.84375*x)+'px';
+   button.style.width=(0.84375*w)+'px';
+   button.dataset.bidFitted='1';
+ });
  refresh();setInterval(refresh,15000);
 })();
