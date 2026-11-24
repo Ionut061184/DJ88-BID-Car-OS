@@ -97,7 +97,7 @@ body:before{content:"";position:fixed;inset:-40px;pointer-events:none;
 #dateLive{left:289px;top:19px;width:244px;height:38px;padding:0;
   font:19px/38px Arial,sans-serif;text-align:left;white-space:nowrap;
   overflow:hidden;text-overflow:clip;background:transparent;z-index:3}
-</style></head><body><main id="stage" aria-label="DJ 88 BID Luxury">
+</style><link rel="stylesheet" href="bid_status.css"></head><body><main id="stage" aria-label="DJ 88 BID Luxury">
 <div id="clock">--:--</div>
 <div id="dateLive" aria-label="Data actuală"></div>
 <div id="weatherLive" aria-hidden="true"></div>
@@ -106,6 +106,11 @@ body:before{content:"";position:fixed;inset:-40px;pointer-events:none;
 <div id="climateWarning" aria-label="Date climatizare neconectate">CANBUS: neconectat</div>
 <div id="climateLeftLive">-- °C</div><div id="climateRightLive">-- °C</div><div id="mediaTimeLive">--:-- / --:--</div>
 
+<div id="bidStatusLive" aria-label="Stare reală navigație">
+<span id="bidWeatherText" class="bidWeather">Vreme indisponibilă</span>
+<span class="bidConnection"><span id="bidBtText"></span><span id="bidWifiText"></span></span>
+<span id="bidBatteryText" class="bidBattery"></span>
+</div>
 <div id="nightTint"></div><div id="statusNotice"></div>
 <button class="hit" style="left:555px;top:9px;width:173px;height:165px;z-index:5" aria-label="BID Bespoke Design – deschide meniul Luxury" onclick="luxury(true)">BID Bespoke Design</button>
 <button class="hit" style="left:283px;top:8px;width:275px;height:59px" aria-label="Data și ora" onclick="launch('dateSettings')">Dată și oră</button>
@@ -176,4 +181,4 @@ body:before{content:"";position:fixed;inset:-40px;pointer-events:none;
 </section></div>
 <div id="diagnosticModal" role="dialog" aria-label="Diagnostic BID">
 <section id="diagnosticBox"><button class="close" onclick="document.getElementById('diagnosticModal').classList.remove('on')">Închide ✕</button><h2>DJ 88 BID · Diagnostic</h2><div id="diagnosticText"></div></section></div>
-</main><script src="bid_runtime.js"></script></body></html>
+</main><script src="bid_runtime.js"></script><script src="bid_status.js"></script></body></html>
