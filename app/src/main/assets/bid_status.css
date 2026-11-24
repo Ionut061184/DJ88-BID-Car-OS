@@ -92,3 +92,16 @@
 #bidStatusLive .bidConnection{flex:0 0 auto;gap:18px}
 #bidStatusLive .bidConnection span{min-width:21px;max-width:21px}
 #bidStatusLive .bidBattery{margin-left:auto}
+
+/* Full-width BID treatment on 1280x720 QF001:
+   The APPROVED 1280px picture itself has ~100px dark margins on either side.
+   Fill only those margins with matching Bordeaux/bronze ambient trim.
+   Preserve the photographed 1080px center, OEM car proportions and every hitbox. */
+#stage::before{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:
+    linear-gradient(90deg,rgba(223,159,80,.45),rgba(223,159,80,0)) 99px 0/2px 100% no-repeat,
+    linear-gradient(270deg,rgba(223,159,80,.45),rgba(223,159,80,0)) 1179px 0/2px 100% no-repeat,
+    radial-gradient(ellipse at 80% 49%,#60202c 0%,#2d0b17 52%,#14070c 100%) 0 0/100px 100% no-repeat,
+    radial-gradient(ellipse at 20% 49%,#60202c 0%,#2d0b17 52%,#14070c 100%) 1180px 0/100px 100% no-repeat;
+}
