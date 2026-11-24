@@ -34,11 +34,11 @@ class BidHeaderContract(unittest.TestCase):
         status_rules = re.findall(r"#bidStatusLive\s*\{([^}]*)\}", self.css, re.S)
         self.assertTrue(status_rules)
         final = status_rules[-1]
-        self.assertIn("left:808px;top:17px;width:340px;height:34px", final)
+        self.assertIn("left:808px;top:17px;width:445px;height:34px", final)
         self.assertIn("background:#090609", final)
         # The approved original weather/cloud icon occupies the reserved area to its left.
         self.assertGreaterEqual(int(re.search(r"left:(\d+)px", final).group(1)), 805)
-        self.assertLessEqual(808 + 340, 1150)
+        self.assertLessEqual(808 + 445, 1280)
         self.assertIn("background:#090609", self.css)
         self.assertIn("overflow:hidden;white-space:nowrap", self.css)
 
@@ -84,6 +84,21 @@ class BidHeaderContract(unittest.TestCase):
         self.assertIn('aria-label="Bluetooth: deschide setările"', self.html)
         self.assertIn('aria-label="Wi-Fi: deschide setările"', self.html)
 
+    def test_real_fullbleed_art_and_identical_touch_mapping(self):
+        self.assertIn("url('bid_fullbleed.png')", self.html)
+        generator = (ROOT / "scripts/build_bid_fullbleed.py").read_text(encoding="utf-8")
+        self.assertIn("src.crop((300, 0, 1000, 720))", generator)
+        self.assertIn("out.crop((300, 0, 1000, 720))", generator)
+        self.assertIn("if(x<255)return x-100", self.js)
+        self.assertIn("if(x<300)return 155+(x-255)*145/45", self.js)
+        self.assertIn("if(x<=1000)return x", self.js)
+        self.assertIn("if(x<1035)return 1000+(x-1000)*135/35", self.js)
+        self.assertIn("return x+100", self.js)
+        self.assertIn("button.style.left=dstStart+'px'", self.js)
+        self.assertIn("button.style.width=Math.max(1,dstEnd-dstStart)+'px'", self.js)
+        self.assertIn("#stage::before{display:none!important}", self.css)
+        self.assertIn("python3 scripts/build_bid_fullbleed.py", self.workflow)
+
     def test_full_width_side_extension_preserves_approved_image_and_touches(self):
         self.assertIn("#stage::before{", self.css)
         self.assertIn("0 0/100px 100% no-repeat", self.css)
@@ -110,7 +125,7 @@ class BidHeaderContract(unittest.TestCase):
         self.assertIn("1280px;height:720px", self.html)
         self.assertIn("bid_approved.png", self.html)
         self.assertIn("100+0.84375*x", self.js)
-        self.assertIn("0.84375*w", self.js)
+        self.assertIn("0.84375*(x+w)", self.js)
 
     def test_ci_hash_guard_still_active(self):
         expected = "746b42fecf45cdb9216b06ee996f3520a33f9a9cefe9d816927db349f4800202"
