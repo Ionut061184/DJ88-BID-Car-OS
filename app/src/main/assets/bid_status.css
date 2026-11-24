@@ -32,3 +32,56 @@
 #bidStatusLive .bidConnection{gap:5px}
 #bidStatusLive .bidBattery,#bidStatusLive .bidVoltage{font-size:13px}
 #bidStatusLive .bidVoltage{min-width:34px;max-width:51px}
+
+/* BID phone screenshot corrections — approved 1280×720 artwork.
+   Never paint over champagne borders, original weather icon, or the lower dock. */
+#stage:after{
+  left:207px;top:16px;width:300px;height:36px;
+  border-radius:3px;background:#10070b;z-index:2;
+}
+#clock{
+  left:236px;top:17px;width:77px;height:34px;
+  padding:0;background:transparent;z-index:3;
+  font:27px/34px Arial,sans-serif;text-align:left;
+}
+#dateLive{
+  left:333px;top:18px;width:164px;height:32px;
+  padding:0;background:transparent;z-index:3;
+  font:18px/32px Arial,sans-serif;text-align:left;
+}
+/* Keep x=767..804 free for the original sun-and-cloud graphic. */
+#bidStatusLive{
+  left:808px;top:17px;width:340px;height:34px;
+  padding:0 4px 0 5px;gap:4px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:#090609;border-radius:3px;
+  overflow:hidden;white-space:nowrap;z-index:5;
+}
+#bidStatusLive .bidWeather{
+  flex:1 1 auto;min-width:75px;
+  font:15px/30px Arial,sans-serif;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#bidStatusLive .bidConnection{flex:0 0 auto;gap:5px;display:flex;align-items:center}
+#bidStatusLive .bidConnection span{
+  max-width:35px;min-width:21px;overflow:hidden;text-align:center;
+  font:16px/30px Arial,sans-serif;color:white;
+}
+#bidStatusLive .bidBattery{
+  flex:0 0 auto;min-width:40px;
+  font:14px/30px Arial,sans-serif;color:white;
+}
+#bidStatusLive .bidVoltage{
+  flex:0 0 auto;min-width:38px;max-width:59px;
+  font:14px/30px Arial,sans-serif;color:#f6d69c;
+}
+/* The artwork ALREADY contains the beautiful Funcții tile.
+   Retain its hit target, remove only the duplicated painted overlay. */
+#functionsDock{
+  background:transparent!important;border:0!important;box-shadow:none!important;
+  color:transparent!important;text-shadow:none!important;
+  padding:0!important;
+}
+#functionsDock .dockIcon,#functionsDock > span{display:none!important}
+#functionsDock:active{filter:none!important}
+#functionsDock:focus-visible{outline:2px solid #e5c080!important;background:#300e1640!important}
