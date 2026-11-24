@@ -14,3 +14,6 @@
 #weatherLive,#batteryAndroidLive,#voltageLive{display:none!important}
 /* Override obsolete overlays which could intrude on the border/crest. */
 #clock,#dateLive{overflow:hidden;white-space:nowrap}
+
+/* Keep measured vehicle voltage inside the existing black header. */
+#bidStatusLive .bidVoltage{flex:0 0 auto;min-width:37px;max-width:70px;overflow:hidden;text-align:right;font-size:16px;color:#f6d69c}
