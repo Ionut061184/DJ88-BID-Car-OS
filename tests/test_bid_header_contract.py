@@ -31,13 +31,13 @@ class BidHeaderContract(unittest.TestCase):
     def test_status_strictly_clipped_inside_black_header(self):
         self.assertRegex(self.css, r"#bidStatusLive\s*\{[^}]*overflow:hidden")
         # Verify the FINAL CSS rule, not an obsolete declaration earlier in the file.
-        status_rules = re.findall(r"#bidStatusLive\\s*\\{([^}]*)\\}", self.css, re.S)
+        status_rules = re.findall(r"#bidStatusLive\s*\{([^}]*)\}", self.css, re.S)
         self.assertTrue(status_rules)
         final = status_rules[-1]
         self.assertIn("left:808px;top:17px;width:340px;height:34px", final)
         self.assertIn("background:#090609", final)
         # The approved original weather/cloud icon occupies the reserved area to its left.
-        self.assertGreaterEqual(int(re.search(r"left:(\\d+)px", final).group(1)), 805)
+        self.assertGreaterEqual(int(re.search(r"left:(\d+)px", final).group(1)), 805)
         self.assertLessEqual(808 + 340, 1150)
         self.assertIn("background:#090609", self.css)
         self.assertIn("overflow:hidden;white-space:nowrap", self.css)
