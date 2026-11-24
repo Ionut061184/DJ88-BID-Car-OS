@@ -5,7 +5,8 @@
  var bt=document.getElementById('bidBtText');
  var wifi=document.getElementById('bidWifiText');
  var battery=document.getElementById('bidBatteryText');
- if(!weather||!bt||!wifi||!battery)return;
+ var voltage=document.getElementById('bidVoltageText');
+ if(!weather||!bt||!wifi||!battery||!voltage)return;
  var oldWeather=window.updateWeather;
  window.updateWeather=function(city,temperature,description){
    if(typeof oldWeather==='function')oldWeather(city,temperature,description);
@@ -15,6 +16,13 @@
    weather.title=description||'';
  };
  function refresh(){
+   // Preserve verified QF001 voltage reading (sys.qf.update_battery_power).
+   try{
+     if(window.BID&&typeof BID.vehicleVoltageSnapshot==='function'){
+       var v=JSON.parse(BID.vehicleVoltageSnapshot());
+       voltage.textContent=v.available===true&&typeof v.volts==='number'&&Number.isFinite(v.volts)&&v.volts>=9&&v.volts<=16.5?v.volts.toFixed(1)+' V':'';
+     }else voltage.textContent='';
+   }catch(_){voltage.textContent='';}
    try{
      if(window.BID&&typeof BID.batterySnapshot==='function'){
        var data=JSON.parse(BID.batterySnapshot());
