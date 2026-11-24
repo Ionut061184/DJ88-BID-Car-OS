@@ -8,7 +8,13 @@
  var voltage=document.getElementById('bidVoltageText');
  if(!weather||!bt||!wifi||!battery||!voltage)return;
  weather.textContent='—° Craiova';
- bt.textContent='BT?';wifi.textContent='WiFi?';battery.textContent='—%';voltage.textContent='— V';
+ // Left: Bluetooth symbol. Right: wireless (Wi-Fi waves) symbol.
+ var bluetoothIcon='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M11 2 L18 8 L13 12 L18 16 L11 22 V2 M5 6 L17 18 M5 18 L17 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+ var wirelessIcon='<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M2 9 Q12 0 22 9 M5 13 Q12 7 19 13 M9 17 Q12 14 15 17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="20" r="1.6" fill="currentColor"/></svg>';
+ bt.innerHTML=bluetoothIcon;wifi.innerHTML=wirelessIcon;
+ bt.title='Bluetooth: stare necunoscută';wifi.title='Wi-Fi: stare necunoscută';
+ bt.style.opacity='.45';wifi.style.opacity='.45';
+ battery.textContent='—%';voltage.textContent='— V';
  var oldWeather=window.updateWeather;
  window.updateWeather=function(city,temperature,description){
    if(typeof oldWeather==='function')oldWeather(city,temperature,description);
@@ -35,12 +41,14 @@
    try{
      if(window.BID&&typeof BID.connectivitySnapshot==='function'){
        var s=JSON.parse(BID.connectivitySnapshot());
-       bt.textContent=s.bluetooth===true?'ᛒ':s.bluetooth===false?'BT×':'BT?';
-       wifi.textContent=s.wifi===true?'WiFi':s.wifi===false?'WiFi×':'WiFi?';
+       bt.innerHTML=bluetoothIcon;
+       wifi.innerHTML=wirelessIcon;
+       bt.style.opacity=s.bluetooth===true?'1':s.bluetooth===false?'.28':'.55';
+       wifi.style.opacity=s.wifi===true?'1':s.wifi===false?'.28':'.55';
        bt.setAttribute('aria-label',s.bluetooth===true?'Bluetooth pornit':s.bluetooth===false?'Bluetooth oprit':'Bluetooth indisponibil');
        wifi.setAttribute('aria-label',s.wifi===true?'Wi-Fi pornit':s.wifi===false?'Wi-Fi oprit':'Wi-Fi indisponibil');
-     }else{bt.textContent='BT?';wifi.textContent='WiFi?';}
-   }catch(_){bt.textContent='BT?';wifi.textContent='WiFi?';}
+     }else{bt.style.opacity='.55';wifi.style.opacity='.55';}
+   }catch(_){bt.style.opacity='.55';wifi.style.opacity='.55';}
  }
  // Approved image is contain-fitted: 1536x1024 artwork -> 1080x720,
  // centered horizontally with 100 px side padding. Remap existing touches,
