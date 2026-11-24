@@ -85,3 +85,10 @@
 #functionsDock .dockIcon,#functionsDock > span{display:none!important}
 #functionsDock:active{filter:none!important}
 #functionsDock:focus-visible{outline:2px solid #e5c080!important;background:#300e1640!important}
+
+/* Match the Bluetooth and wireless marks with the already working
+   touch slots; leave image and hit-area geometry untouched. */
+#bidStatusLive .bidWeather{flex:0 0 125px;min-width:0}
+#bidStatusLive .bidConnection{flex:0 0 auto;gap:18px}
+#bidStatusLive .bidConnection span{min-width:21px;max-width:21px}
+#bidStatusLive .bidBattery{margin-left:auto}
