@@ -72,6 +72,10 @@ class BidHeaderContract(unittest.TestCase):
         self.assertIn('"music" -> listOf("qf.musicplayer",', self.kotlin)
         # Keep the separate approved YouTube button.
         self.assertIn('aria-label="YouTube" onclick="launch(\'youtube\')"', self.html)
+        # The visible left-side Muzică tile is NOT the separate YouTube tile.
+        self.assertIn('aria-label="Muzică: player audio original QF001" onclick="musicChoose(\'music\')"', self.html)
+        self.assertNotIn('aria-label="Media YouTube" onclick="launch(\'youtube\')"', self.html)
+        self.assertIn("if(window.BID && typeof BID.openMediaOem==='function'){BID.openMediaOem(kind)}", self.runtime)
 
     def test_bluetooth_wifi_icons_match_touch_zones(self):
         self.assertIn('#bidStatusLive .bidWeather{flex:0 0 125px', self.css)
