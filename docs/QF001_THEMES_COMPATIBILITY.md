@@ -23,7 +23,7 @@ Niciuna nu trebuie instalată ca aplicație de sistem, nici să suprascrie launc
 
 ## Funcții de păstrat și de verificat
 
-- Ecranul BID aprobat la **1280 × 720** rămâne imuabil vizual. Ultimul PNG efectiv folosit de APK-ul de telefon (`assets/bid_fullbleed.png`) are SHA-256 `fbebff471162177ce8df8c7e7f157b29692e2750d3b3b3ba9f8a0eb3139bfc2b`. **Acest PNG final nu este încă sincronizat cu sursa GitHub**, care reconstruiește o imagine mai veche; nu publica drept „versiune finală” un APK CI până la sincronizarea verificată a artei.
+- Ecranul BID aprobat la **1280 × 720** rămâne imuabil vizual. Ultimul PNG efectiv folosit de APK-ul de telefon (`assets/bid_fullbleed.png`) are SHA-256 `fbebff471162177ce8df8c7e7f157b29692e2750d3b3b3ba9f8a0eb3139bfc2b`. **Acest PNG final este deja prezent, byte-for-byte, în ramura GitHub** la `app/src/main/assets/bid_fullbleed.png`; buildul a fost corectat să **nu îl regenereze** și să verifice SHA-256 atât în sursă, cât și în APK. Nu confunda această verificare cu confirmarea funcțiilor QF001 pe hardware.
 - Ultima corecție a benzii meteo/Bluetooth/Wi-Fi este `#bidStatusLive{left:837px;}` și **a fost sincronizată în sursa GitHub**; ultima poziționare a orei/datei este de asemenea sincronizată (`#stage:after` la `left:140px`, ceas `left:160px`, dată `left:345px`). Testele de regresie verifică aceste coordonate.
 - Butonul **Muzică** încearcă `com.qf.musicplayer`, nu YouTube. YouTube rămâne separat.
 - Meniul **Aplicații** folosește lansatoarele detectate din Android la deschidere, cu paginare 5 × 2, ordine persistentă și apăsare lungă. Tragerea în coș apelează dialogul de dezinstalare Android, **niciodată dezinstalare silențioasă**.
@@ -42,4 +42,4 @@ Niciuna nu trebuie instalată ca aplicație de sistem, nici să suprascrie launc
 
 ## Următorul pas tehnic pentru integrarea completă
 
-Sincronizarea verificată a PNG-ului final și a modificărilor de antet între ultimul APK local și sursa GitHub; eliminarea transformărilor de imagine redundante numai după compararea pixelilor și a zonelor tactile. Abia apoi verificarea pe aparat a acceptării unei variante HOME/selector Themes. Un APK semnat cu cheia de test nu dobândește permisiunile unui APK OEM prin redenumire.
+PNG-ul final și coordonatele ultimului antet au fost sincronizate în GitHub și sunt protejate de testele de regresie. Urmează verificarea instalării **labSafe** pe unitatea reală QF001 și a tuturor zonelor tactile; numai după aceea se analizează acceptarea unei variante HOME/selector Themes. Un APK semnat cu cheia de test nu dobândește permisiunile unui APK OEM prin redenumire.
