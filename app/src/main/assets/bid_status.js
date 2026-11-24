@@ -50,17 +50,28 @@
      }else{bt.style.opacity='.55';wifi.style.opacity='.55';}
    }catch(_){bt.style.opacity='.55';wifi.style.opacity='.55';}
  }
- // Approved image is contain-fitted: 1536x1024 artwork -> 1080x720,
- // centered horizontally with 100 px side padding. Remap existing touches,
- // without modifying launcher behavior or the underlying screenshot.
+ // All clickable slots follow EXACTLY the same horizontal transformation as
+ // scripts/build_bid_fullbleed.py. This removes intrinsic black borders while
+ // preserving the car (x300..1000) at its original pixel dimensions.
+ function fullBleedX(x){
+   if(x<255)return x-100;
+   if(x<300)return 155+(x-255)*145/45;
+   if(x<=1000)return x;
+   if(x<1035)return 1000+(x-1000)*135/35;
+   return x+100;
+ }
  document.querySelectorAll('#stage .hit').forEach(function(button){
-   if(button.dataset.bidFitted==='1')return;
-   var x=parseFloat(button.style.left);
-   var w=parseFloat(button.style.width);
+   if(button.dataset.bidFitted==='fullbleed-v1')return;
+   var x=parseFloat(button.style.left),w=parseFloat(button.style.width);
    if(!Number.isFinite(x)||!Number.isFinite(w))return;
-   button.style.left=(100+0.84375*x)+'px';
-   button.style.width=(0.84375*w)+'px';
-   button.dataset.bidFitted='1';
+   // The source hit coordinates were authored on 1536px canvas and mapped
+   // to the original 1280px image by old desktop-fit logic.
+   var srcStart=100+0.84375*x;
+   var srcEnd=100+0.84375*(x+w);
+   var dstStart=fullBleedX(srcStart),dstEnd=fullBleedX(srcEnd);
+   button.style.left=dstStart+'px';
+   button.style.width=Math.max(1,dstEnd-dstStart)+'px';
+   button.dataset.bidFitted='fullbleed-v1';
  });
  refresh();setInterval(refresh,15000);
 })();
