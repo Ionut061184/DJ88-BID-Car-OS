@@ -38,5 +38,26 @@ with sync_playwright() as p:
     page.locator("#bidServiceClose").click()
     assert page.locator("#qfVehiclePanel").is_visible()
     assert not page.locator("#bidServicePanel").is_visible()
+    page.evaluate("""window.reading={fresh:true,ageMs:100,verified:false,odometerCandidate:388600.8};window.BID={qfVehicleSnapshot:()=>JSON.stringify(reading)}""")
+    page.locator("#bidServiceOpen").click()
+    assert page.locator("#bidServiceOdo").input_value()=="388600"
+    assert "TEST" in page.locator("#bidServiceOdoSource").inner_text()
+    assert page.evaluate("JSON.parse(localStorage.getItem('bid.service.v1')).odo")==388584
+    row.get_by_role("button",name="Schimb efectuat").click()
+    assert "Confirmă" in page.locator("#bidServiceMessage").inner_text()
+    page.locator("#bidServiceSaveOdo").click()
+    assert page.evaluate("JSON.parse(localStorage.getItem('bid.service.v1')).odo")==388600
+    page.locator("#bidServiceClose").click()
+    page.evaluate("reading.verified=true;reading.odometerCandidate=388620.9")
+    page.locator("#bidServiceOpen").click()
+    assert page.locator("#bidServiceOdo").input_value()=="388620"
+    page.evaluate("reading.odometerCandidate=388621.4")
+    row.get_by_role("button",name="Schimb efectuat").click()
+    assert row.locator("input").nth(0).input_value()=="388621"
+    page.locator("#bidServiceClose").click()
+    page.evaluate("reading.odometerCandidate=389000;reading.ageMs=6001")
+    page.locator("#bidServiceOpen").click()
+    assert page.locator("#bidServiceOdo").input_value()=="388621"
+    assert "indisponibil" in page.locator("#bidServiceOdoSource").inner_text()
     browser.close()
 print("PASS: maintenance defaults, missing data, local persistence, due warnings, rollback protection and return menu")
