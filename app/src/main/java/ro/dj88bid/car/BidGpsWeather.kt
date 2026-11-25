@@ -31,20 +31,25 @@ internal class BidGpsWeather(
     private var lastFix: Location? = null
     private var lastRequest: Location? = null
     private var lastAt = 0L
-    private var lastCity: String? = null
-    private var lastTemperature: Double? = null
-    private var lastCode: Int? = null
+    private val cache = context.getSharedPreferences("bid_weather_last_success", Context.MODE_PRIVATE)
+    private var lastCity: String? = cache.getString("city", null)
+    private var lastTemperature: Double? = cache.getString("temperature", null)?.toDoubleOrNull()?.takeIf { it.isFinite() }
+    private var lastCode: Int? = cache.getInt("code", -1).takeIf { it >= 0 }
+    private var lastDay: Boolean? = if (cache.contains("isDay")) cache.getBoolean("isDay", false) else null
+    private var registeredProviders = mutableSetOf<String>()
     private var lastSuccessAt = 0L
+    private var lastFetchSucceeded = false
     private var staleShown = false
     private val tick = object : Runnable {
         override fun run() {
             if (!running) return
+            registerProviders()
             val fix = lastFix
             if (fix != null && usable(fix)) {
                 maybeFetch(fix)
             } else if (!staleShown) {
                 staleShown = true
-                publish(lastCity, lastTemperature, lastCode, "GPS indisponibil · date neactualizate", false)
+                publish(lastCity, lastTemperature, lastCode, "GPS indisponibil · date neactualizate", false, lastDay)
             }
             if (lastSuccessAt > 0 && SystemClock.elapsedRealtime() - lastSuccessAt > 900_000L && !staleShown) {
                 staleShown = true
@@ -74,32 +79,43 @@ internal class BidGpsWeather(
         if (running) return
         val fine = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val coarse = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        if (!fine && !coarse) { publish(null, null, null, "Permisiune GPS necesară", false); return }
+        if (!fine && !coarse) { publish(lastCity, lastTemperature, lastCode, "Permisiune GPS necesară", false, lastDay); return }
         running = true
         generation++
         lastRequest = null
         lastAt = 0
         staleShown = true
-        publish(lastCity, lastTemperature, lastCode, "Se caută poziția GPS", false)
-        val providers = if (fine) listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
-            else listOf(LocationManager.NETWORK_PROVIDER)
+        publish(lastCity, lastTemperature, lastCode, "Se caută poziția GPS", false, lastDay)
+        registerProviders()
+        lastFix?.takeIf { usable(it) }?.let { maybeFetch(it) }
+        handler.postDelayed(tick, 30_000)
+    }
+
+    private fun registerProviders() {
+        val fine = context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val coarse = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (!fine && !coarse) return
+        val providers = if (fine) listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER)
+            else listOf(LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER)
         for (provider in providers) {
             try {
-                if (!manager.isProviderEnabled(provider)) continue
-                manager.requestLocationUpdates(provider, 15_000L, 100f, listener, Looper.getMainLooper())
+                if (!manager.isProviderEnabled(provider)) { registeredProviders.remove(provider); continue }
+                if (provider !in registeredProviders) {
+                    manager.requestLocationUpdates(provider, 10_000L, 0f, listener, Looper.getMainLooper())
+                    registeredProviders.add(provider)
+                }
                 manager.getLastKnownLocation(provider)?.takeIf { usable(it) }?.let {
                     if (lastFix == null || it.elapsedRealtimeNanos > lastFix!!.elapsedRealtimeNanos) lastFix = it
                 }
             } catch (_: Exception) {}
         }
-        lastFix?.takeIf { usable(it) }?.let { maybeFetch(it) }
-        handler.postDelayed(tick, 30_000)
     }
 
     fun stop() {
         running = false
         generation++
         handler.removeCallbacks(tick)
+        registeredProviders.clear()
         try { manager.removeUpdates(listener) } catch (_: Exception) {}
     }
 
@@ -110,7 +126,7 @@ internal class BidGpsWeather(
         val now = SystemClock.elapsedRealtime()
         val moved = lastRequest?.distanceTo(fix) ?: Float.MAX_VALUE
         val elapsed = now - lastAt
-        if (lastRequest != null && elapsed < 600_000L && (moved < 300f || elapsed < 60_000L)) return
+        if (lastRequest != null && (if (!lastFetchSucceeded) elapsed < 30_000L else elapsed < 600_000L && (moved < 300f || elapsed < 60_000L))) return
         lastRequest = Location(fix)
         lastAt = now
         busy = true
@@ -148,13 +164,20 @@ internal class BidGpsWeather(
                     lastCity = city
                     lastTemperature = temperature
                     lastCode = code
+                    lastDay = isDay
+                    lastFetchSucceeded = true
+                    cache.edit().putString("city", city).putString("temperature", temperature.toString())
+                        .putInt("code", code ?: -1).putLong("savedAt", System.currentTimeMillis()).apply {
+                            if (isDay == null) remove("isDay") else putBoolean("isDay", isDay == true)
+                        }.apply()
                     lastSuccessAt = SystemClock.elapsedRealtime()
                     staleShown = false
                     publish(city, temperature, code, if (city == null) "Localitate neidentificată" else "Vreme după GPS", true, isDay)
                 } else {
                     // Never label the previous location's temperature as current at the new location.
+                    lastFetchSucceeded = false
                     staleShown = true
-                    publish(lastCity, lastTemperature, lastCode, "Date meteo neactualizate", false)
+                    publish(lastCity, lastTemperature, lastCode, "Date meteo neactualizate", false, lastDay)
                 }
             }
         }
@@ -164,6 +187,7 @@ internal class BidGpsWeather(
         val data = JSONObject().apply {
             put("city", city ?: JSONObject.NULL); put("temperature", temp ?: JSONObject.NULL)
             put("code", code ?: JSONObject.NULL); put("isDay", isDay ?: JSONObject.NULL); put("fresh", fresh); put("note", note)
+            put("savedAt", cache.getLong("savedAt", 0L))
         }
         emit("if(window.updateGpsWeather){window.updateGpsWeather($data);}else if(window.updateWeather){window.updateWeather(" +
             JSONObject.quote(if (fresh) city ?: "GPS" else (city ?: "GPS") + " *") +
