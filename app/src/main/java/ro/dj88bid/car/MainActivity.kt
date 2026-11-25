@@ -21,6 +21,30 @@ import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private lateinit var gpsWeather: BidGpsWeather
+    private var locationPrompted = false
+    private fun autoWeather(): Boolean =
+        getSharedPreferences("bid_weather", MODE_PRIVATE).getBoolean("gps", true)
+
+    override fun onResume() {
+        super.onResume()
+        if (::gpsWeather.isInitialized && autoWeather()) refreshWeather()
+    }
+
+    override fun onPause() {
+        if (::gpsWeather.isInitialized) gpsWeather.stop()
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        if (::gpsWeather.isInitialized) gpsWeather.close()
+        super.onDestroy()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 417 && autoWeather()) gpsWeather.start()
+    }
 
     @Suppress("DEPRECATION")
     private fun enterFullscreen() {
@@ -52,6 +76,7 @@ class MainActivity : Activity() {
         }
         webView.addJavascriptInterface(Bridge(), "BID")
         setContentView(webView)
+        gpsWeather = BidGpsWeather(this, ::emitJs)
         webView.loadUrl("file:///android_asset/index.html")
         webView.postDelayed({ refreshWeather() }, 1000)
     }
@@ -178,6 +203,21 @@ class MainActivity : Activity() {
         runOnUiThread { if (::webView.isInitialized) webView.evaluateJavascript(script, null) }
     }
     private fun refreshWeather() {
+        if (autoWeather()) {
+            val fine = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            val coarse = checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            if (!fine && !coarse && !locationPrompted) {
+                locationPrompted = true
+                requestPermissions(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.ACCESS_COARSE_LOCATION), 417)
+            } else gpsWeather.start()
+            return
+        }
+        gpsWeather.stop()
+        refreshManualWeather()
+    }
+
+    private fun refreshManualWeather() {
         val city = getSharedPreferences("bid_weather", MODE_PRIVATE).getString("city", "Craiova") ?: "Craiova"
         val coordinates = weatherCities[city] ?: weatherCities.getValue("Craiova")
         Thread {
@@ -326,12 +366,15 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun chooseWeatherCity() = runOnUiThread {
-            val choices = weatherCities.keys.toTypedArray()
+            val choices = (listOf("Automat · GPS") + weatherCities.keys).toTypedArray()
             android.app.AlertDialog.Builder(this@MainActivity)
                 .setTitle("Vreme BID · alege localitatea")
                 .setItems(choices) { _, index ->
-                    getSharedPreferences("bid_weather", MODE_PRIVATE).edit()
-                        .putString("city", choices[index]).apply()
+                    val edit = getSharedPreferences("bid_weather", MODE_PRIVATE).edit()
+                    edit.putBoolean("gps", index == 0)
+                    if (index > 0) edit.putString("city", choices[index])
+                    edit.apply()
+                    if (index == 0) locationPrompted = false
                     refreshWeather()
                 }.setNegativeButton("Închide", null).show()
         }
