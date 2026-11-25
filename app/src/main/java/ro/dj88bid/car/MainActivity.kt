@@ -23,7 +23,50 @@ class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var gpsWeather: BidGpsWeather
     private lateinit var adaptiveDisplay: BidAdaptiveDisplay
-    private var locationPrompted = false
+    private var permissionRequestInProgress = false
+    private fun permissionGranted(permission: String): Boolean =
+        checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+    private fun hasLocation(): Boolean =
+        permissionGranted(android.Manifest.permission.ACCESS_FINE_LOCATION) ||
+        permissionGranted(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+    private fun askGpsOnce(explicit: Boolean = false) {
+        if (permissionRequestInProgress || hasLocation()) return
+        val prefs = getSharedPreferences("bid_permission_choices", MODE_PRIVATE)
+        if (!explicit && prefs.getBoolean("gpsAsked", false)) return
+        prefs.edit().putBoolean("gpsAsked", true).apply()
+        permissionRequestInProgress = true
+        requestPermissions(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION), 417)
+    }
+
+    private fun openIndicatorPermissions() {
+        val items = mutableListOf<Pair<String, String>>()
+        if (packageManager.hasSystemFeature("android.hardware.telephony") &&
+            !permissionGranted(android.Manifest.permission.READ_PHONE_STATE))
+            items.add("Semnal SIM · permite citirea stării rețelei" to android.Manifest.permission.READ_PHONE_STATE)
+        if (android.os.Build.VERSION.SDK_INT >= 31 &&
+            packageManager.hasSystemFeature("android.hardware.bluetooth") &&
+            !permissionGranted("android.permission.BLUETOOTH_CONNECT"))
+            items.add("Bluetooth · permite verificarea conexiunii" to "android.permission.BLUETOOTH_CONNECT")
+        if (!hasLocation()) items.add("Vreme GPS · permite locația" to "GPS")
+        val builder = android.app.AlertDialog.Builder(this)
+            .setTitle("BID · Permisiuni opționale")
+            .setNegativeButton("Închide", null)
+            .setNeutralButton("Setări Android") { _, _ ->
+                startSafely(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + packageName)))
+            }
+        if (items.isEmpty()) builder.setMessage("Permisiunile necesare sunt deja acordate sau nu sunt disponibile pe acest dispozitiv.")
+        else builder.setItems(items.map { it.first }.toTypedArray()) { _, pos ->
+            val permission = items[pos].second
+            if (permission == "GPS") askGpsOnce(true)
+            else if (!permissionRequestInProgress && !permissionGranted(permission)) {
+                permissionRequestInProgress = true
+                requestPermissions(arrayOf(permission), 418)
+            }
+        }
+        builder.show()
+    }
     private fun autoWeather(): Boolean =
         getSharedPreferences("bid_weather", MODE_PRIVATE).getBoolean("gps", true)
 
@@ -46,7 +89,10 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 417 && autoWeather()) gpsWeather.start()
+        if (requestCode == 417 || requestCode == 418) {
+            permissionRequestInProgress = false
+            if (autoWeather() && ::gpsWeather.isInitialized) gpsWeather.start()
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -208,23 +254,8 @@ class MainActivity : Activity() {
     }
     private fun refreshWeather() {
         if (autoWeather()) {
-            val fine = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-            val coarse = checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-            val needed = mutableListOf<String>()
-            if (!fine && !coarse) {
-                needed.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
-                needed.add(android.Manifest.permission.ACCESS_COARSE_LOCATION)
-            }
-            if (packageManager.hasSystemFeature("android.hardware.telephony") &&
-                checkSelfPermission(android.Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED)
-                needed.add(android.Manifest.permission.READ_PHONE_STATE)
-            if (android.os.Build.VERSION.SDK_INT >= 31 &&
-                checkSelfPermission("android.permission.BLUETOOTH_CONNECT") != PackageManager.PERMISSION_GRANTED)
-                needed.add("android.permission.BLUETOOTH_CONNECT")
-            if (needed.isNotEmpty() && !locationPrompted) {
-                locationPrompted = true
-                requestPermissions(needed.toTypedArray(), 417)
-            } else gpsWeather.start()
+            if (!hasLocation()) askGpsOnce()
+            gpsWeather.start()
             return
         }
         gpsWeather.stop()
@@ -382,7 +413,7 @@ class MainActivity : Activity() {
                     edit.putBoolean("gps", index == 0)
                     if (index > 0) edit.putString("city", choices[index])
                     edit.apply()
-                    if (index == 0) locationPrompted = false
+                    if (index == 0 && !hasLocation()) askGpsOnce(true)
                     refreshWeather()
                 }.setNegativeButton("Închide", null).show()
         }
@@ -697,7 +728,8 @@ class MainActivity : Activity() {
                     FunctionTile("Galerie foto","gallery",listOf("imagebrowser","gallery")),
                     FunctionTile("Vreme","weather",listOf("weather","vreme")),
                     FunctionTile("Manual","manual",listOf("manual")),
-                    FunctionTile("Toate aplicațiile","apps",emptyList())
+                    FunctionTile("Toate aplicațiile","apps",emptyList()),
+                    FunctionTile("Permisiuni indicatoare","indicatorpermissions",emptyList())
                 )
             )
             val launcherEntries = packageManager.queryIntentActivities(
@@ -765,7 +797,7 @@ class MainActivity : Activity() {
                         val image = android.widget.ImageView(this@MainActivity).apply {
                             setImageDrawable(matched?.loadIcon(packageManager)
                                 ?: getDrawable(android.R.drawable.ic_menu_manage))
-                            alpha = if(matched == null && tile.key !in listOf("apps","reverse","car","canbus")) .55f else 1f
+                            alpha = if(matched == null && tile.key !in listOf("apps","reverse","car","canbus","indicatorpermissions")) .55f else 1f
                             scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
                         }
                         cell.addView(image,android.widget.LinearLayout.LayoutParams(
@@ -786,6 +818,7 @@ class MainActivity : Activity() {
                                     "Camera marșarier este controlată automat de QF001 în treapta R.",
                                     Toast.LENGTH_LONG).show()
                                 "apps" -> showApps()
+                                "indicatorpermissions" -> openIndicatorPermissions()
                                 "car","canbus","maps","waze","youtube" -> Bridge().open(tile.key)
                                 else -> Bridge().openMediaOem(tile.key)
                             }
