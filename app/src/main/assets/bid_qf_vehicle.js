@@ -14,7 +14,7 @@
  document.getElementById('qfClose').onclick=()=>{panel.hidden=true};
  document.getElementById('qfOriginal').onclick=()=>{panel.hidden=true;if(window.BID&&typeof BID.open==='function')BID.open('car')};
  const oldClose=window.closeAll;if(typeof oldClose==='function')window.closeAll=function(){panel.hidden=true;return oldClose.apply(this,arguments)};
- const car=stage.querySelector('button[aria-label="Mașină"]');if(car)car.onclick=open;
+ // Preserve the original Mașină action; the two CAN tiles open this diagnostic panel.
  function open(){if(typeof window.closeAll==='function')window.closeAll();panel.hidden=false;refresh()}
  function read(){try{return window.BID&&typeof BID.qfVehicleSnapshot==='function'?JSON.parse(BID.qfVehicleSnapshot()):{}}catch(_){return {}}}
  function format(d,key,unit,max,decimal=0){const v=d[key];return d.fresh===true&&typeof d.ageMs==='number'&&d.ageMs>=0&&d.ageMs<=5000&&typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=max?v.toFixed(decimal)+' '+unit:'— '+unit}
