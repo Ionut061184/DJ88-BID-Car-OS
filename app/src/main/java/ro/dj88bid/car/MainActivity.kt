@@ -21,6 +21,7 @@ import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private lateinit var bidTrip: BidTripBridge
     private lateinit var gpsWeather: BidGpsWeather
     private lateinit var adaptiveDisplay: BidAdaptiveDisplay
     private var permissionRequestInProgress = false
@@ -87,17 +88,21 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (::bidTrip.isInitialized) bidTrip.setForeground(true)
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.start()
         if (pageReady && ::gpsWeather.isInitialized && autoWeather()) refreshWeather()
     }
 
     override fun onPause() {
+        if (::bidTrip.isInitialized) bidTrip.setForeground(false)
         if (::gpsWeather.isInitialized) gpsWeather.stop()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.stop()
         super.onPause()
     }
 
     override fun onDestroy() {
+        if (::bidTrip.isInitialized) bidTrip.setForeground(false)
+        if (::webView.isInitialized) webView.removeJavascriptInterface("BIDTrip")
         if (::gpsWeather.isInitialized) gpsWeather.close()
         super.onDestroy()
     }
@@ -147,6 +152,8 @@ class MainActivity : Activity() {
             }
         }
         webView.addJavascriptInterface(Bridge(), "BID")
+        bidTrip = BidTripBridge(this)
+        webView.addJavascriptInterface(bidTrip, "BIDTrip")
         setContentView(webView)
         gpsWeather = BidGpsWeather(this, ::emitJs)
         adaptiveDisplay = BidAdaptiveDisplay(this)
