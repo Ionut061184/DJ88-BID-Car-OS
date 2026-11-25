@@ -38,7 +38,7 @@ s=s[:start]+""" const serviceKey='bid.service.v1';
 p.write_text(s)
 p=Path("app/src/main/assets/bid_service.js")
 s=p.read_text()
-anchor="b.onclick=()=>{host.hidden=true;panel.hidden=false;render()};"
+anchor="b.onclick=()=>{host.hidden=true;panel.hidden=false;render();if(syncOdo())render()};"
 assert s.count(anchor)==1
 s=s.replace(anchor,"""window.addEventListener('bid-service-restored',()=>{try{const raw=localStorage.getItem(key);if(raw!==null){state=JSON.parse(raw);if(!panel.hidden)render()}}catch(_){}});
 """+anchor)
