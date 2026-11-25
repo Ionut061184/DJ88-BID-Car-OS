@@ -22,17 +22,20 @@ import org.json.JSONObject
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var gpsWeather: BidGpsWeather
+    private lateinit var adaptiveDisplay: BidAdaptiveDisplay
     private var locationPrompted = false
     private fun autoWeather(): Boolean =
         getSharedPreferences("bid_weather", MODE_PRIVATE).getBoolean("gps", true)
 
     override fun onResume() {
         super.onResume()
+        if (::adaptiveDisplay.isInitialized) adaptiveDisplay.start()
         if (::gpsWeather.isInitialized && autoWeather()) refreshWeather()
     }
 
     override fun onPause() {
         if (::gpsWeather.isInitialized) gpsWeather.stop()
+        if (::adaptiveDisplay.isInitialized) adaptiveDisplay.stop()
         super.onPause()
     }
 
@@ -77,6 +80,7 @@ class MainActivity : Activity() {
         webView.addJavascriptInterface(Bridge(), "BID")
         setContentView(webView)
         gpsWeather = BidGpsWeather(this, ::emitJs)
+        adaptiveDisplay = BidAdaptiveDisplay(this)
         webView.loadUrl("file:///android_asset/index.html")
         webView.postDelayed({ refreshWeather() }, 1000)
     }
@@ -353,6 +357,12 @@ class MainActivity : Activity() {
     private fun connectivitySnapshot(): JSONObject = BidConnectivity.snapshot(this)
 
     inner class Bridge {
+        @JavascriptInterface
+        fun displaySnapshot(): String = adaptiveDisplay.snapshot().toString()
+
+        @JavascriptInterface
+        fun setDisplayMode(mode: String) = adaptiveDisplay.apply(mode)
+
         @JavascriptInterface
         fun connectivitySnapshot(): String = this@MainActivity.connectivitySnapshot().toString()
 
