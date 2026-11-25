@@ -50,24 +50,21 @@ class Qf001ThemesContract(unittest.TestCase):
         self.assertIn('onclick="musicChoose(\'music\')"', HTML)
         self.assertIn('onclick="launch(\'youtube\')"', HTML)
 
-    def test_only_gps_can_request_permission_automatically(self):
+    def test_build4_capabilities_with_one_time_permission_setup(self):
+        setup = MAIN.split("private fun configureIndicatorsOnce()", 1)[1].split("private fun openIndicatorPermissions()", 1)[0]
         refresh = MAIN.split("private fun refreshWeather() {", 1)[1].split("private fun refreshManualWeather()", 1)[0]
-        gps = MAIN.split("private fun askGpsOnce(", 1)[1].split("private fun openIndicatorPermissions()", 1)[0]
-        optional = MAIN.split("private fun openIndicatorPermissions()", 1)[1].split("private fun autoWeather()", 1)[0]
-        self.assertIn("if (!hasLocation()) askGpsOnce()", refresh)
-        self.assertNotIn("READ_PHONE_STATE", refresh)
-        self.assertNotIn("BLUETOOTH_CONNECT", refresh)
-        self.assertIn('getBoolean("gpsAsked", false)', gps)
-        self.assertIn('putBoolean("gpsAsked", true)', gps)
-        self.assertIn("ACCESS_FINE_LOCATION", gps)
-        self.assertIn("ACCESS_COARSE_LOCATION", gps)
-        self.assertNotIn("READ_PHONE_STATE", gps)
-        self.assertNotIn("BLUETOOTH_CONNECT", gps)
-        self.assertIn("READ_PHONE_STATE", optional)
-        self.assertIn("BLUETOOTH_CONNECT", optional)
-        self.assertIn('requestPermissions(arrayOf(permission), 418)', optional)
+        self.assertIn('getBoolean("initialIndicatorsAskedV6", false)', setup)
+        self.assertIn('putBoolean("initialIndicatorsAskedV6", true)', setup)
+        self.assertIn("if (needed.isEmpty()) return", setup)
+        self.assertIn("if (permissionRequestInProgress) return", setup)
+        for permission in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "READ_PHONE_STATE", "BLUETOOTH_CONNECT"):
+            self.assertIn(permission, setup)
+        self.assertIn("requestPermissions(needed.toTypedArray(), 419)", setup)
+        self.assertNotIn("requestPermissions", refresh)
+        self.assertNotIn("askGpsOnce", refresh)
+        self.assertIn("override fun onPageFinished", MAIN)
         self.assertIn('"indicatorpermissions" -> openIndicatorPermissions()', MAIN)
-        self.assertNotIn("locationPrompted", MAIN)
+        self.assertIn("requestCode == 419", MAIN)
 
     def test_main_ui_does_not_depend_on_privileged_theme_selection(self):
         self.assertIn('onclick="qfThemes()"', HTML)
