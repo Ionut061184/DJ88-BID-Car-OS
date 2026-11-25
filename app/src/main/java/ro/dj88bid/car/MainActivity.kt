@@ -50,10 +50,6 @@ class MainActivity : Activity() {
             needed.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
             needed.add(android.Manifest.permission.ACCESS_COARSE_LOCATION)
         }
-        if (android.os.Build.VERSION.SDK_INT >= 31 &&
-            packageManager.hasSystemFeature("android.hardware.bluetooth") &&
-            !permissionGranted("android.permission.BLUETOOTH_CONNECT"))
-            needed.add("android.permission.BLUETOOTH_CONNECT")
         prefs.edit().putBoolean("initialIndicatorsAskedV6", true)
             .putBoolean("gpsAsked", true).apply()
         if (needed.isEmpty()) return
