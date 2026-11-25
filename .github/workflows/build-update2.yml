@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: ['feature/bid-adaptive-gps-status']
-    paths: ['update2-master.zip', '.github/workflows/build-update2.yml']
+    paths: ['update2-master-meteo-3d.zip', '.github/workflows/build-update2.yml']
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -14,10 +14,10 @@ jobs:
       - name: Verify and import exact MASTER resource archive
         run: |
           set -euo pipefail
-          test -f update2-master.zip || { echo "::error::Upload the exact tested update2-master.zip to this branch root; old artwork must not be built."; exit 1; }
-          echo "62edc00a8783601e36239dc213912f061dacd62fb63efffed83f3d6f0c79a8b7  update2-master.zip" | sha256sum -c -
+          test -f update2-master-meteo-3d.zip || { echo "::error::Upload the exact tested update2-master-meteo-3d.zip to this branch root; old artwork must not be built."; exit 1; }
+          echo "19d4e72ca3ccfea71be1c782e0e77f9161eb01c1e26bc536d4c28eea611f03d2  update2-master-meteo-3d.zip" | sha256sum -c -
           mkdir -p /tmp/bid-update2
-          unzip -q update2-master.zip -d /tmp/bid-update2
+          unzip -q update2-master-meteo-3d.zip -d /tmp/bid-update2
           cd /tmp/bid-update2
           sha256sum -c SHA256SUMS.txt
           echo "e7eb12698d98d64ce14a42d39f13901127204eb396553cf12a0b85992a6bd2b1  assets/bid_fullbleed.png" | sha256sum -c -
