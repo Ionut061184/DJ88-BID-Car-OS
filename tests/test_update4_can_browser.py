@@ -17,6 +17,12 @@ with sync_playwright() as p:
     page.wait_for_function("document.querySelector('#qfFuelTile').textContent.includes('18.0 L')")
     assert "0 km/h" in page.locator("#qfSpeedTile").inner_text()
     assert "CAN TEST" in page.locator("#qfFuelTile").inner_text()
+    car=page.locator('button[aria-label="Mașină"]')
+    assert car.count()==1, "Original car menu button missing"
+    car.click()
+    assert page.evaluate("calls.includes('car')"), "Original Mașină action no longer opens OEM menu"
+    assert not page.locator("#qfVehiclePanel").is_visible()
+    page.evaluate("window.calls=[]")
     page.locator("#qfSpeedTile").click()
     assert page.locator("#qfVehiclePanel").is_visible()
     assert "828 RPM" in page.locator("#qfVehicleText").inner_text()
