@@ -6,7 +6,6 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.SystemClock
 import org.json.JSONObject
 
 /** Window only: never changes global brightness or writes OEM settings. */
@@ -14,10 +13,12 @@ internal class BidAdaptiveDisplay(private val activity: Activity) : SensorEventL
     private val manager = activity.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
     private val sensor = manager?.getDefaultSensor(Sensor.TYPE_LIGHT)
     @Volatile private var lux: Float? = null
-    @Volatile private var lastReading: Long = 0
+    @Volatile private var requestedMode: String = "system"
+    @Volatile private var active = false
     fun start() {
         lux = null
-        lastReading = 0
+        active = true
+        apply(requestedMode)
         if (sensor != null) {
             try { manager?.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL) } catch (_: Exception) {}
         }
@@ -25,15 +26,14 @@ internal class BidAdaptiveDisplay(private val activity: Activity) : SensorEventL
     fun stop() {
         manager?.unregisterListener(this)
         lux = null
-        lastReading = 0
-        apply("system")
+        active = false
+        setWindowBrightness(-1f)
     }
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
     override fun onSensorChanged(event: SensorEvent?) {
         val value = event?.values?.firstOrNull()
         if (value != null && value.isFinite() && value >= 0f) {
             lux = value
-            lastReading = SystemClock.elapsedRealtime()
         }
     }
     fun snapshot(): JSONObject = JSONObject().apply {
@@ -49,6 +49,10 @@ internal class BidAdaptiveDisplay(private val activity: Activity) : SensorEventL
             "system" -> -1f
             else -> return
         }
+        requestedMode = mode
+        if (active) setWindowBrightness(brightness)
+    }
+    private fun setWindowBrightness(brightness: Float) {
         activity.runOnUiThread {
             val attrs = activity.window.attributes
             if (attrs.screenBrightness != brightness) {
