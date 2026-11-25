@@ -1,0 +1,75 @@
+name: Update 3 - Build 14 verified candidate
+on:
+  push:
+    branches: [feature/update3-build14-integration]
+    paths: ['DJ88-BID-Update3-Etapa8-System-candidat.zip', '.github/workflows/update3-candidate.yml', 'tools/import_update3.py', 'app/src/main/java/ro/dj88bid/car/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  candidate:
+    if: github.ref == 'refs/heads/feature/update3-build14-integration'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify and import exact candidate archive
+        run: python3 tools/import_update3.py DJ88-BID-Update3-Etapa8-System-candidat.zip
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run cumulative browser tests
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+          cp -r app/src/main/assets tests/update3_browser/assets
+          sed -i "s|executable_path='/usr/bin/chromium',||" tests/update3_browser/test_status.py
+          python tests/update3_browser/test_status.py
+      - name: Isolate test application from working Build 14
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/build.gradle.kts")
+          s = p.read_text()
+          for old, new in [
+              ('applicationIdSuffix = ".labtest"', 'applicationIdSuffix = ".update3test"'),
+              ('manifestPlaceholders["bidAppLabel"] = "DJ 88 BID TEST"', 'manifestPlaceholders["bidAppLabel"] = "DJ 88 BID UPDATE 3 TEST"'),
+          ]:
+              assert s.count(old) == 1, old
+              s = s.replace(old, new)
+          assert 'manifestPlaceholders["bidHomeEnabled"] = "false"' in s
+          p.write_text(s)
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Compile lab candidate only
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          gradle --no-daemon :app:assembleLabSafeDebug
+      - name: Verify packaged assets and APK identity
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/labSafe/debug/app-labSafe-debug.apk dist/DJ88-BID-Update3-TEST.apk
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/DJ88-BID-Update3-TEST.apk
+          "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging dist/DJ88-BID-Update3-TEST.apk | grep -F "package: name='ro.dj88bid.car.update3test'"
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          with ZipFile("dist/DJ88-BID-Update3-TEST.apk") as z:
+              for p in Path("app/src/main/assets").iterdir():
+                  if p.is_file() and p.name.startswith(("bid_", "index.html")):
+                      assert z.read("assets/" + p.name) == p.read_bytes(), p.name
+          print("Packaged assets verified.")
+          PY
+          sha256sum dist/*.apk > dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DJ88-BID-Update3-TEST
+          path: dist/
+          if-no-files-found: error
