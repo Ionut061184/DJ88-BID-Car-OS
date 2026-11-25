@@ -21,6 +21,7 @@ import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private val settingsPin by lazy { BidSettingsPin(this) }
     private lateinit var bidTrip: BidTripBridge
     private lateinit var qfVehicleProbe: QfVehicleProbe
     private lateinit var gpsWeather: BidGpsWeather
@@ -422,6 +423,16 @@ class MainActivity : Activity() {
     private fun connectivitySnapshot(): JSONObject = BidConnectivity.snapshot(this)
 
     inner class Bridge {
+
+        @JavascriptInterface
+        fun settingsPinEnabled(): Boolean = settingsPin.enabled()
+
+        @JavascriptInterface
+        fun settingsPinVerify(pin: String): String = settingsPin.verify(pin)
+
+        @JavascriptInterface
+        fun settingsPinChange(oldPin: String, newPin: String): String = settingsPin.change(oldPin, newPin)
+
         @JavascriptInterface
         fun displaySnapshot(): String = adaptiveDisplay.snapshot().toString()
 
