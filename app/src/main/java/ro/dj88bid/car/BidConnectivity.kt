@@ -66,29 +66,65 @@ internal object BidConnectivity {
                     TelephonyManager.SIM_STATE_READY -> result.put("simPresent", true)
                 }
                 if (result.optBoolean("simPresent", false)) {
-                    val registered = tm.allCellInfo?.filter { it.isRegistered }.orEmpty()
-                    val levels = registered.mapNotNull { cell ->
-                        when {
-                            cell is CellInfoLte -> cell.cellSignalStrength.level
-                            cell is CellInfoWcdma -> cell.cellSignalStrength.level
-                            cell is CellInfoGsm -> cell.cellSignalStrength.level
-                            cell is CellInfoCdma -> cell.cellSignalStrength.level
-                            Build.VERSION.SDK_INT >= 29 && cell is CellInfoNr -> cell.cellSignalStrength.level
-                            Build.VERSION.SDK_INT >= 29 && cell is CellInfoTdscdma -> cell.cellSignalStrength.level
-                            else -> null
-                        }
-                    }.filter { it in 0..4 }
-                    if (levels.isNotEmpty()) result.put("cellLevel", levels.maxOrNull())
-                    val type = if (Build.VERSION.SDK_INT >= 24) tm.dataNetworkType else tm.networkType
+                    // Public modem signal API, independent of phone-call permissions.
+                    if (Build.VERSION.SDK_INT >= 28) {
+                        try {
+                            tm.signalStrength?.level?.takeIf { it in 0..4 }?.let {
+                                result.put("cellLevel", it)
+                            }
+                        } catch (_: Exception) {}
+                    }
+                    // Exact data RAT on Android 13+ with the normal basic-phone-state permission.
+                    // Older devices may permit this API; a denial never suppresses signal strength.
+                    val type = try {
+                        if (Build.VERSION.SDK_INT >= 24) tm.dataNetworkType else tm.networkType
+                    } catch (_: Exception) { 0 }
                     val generation = when(type) {
-                        1,2,4,7,11,16 -> "2G"
+                        1,2,16 -> "2G"
                         3,5,6,8,9,10,12,14,15,17 -> "3G"
                         13 -> "4G"
                         19 -> "4G+"
                         20 -> "5G"
                         else -> null
                     }
-                    if (generation != null) result.put("networkGeneration", generation)
+                    if (generation != null) {
+                        result.put("networkGeneration", generation)
+                        result.put("networkGenerationSource", "DATA_RADIO_TYPE")
+                    }
+                    // Fallback: only registered cells, using existing foreground location permission.
+                    // Never store or transmit cell identity; ambiguous radio generations stay unknown.
+                    try {
+                        val registered = tm.allCellInfo?.filter { it.isRegistered }.orEmpty()
+                        val levels = registered.mapNotNull { cell ->
+                            when {
+                                cell is CellInfoLte -> cell.cellSignalStrength.level
+                                cell is CellInfoWcdma -> cell.cellSignalStrength.level
+                                cell is CellInfoGsm -> cell.cellSignalStrength.level
+                                cell is CellInfoCdma -> cell.cellSignalStrength.level
+                                Build.VERSION.SDK_INT >= 29 && cell is CellInfoNr -> cell.cellSignalStrength.level
+                                Build.VERSION.SDK_INT >= 29 && cell is CellInfoTdscdma -> cell.cellSignalStrength.level
+                                else -> null
+                            }
+                        }.filter { it in 0..4 }
+                        if (result.isNull("cellLevel") && levels.isNotEmpty())
+                            result.put("cellLevel", levels.maxOrNull())
+                        if (generation == null && registered.isNotEmpty()) {
+                            val radios = registered.map { cell ->
+                                when {
+                                    cell is CellInfoLte -> "4G"
+                                    cell is CellInfoWcdma -> "3G"
+                                    cell is CellInfoGsm -> "2G"
+                                    Build.VERSION.SDK_INT >= 29 && cell is CellInfoNr -> "5G"
+                                    Build.VERSION.SDK_INT >= 29 && cell is CellInfoTdscdma -> "3G"
+                                    else -> null
+                                }
+                            }.distinct()
+                            if (radios.size == 1 && radios[0] != null) {
+                                result.put("networkGeneration", radios[0])
+                                result.put("networkGenerationSource", "REGISTERED_RADIO_CELL")
+                            }
+                        }
+                    } catch (_: Exception) {}
                 }
             }
         } catch (_: Exception) {}
