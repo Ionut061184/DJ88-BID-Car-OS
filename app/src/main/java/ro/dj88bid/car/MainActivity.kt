@@ -753,6 +753,7 @@ class MainActivity : Activity() {
                 ),
                 "Mașină" to listOf(
                     FunctionTile("Setări auto","car",listOf("carsettings","carsetting")),
+                    FunctionTile("OEM extins","oemextended",emptyList()),
                     FunctionTile("Informații CANBUS","canbus",listOf("qf.vehicle","canbus")),
                     FunctionTile("Cameră marșarier","reverse",listOf("backcar","rear camera")),
                     FunctionTile("TPMS","tpms",listOf("tpms")),
@@ -859,6 +860,7 @@ class MainActivity : Activity() {
                                     Toast.LENGTH_LONG).show()
                                 "apps" -> showApps()
                                 "indicatorpermissions" -> openIndicatorPermissions()
+                                "oemextended" -> QfOemMenu.show(this@MainActivity)
                                 "car","canbus","maps","waze","youtube" -> Bridge().open(tile.key)
                                 else -> Bridge().openMediaOem(tile.key)
                             }
