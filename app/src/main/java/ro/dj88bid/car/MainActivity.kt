@@ -50,9 +50,6 @@ class MainActivity : Activity() {
             needed.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
             needed.add(android.Manifest.permission.ACCESS_COARSE_LOCATION)
         }
-        if (packageManager.hasSystemFeature("android.hardware.telephony") &&
-            !permissionGranted(android.Manifest.permission.READ_PHONE_STATE))
-            needed.add(android.Manifest.permission.READ_PHONE_STATE)
         if (android.os.Build.VERSION.SDK_INT >= 31 &&
             packageManager.hasSystemFeature("android.hardware.bluetooth") &&
             !permissionGranted("android.permission.BLUETOOTH_CONNECT"))
@@ -66,9 +63,6 @@ class MainActivity : Activity() {
 
     private fun openIndicatorPermissions() {
         val items = mutableListOf<Pair<String, String>>()
-        if (packageManager.hasSystemFeature("android.hardware.telephony") &&
-            !permissionGranted(android.Manifest.permission.READ_PHONE_STATE))
-            items.add("Semnal SIM · permite citirea stării rețelei" to android.Manifest.permission.READ_PHONE_STATE)
         if (android.os.Build.VERSION.SDK_INT >= 31 &&
             packageManager.hasSystemFeature("android.hardware.bluetooth") &&
             !permissionGranted("android.permission.BLUETOOTH_CONNECT"))
