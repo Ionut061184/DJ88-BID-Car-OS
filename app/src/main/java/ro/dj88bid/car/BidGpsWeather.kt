@@ -34,10 +34,22 @@ internal class BidGpsWeather(
     private var lastCity: String? = null
     private var lastTemperature: Double? = null
     private var lastCode: Int? = null
+    private var lastSuccessAt = 0L
+    private var staleShown = false
     private val tick = object : Runnable {
         override fun run() {
             if (!running) return
-            lastFix?.let { maybeFetch(it) }
+            val fix = lastFix
+            if (fix != null && usable(fix)) {
+                maybeFetch(fix)
+            } else if (!staleShown) {
+                staleShown = true
+                publish(lastCity, lastTemperature, lastCode, "GPS indisponibil · date neactualizate", false)
+            }
+            if (lastSuccessAt > 0 && SystemClock.elapsedRealtime() - lastSuccessAt > 900_000L && !staleShown) {
+                staleShown = true
+                publish(lastCity, lastTemperature, lastCode, "Date meteo neactualizate", false)
+            }
             handler.postDelayed(this, 30_000)
         }
     }
@@ -67,6 +79,7 @@ internal class BidGpsWeather(
         generation++
         lastRequest = null
         lastAt = 0
+        staleShown = true
         publish(lastCity, lastTemperature, lastCode, "Se caută poziția GPS", false)
         val providers = if (fine) listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
             else listOf(LocationManager.NETWORK_PROVIDER)
@@ -114,7 +127,7 @@ internal class BidGpsWeather(
                 if (Geocoder.isPresent()) {
                     @Suppress("DEPRECATION")
                     val address = Geocoder(context, Locale("ro", "RO")).getFromLocation(lat, lon, 1)?.firstOrNull()
-                    city = listOf(address?.locality, address?.subLocality, address?.subAdminArea)
+                    city = listOf(address?.locality, address?.subLocality)
                         .firstOrNull { !it.isNullOrBlank() }
                 }
             } catch (_: Exception) {}
@@ -135,9 +148,12 @@ internal class BidGpsWeather(
                     lastCity = city
                     lastTemperature = temperature
                     lastCode = code
+                    lastSuccessAt = SystemClock.elapsedRealtime()
+                    staleShown = false
                     publish(city, temperature, code, if (city == null) "Localitate neidentificată" else "Vreme după GPS", true, isDay)
                 } else {
                     // Never label the previous location's temperature as current at the new location.
+                    staleShown = true
                     publish(lastCity, lastTemperature, lastCode, "Date meteo neactualizate", false)
                 }
             }
