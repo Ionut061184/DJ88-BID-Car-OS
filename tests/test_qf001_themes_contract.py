@@ -57,8 +57,13 @@ class Qf001ThemesContract(unittest.TestCase):
         self.assertIn('putBoolean("initialIndicatorsAskedV6", true)', setup)
         self.assertIn("if (needed.isEmpty()) return", setup)
         self.assertIn("if (permissionRequestInProgress) return", setup)
-        for permission in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "READ_PHONE_STATE", "BLUETOOTH_CONNECT"):
+        for permission in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "BLUETOOTH_CONNECT"):
             self.assertIn(permission, setup)
+        self.assertNotIn("READ_PHONE_STATE", MAIN)
+        self.assertNotIn('android.permission.READ_PHONE_STATE"', MANIFEST)
+        self.assertIn("READ_BASIC_PHONE_STATE", MANIFEST)
+        for forbidden in ("CALL_PHONE", "READ_CONTACTS", "WRITE_CONTACTS", "READ_CALL_LOG", "WRITE_CALL_LOG"):
+            self.assertNotIn("android.permission." + forbidden, MANIFEST)
         self.assertIn("requestPermissions(needed.toTypedArray(), 419)", setup)
         self.assertNotIn("requestPermissions", refresh)
         self.assertNotIn("askGpsOnce", refresh)
