@@ -57,8 +57,13 @@ class Qf001ThemesContract(unittest.TestCase):
         self.assertIn('putBoolean("initialIndicatorsAskedV6", true)', setup)
         self.assertIn("if (needed.isEmpty()) return", setup)
         self.assertIn("if (permissionRequestInProgress) return", setup)
-        for permission in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "BLUETOOTH_CONNECT"):
+        for permission in ("ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"):
             self.assertIn(permission, setup)
+        self.assertNotIn("BLUETOOTH_CONNECT", setup)
+        optional = MAIN.split("private fun openIndicatorPermissions()", 1)[1].split("private fun autoWeather()", 1)[0]
+        self.assertIn("BLUETOOTH_CONNECT", optional)
+        self.assertIn("requestPermissions(arrayOf(permission), 418)", optional)
+        self.assertIn('android.permission.BLUETOOTH" android:maxSdkVersion="30"', MANIFEST)
         self.assertNotIn("READ_PHONE_STATE", MAIN)
         self.assertNotIn('android.permission.READ_PHONE_STATE"', MANIFEST)
         self.assertIn("READ_BASIC_PHONE_STATE", MANIFEST)
