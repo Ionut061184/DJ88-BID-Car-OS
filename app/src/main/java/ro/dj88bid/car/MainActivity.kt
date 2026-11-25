@@ -206,10 +206,20 @@ class MainActivity : Activity() {
         if (autoWeather()) {
             val fine = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
             val coarse = checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-            if (!fine && !coarse && !locationPrompted) {
+            val needed = mutableListOf<String>()
+            if (!fine && !coarse) {
+                needed.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                needed.add(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
+            if (packageManager.hasSystemFeature("android.hardware.telephony") &&
+                checkSelfPermission(android.Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED)
+                needed.add(android.Manifest.permission.READ_PHONE_STATE)
+            if (android.os.Build.VERSION.SDK_INT >= 31 &&
+                checkSelfPermission("android.permission.BLUETOOTH_CONNECT") != PackageManager.PERMISSION_GRANTED)
+                needed.add("android.permission.BLUETOOTH_CONNECT")
+            if (needed.isNotEmpty() && !locationPrompted) {
                 locationPrompted = true
-                requestPermissions(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION), 417)
+                requestPermissions(needed.toTypedArray(), 417)
             } else gpsWeather.start()
             return
         }
@@ -243,9 +253,9 @@ class MainActivity : Activity() {
                     in 95..99 -> "Furtună"
                     else -> "Vreme"
                 }
-                emitJs("updateWeather(${JSONObject.quote(city)},${Math.round(value)},${JSONObject.quote(label)});")
+                if (!autoWeather()) emitJs("updateWeather(${JSONObject.quote(city)},${Math.round(value)},${JSONObject.quote(label)});")
             } catch (_: Exception) {
-                emitJs("updateWeather(${JSONObject.quote(city)},null,'');")
+                if (!autoWeather()) emitJs("updateWeather(${JSONObject.quote(city)},null,'');")
             } finally {
                 connection?.disconnect()
             }
@@ -340,19 +350,7 @@ class MainActivity : Activity() {
     }
 
     /** Nullable states: do not claim Wi-Fi/Bluetooth is on when access is denied. */
-    private fun connectivitySnapshot(): JSONObject {
-        val result = JSONObject()
-        try {
-            result.put("wifi", android.provider.Settings.Global.getInt(
-                contentResolver, android.provider.Settings.Global.WIFI_ON, 0) == 1)
-        } catch (_: Exception) { result.put("wifi", JSONObject.NULL) }
-        try {
-            val adapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
-            if (adapter == null) result.put("bluetooth", JSONObject.NULL)
-            else result.put("bluetooth", adapter.isEnabled)
-        } catch (_: Exception) { result.put("bluetooth", JSONObject.NULL) }
-        return result
-    }
+    private fun connectivitySnapshot(): JSONObject = BidConnectivity.snapshot(this)
 
     inner class Bridge {
         @JavascriptInterface
