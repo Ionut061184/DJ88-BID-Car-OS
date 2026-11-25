@@ -22,6 +22,7 @@ import org.json.JSONObject
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var bidTrip: BidTripBridge
+    private lateinit var qfVehicleProbe: QfVehicleProbe
     private lateinit var gpsWeather: BidGpsWeather
     private lateinit var adaptiveDisplay: BidAdaptiveDisplay
     private var permissionRequestInProgress = false
@@ -89,11 +90,13 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (::bidTrip.isInitialized) bidTrip.setForeground(true)
+        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.start()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.start()
         if (pageReady && ::gpsWeather.isInitialized && autoWeather()) refreshWeather()
     }
 
     override fun onPause() {
+        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.stop()
         if (::bidTrip.isInitialized) bidTrip.setForeground(false)
         if (::gpsWeather.isInitialized) gpsWeather.stop()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.stop()
@@ -101,6 +104,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.stop()
         if (::bidTrip.isInitialized) bidTrip.setForeground(false)
         if (::webView.isInitialized) webView.removeJavascriptInterface("BIDTrip")
         if (::gpsWeather.isInitialized) gpsWeather.close()
@@ -153,6 +157,7 @@ class MainActivity : Activity() {
         }
         webView.addJavascriptInterface(Bridge(), "BID")
         bidTrip = BidTripBridge(this)
+        qfVehicleProbe = QfVehicleProbe(this)
         webView.addJavascriptInterface(bidTrip, "BIDTrip")
         setContentView(webView)
         gpsWeather = BidGpsWeather(this, ::emitJs)
@@ -431,6 +436,9 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun vehicleVoltageSnapshot(): String = readQf001VehicleVoltage().toString()
+
+        @JavascriptInterface
+        fun qfVehicleSnapshot(): String = if (::qfVehicleProbe.isInitialized) qfVehicleProbe.snapshot() else "{}"
 
         @JavascriptInterface
         fun chooseWeatherCity() = runOnUiThread {
