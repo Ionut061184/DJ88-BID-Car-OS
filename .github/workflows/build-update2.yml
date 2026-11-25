@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: ['feature/bid-adaptive-gps-status']
-    paths: ['update2-master-meteo-3d.zip', '.github/workflows/build-update2.yml']
+    paths: ['update2-master-meteo-3d.zip', '.github/workflows/build-update2.yml', 'app/src/main/java/**', 'app/src/main/AndroidManifest.xml', 'app/build.gradle.kts', 'tests/**']
 jobs:
   android:
     runs-on: ubuntu-latest
