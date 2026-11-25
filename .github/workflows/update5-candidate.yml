@@ -2,7 +2,7 @@ name: Update 5 - Build 14 verified candidate
 on:
   push:
     branches: [feature/update5-smart-system]
-    paths: ['DJ88-BID-Update3-Etapa8-System-candidat.zip', '.github/workflows/update5-candidate.yml', 'tools/import_update3.py', 'app/src/main/java/ro/dj88bid/car/**', 'app/src/main/assets/bid_qf_vehicle.js', 'tests/test_update4_can_browser.py', 'tools/apply_update5_antiglare.py', 'tests/test_update5_antiglare.py', 'tools/apply_update5_battery_guard.py', 'app/src/main/assets/bid_service.js', 'tests/test_update5_service.py', 'tools/apply_update5_quickstart.py', 'tests/test_update5_quickstart.py', 'app/src/main/assets/bid_security.js', 'tests/test_update5_security.py']
+    paths: ['DJ88-BID-Update3-Etapa8-System-candidat.zip', '.github/workflows/update5-candidate.yml', 'tools/import_update3.py', 'app/src/main/java/ro/dj88bid/car/**', 'app/src/main/assets/bid_qf_vehicle.js', 'tests/test_update4_can_browser.py', 'tools/apply_update5_antiglare.py', 'tests/test_update5_antiglare.py', 'tools/apply_update5_battery_guard.py', 'app/src/main/assets/bid_service.js', 'tests/test_update5_service.py', 'tools/apply_update5_quickstart.py', 'tests/test_update5_quickstart.py', 'app/src/main/assets/bid_security.js', 'tests/test_update5_security.py', 'tools/apply_update5_recovery.py', 'tests/test_update5_recovery.py']
   workflow_dispatch:
 permissions:
   contents: read
@@ -90,6 +90,15 @@ jobs:
           python tests/test_update5_quickstart.py
           python tests/test_update5_service.py
           python tests/test_update4_can_browser.py
+      - name: Extend and verify Recovery
+        run: |
+          python tools/apply_update5_recovery.py
+          python tests/test_update5_recovery.py
+          python tests/test_update5_security.py
+          python tests/test_update5_quickstart.py
+          python tests/test_update5_service.py
+          python tests/test_update4_can_browser.py
+          python tests/test_update5_antiglare.py
       - name: Isolate test application from working Build 14
         run: |
           python3 - <<'PY'
@@ -130,13 +139,13 @@ jobs:
       - name: Verify packaged assets and APK identity
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/labSafe/debug/app-labSafe-debug.apk dist/DJ88-BID-Update5-SECURITY-TEST.apk
-          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/DJ88-BID-Update5-SECURITY-TEST.apk
-          "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging dist/DJ88-BID-Update5-SECURITY-TEST.apk | grep -F "package: name='ro.dj88bid.car.update5test'"
+          cp app/build/outputs/apk/labSafe/debug/app-labSafe-debug.apk dist/DJ88-BID-Update5-RECOVERY-TEST.apk
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/DJ88-BID-Update5-RECOVERY-TEST.apk
+          "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging dist/DJ88-BID-Update5-RECOVERY-TEST.apk | grep -F "package: name='ro.dj88bid.car.update5test'"
           python3 - <<'PY'
           from zipfile import ZipFile
           from pathlib import Path
-          with ZipFile("dist/DJ88-BID-Update5-SECURITY-TEST.apk") as z:
+          with ZipFile("dist/DJ88-BID-Update5-RECOVERY-TEST.apk") as z:
               for p in Path("app/src/main/assets").iterdir():
                   if p.is_file() and p.name.startswith(("bid_", "index.html")):
                       assert z.read("assets/" + p.name) == p.read_bytes(), p.name
@@ -145,6 +154,6 @@ jobs:
           sha256sum dist/*.apk > dist/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: DJ88-BID-Update5-SECURITY-TEST
+          name: DJ88-BID-Update5-RECOVERY-TEST
           path: dist/
           if-no-files-found: error
