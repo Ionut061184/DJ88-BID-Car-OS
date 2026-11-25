@@ -838,7 +838,7 @@ class MainActivity : Activity() {
                         val image = android.widget.ImageView(this@MainActivity).apply {
                             setImageDrawable(matched?.loadIcon(packageManager)
                                 ?: getDrawable(android.R.drawable.ic_menu_manage))
-                            alpha = if(matched == null && tile.key !in listOf("apps","reverse","car","canbus","indicatorpermissions")) .55f else 1f
+                            alpha = if(matched == null && tile.key !in listOf("apps","reverse","car","canbus","indicatorpermissions","oemextended")) .55f else 1f
                             scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
                         }
                         cell.addView(image,android.widget.LinearLayout.LayoutParams(
