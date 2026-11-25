@@ -108,6 +108,7 @@ internal class BidGpsWeather(
             var city: String? = null
             var temperature: Double? = null
             var code: Int? = null
+            var isDay: Boolean? = null
             var connection: HttpURLConnection? = null
             try {
                 if (Geocoder.isPresent()) {
@@ -125,6 +126,7 @@ internal class BidGpsWeather(
                 val current = JSONObject(connection.inputStream.bufferedReader().use { it.readText() }).getJSONObject("current")
                 temperature = current.getDouble("temperature_2m").takeIf { it.isFinite() }
                 code = current.getInt("weather_code")
+                isDay = when (current.optInt("is_day", -1)) { 1 -> true; 0 -> false; else -> null }
             } catch (_: Exception) {} finally { connection?.disconnect() }
             handler.post {
                 busy = false
@@ -133,7 +135,7 @@ internal class BidGpsWeather(
                     lastCity = city
                     lastTemperature = temperature
                     lastCode = code
-                    publish(city, temperature, code, if (city == null) "Localitate neidentificată" else "Vreme după GPS", true)
+                    publish(city, temperature, code, if (city == null) "Localitate neidentificată" else "Vreme după GPS", true, isDay)
                 } else {
                     // Never label the previous location's temperature as current at the new location.
                     publish(lastCity, lastTemperature, lastCode, "Date meteo neactualizate", false)
@@ -142,10 +144,10 @@ internal class BidGpsWeather(
         }
     }
 
-    private fun publish(city: String?, temp: Double?, code: Int?, note: String, fresh: Boolean) {
+    private fun publish(city: String?, temp: Double?, code: Int?, note: String, fresh: Boolean, isDay: Boolean? = null) {
         val data = JSONObject().apply {
             put("city", city ?: JSONObject.NULL); put("temperature", temp ?: JSONObject.NULL)
-            put("code", code ?: JSONObject.NULL); put("fresh", fresh); put("note", note)
+            put("code", code ?: JSONObject.NULL); put("isDay", isDay ?: JSONObject.NULL); put("fresh", fresh); put("note", note)
         }
         emit("if(window.updateGpsWeather){window.updateGpsWeather($data);}else if(window.updateWeather){window.updateWeather(" +
             JSONObject.quote(if (fresh) city ?: "GPS" else (city ?: "GPS") + " *") +
