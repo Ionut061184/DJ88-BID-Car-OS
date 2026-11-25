@@ -15,16 +15,20 @@ internal class BidAdaptiveDisplay(private val activity: Activity) : SensorEventL
     @Volatile private var lux: Float? = null
     @Volatile private var requestedMode: String = "system"
     @Volatile private var active = false
+    @Volatile private var sensorRegistered = false
     fun start() {
+        manager?.unregisterListener(this)
+        sensorRegistered = false
         lux = null
         active = true
         apply(requestedMode)
         if (sensor != null) {
-            try { manager?.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL) } catch (_: Exception) {}
+            try { sensorRegistered = manager?.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL) == true } catch (_: Exception) { sensorRegistered = false }
         }
     }
     fun stop() {
         manager?.unregisterListener(this)
+        sensorRegistered = false
         lux = null
         active = false
         setWindowBrightness(-1f)
@@ -32,13 +36,14 @@ internal class BidAdaptiveDisplay(private val activity: Activity) : SensorEventL
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
     override fun onSensorChanged(event: SensorEvent?) {
         val value = event?.values?.firstOrNull()
-        if (value != null && value.isFinite() && value >= 0f) {
+        if (active && sensorRegistered && value != null && value.isFinite() && value >= 0f) {
             lux = value
         }
     }
     fun snapshot(): JSONObject = JSONObject().apply {
         put("hasLightSensor", sensor != null)
-        val value = lux
+        put("sensorRegistered", active && sensorRegistered)
+        val value = if (active && sensorRegistered) lux else null
         put("lux", if (value != null) value else JSONObject.NULL)
     }
     fun apply(mode: String) {
