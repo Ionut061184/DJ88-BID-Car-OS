@@ -24,6 +24,7 @@ class MainActivity : Activity() {
     private lateinit var gpsWeather: BidGpsWeather
     private lateinit var adaptiveDisplay: BidAdaptiveDisplay
     private var permissionRequestInProgress = false
+    private var pageReady = false
     private fun permissionGranted(permission: String): Boolean =
         checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
     private fun hasLocation(): Boolean =
@@ -37,6 +38,30 @@ class MainActivity : Activity() {
         permissionRequestInProgress = true
         requestPermissions(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION,
             android.Manifest.permission.ACCESS_COARSE_LOCATION), 417)
+    }
+
+    // One initial setup, only permissions missing on this device.
+    private fun configureIndicatorsOnce() {
+        if (permissionRequestInProgress) return
+        val prefs = getSharedPreferences("bid_permission_choices", MODE_PRIVATE)
+        if (prefs.getBoolean("initialIndicatorsAskedV6", false)) return
+        val needed = mutableListOf<String>()
+        if (autoWeather() && !hasLocation()) {
+            needed.add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+            needed.add(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+        if (packageManager.hasSystemFeature("android.hardware.telephony") &&
+            !permissionGranted(android.Manifest.permission.READ_PHONE_STATE))
+            needed.add(android.Manifest.permission.READ_PHONE_STATE)
+        if (android.os.Build.VERSION.SDK_INT >= 31 &&
+            packageManager.hasSystemFeature("android.hardware.bluetooth") &&
+            !permissionGranted("android.permission.BLUETOOTH_CONNECT"))
+            needed.add("android.permission.BLUETOOTH_CONNECT")
+        prefs.edit().putBoolean("initialIndicatorsAskedV6", true)
+            .putBoolean("gpsAsked", true).apply()
+        if (needed.isEmpty()) return
+        permissionRequestInProgress = true
+        requestPermissions(needed.toTypedArray(), 419)
     }
 
     private fun openIndicatorPermissions() {
@@ -73,7 +98,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.start()
-        if (::gpsWeather.isInitialized && autoWeather()) refreshWeather()
+        if (pageReady && ::gpsWeather.isInitialized && autoWeather()) refreshWeather()
     }
 
     override fun onPause() {
@@ -89,7 +114,7 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 417 || requestCode == 418) {
+        if (requestCode == 417 || requestCode == 418 || requestCode == 419) {
             permissionRequestInProgress = false
             if (autoWeather() && ::gpsWeather.isInitialized) gpsWeather.start()
         }
@@ -115,6 +140,14 @@ class MainActivity : Activity() {
         webView.settings.allowUniversalAccessFromFileURLs = false
         webView.webChromeClient = WebChromeClient()
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView, url: String) {
+                super.onPageFinished(view, url)
+                if (url == "file:///android_asset/index.html") {
+                    pageReady = true
+                    configureIndicatorsOnce()
+                    refreshWeather()
+                }
+            }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 if (request.url.scheme != "file") {
                     startSafely(Intent(Intent.ACTION_VIEW, request.url))
@@ -128,7 +161,7 @@ class MainActivity : Activity() {
         gpsWeather = BidGpsWeather(this, ::emitJs)
         adaptiveDisplay = BidAdaptiveDisplay(this)
         webView.loadUrl("file:///android_asset/index.html")
-        webView.postDelayed({ refreshWeather() }, 1000)
+
     }
 
     // User-approved shortcuts only. Never invoke hidden OEM services or system intents.
@@ -254,7 +287,6 @@ class MainActivity : Activity() {
     }
     private fun refreshWeather() {
         if (autoWeather()) {
-            if (!hasLocation()) askGpsOnce()
             gpsWeather.start()
             return
         }
@@ -414,6 +446,9 @@ class MainActivity : Activity() {
                     if (index > 0) edit.putString("city", choices[index])
                     edit.apply()
                     if (index == 0 && !hasLocation()) askGpsOnce(true)
+                    else if (index == 0 && android.os.Build.VERSION.SDK_INT >= 28 &&
+                        !(getSystemService(LOCATION_SERVICE) as android.location.LocationManager).isLocationEnabled)
+                        startSafely(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
                     refreshWeather()
                 }.setNegativeButton("Închide", null).show()
         }
