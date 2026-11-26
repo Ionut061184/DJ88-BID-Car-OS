@@ -308,6 +308,7 @@ public final class QfVehicleProbe {
              .put("auditAfterMessages",afterMessages).put("auditAfterValid",afterValid);
             sdkBodyAudit.snapshot(o);
             o.put("mcuSamples",mcuProbe.samples());
+            o.put("mcuFrameValidation",mcuProbe.frameValidation());
             o.put("mcuStatus",mcuProbe.status()).put("mcuCanbusCount",mcuProbe.count(65)).put("mcuVoltageCount",mcuProbe.count(41));
             String version=oemCanbusVersion(),globalShare=globalBodyShareState();
             o.put("oemCanbusVersion",version)
