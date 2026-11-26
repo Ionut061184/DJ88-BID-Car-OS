@@ -18,7 +18,7 @@ import java.io.ByteArrayInputStream
 import java.io.File
 
 /** Exact-size replacement artwork; fixed and unchanged touch targets. */
-class BidHomeEditor(private val activity: Activity, private val changed: () -> Unit) {
+class BidHomeEditor(private val activity: Activity, private val profiles: BidThemeProfiles, private val changed: () -> Unit) {
     companion object {
         const val HOST = "bid-home.invalid"
         const val REQUEST = 580
@@ -26,11 +26,12 @@ class BidHomeEditor(private val activity: Activity, private val changed: () -> U
         const val WIDTH = 1280
         const val HEIGHT = 720
     }
-    private val active = File(activity.filesDir,"bid_home_custom.png")
+    private val active get() = profiles.asset("bid_home_custom.png")
+    fun isBusy() = busy
     private var busy = false
     @Volatile private var revision = System.nanoTime()
     fun activeUrl(): String? =
-        if(active.isFile) "https://"+HOST+"/home.png?v="+revision else null
+        if(active.isFile) "https://"+HOST+"/home.png?v="+profiles.current()+ "-"+revision else null
 
     // The sole virtual resource is an image from app-private storage. No network fallback.
     fun serve(uri: Uri, method: String): WebResourceResponse {
@@ -46,7 +47,7 @@ class BidHomeEditor(private val activity: Activity, private val changed: () -> U
     }
 
     fun show() {
-        if(busy || activity.isFinishing || activity.isDestroyed)return
+        if(busy || profiles.isBusy() || activity.isFinishing || activity.isDestroyed)return
         AlertDialog.Builder(activity).setTitle("BID · Editor ecran principal")
             .setItems(arrayOf("Importă imagine completă 1280 × 720","Previzualizează ecranul actual",
                 "Restabilește designul original","Editează un element grafic")) { _,i ->
@@ -81,6 +82,7 @@ class BidHomeEditor(private val activity: Activity, private val changed: () -> U
     }
 
     fun handleResult(code:Int,result:Int,data:Intent?) {
+        if(profiles.isBusy())return
         if(code in PATCH_BASE until PATCH_BASE+patches.size) {
             if(result==Activity.RESULT_OK && !busy) data?.data?.let { loadPatch(code-PATCH_BASE,it) }
             return

@@ -22,8 +22,9 @@ import org.json.JSONObject
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private val carArtwork by lazy { BidCarArtwork(this) }
-    private val bidAppearance by lazy { BidAppearance(this) }
-    private val bidHomeEditor by lazy { BidHomeEditor(this) { applyHomeArtwork() } }
+    private val themeProfiles by lazy { BidThemeProfiles(this, { bidAppearance.isBusy() || bidHomeEditor.isBusy() }) { applyHomeArtwork() } }
+    private val bidAppearance by lazy { BidAppearance(this, themeProfiles) }
+    private val bidHomeEditor by lazy { BidHomeEditor(this, themeProfiles) { applyHomeArtwork() } }
 
     private fun applyHomeArtwork() {
         if (!pageReady || !::webView.isInitialized || isDestroyed) return
@@ -38,6 +39,7 @@ class MainActivity : Activity() {
         carArtwork.handleResult(requestCode, resultCode, data)
         bidAppearance.handleResult(requestCode, resultCode, data)
         bidHomeEditor.handleResult(requestCode, resultCode, data)
+        themeProfiles.handleResult(requestCode, resultCode, data)
     }
     private val settingsPin by lazy { BidSettingsPin(this) }
     private lateinit var bidTrip: BidTripBridge
@@ -959,6 +961,7 @@ class MainActivity : Activity() {
                     FunctionTile("ZLink 5","zlink",listOf("com.zjinnova.zlink"))
                 ),
                 "Personalizare BID" to listOf(
+                    FunctionTile("Teme BID salvate","bidthemeslots",emptyList()),
                     FunctionTile("Editor ecran principal","homeeditor",emptyList()),
                     FunctionTile("Aspect BID","bidappearance",emptyList()),
                     FunctionTile("Model DJ 88 BID","carart",emptyList())
@@ -1028,7 +1031,7 @@ class MainActivity : Activity() {
                         val image = android.widget.ImageView(this@MainActivity).apply {
                             setImageDrawable(bidAppearance.icon(tile.key) ?: matched?.loadIcon(packageManager)
                                 ?: getDrawable(android.R.drawable.ic_menu_manage))
-                            alpha = if(matched == null && tile.key !in listOf("apps","reverse","car","canbus","indicatorpermissions","carart","bidappearance","homeeditor")) .55f else 1f
+                            alpha = if(matched == null && tile.key !in listOf("apps","reverse","car","canbus","indicatorpermissions","carart","bidappearance","homeeditor","bidthemeslots")) .55f else 1f
                             scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
                         }
                         cell.addView(image,android.widget.LinearLayout.LayoutParams(
@@ -1052,6 +1055,7 @@ class MainActivity : Activity() {
                                 "carart" -> carArtwork.show()
                                 "bidappearance" -> bidAppearance.show()
                                 "homeeditor" -> bidHomeEditor.show()
+                                "bidthemeslots" -> themeProfiles.show()
                                 "carplay","androidauto","hicar","zlink" -> Bridge().open(tile.key)
                                 "apps" -> showApps()
                                 "indicatorpermissions" -> openIndicatorPermissions()

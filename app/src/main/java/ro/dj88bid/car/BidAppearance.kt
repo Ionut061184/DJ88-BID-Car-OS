@@ -15,10 +15,10 @@ import android.widget.Toast
 import java.io.File
 
 /** Optional private appearance for the native Functions drawer only. */
-class BidAppearance(private val activity: Activity) {
+class BidAppearance(private val activity: Activity, private val profiles: BidThemeProfiles) {
     data class Palette(val colors: IntArray, val heading: Int, val accent: Int,
                        val activeDot: Int, val inactiveDot: Int)
-    private val prefs = activity.getSharedPreferences("bid_appearance_v1", Activity.MODE_PRIVATE)
+    private val prefs get() = profiles.appearancePrefs()
     private val names = arrayOf("BID original · Bordeaux / Champagne", "Obsidian / Champagne",
         "Racing Green / Champagne", "Dark Graphite / Platinum")
     private val palettes = arrayOf(
@@ -37,7 +37,8 @@ class BidAppearance(private val activity: Activity) {
         "DSP","Hărți","Waze","YouTube","Fișiere USB")
     private val requestBase = 560
     private var busy = false
-    private fun file(key: String) = File(activity.filesDir,"bid_appearance_${key}.png")
+    fun isBusy() = busy
+    private fun file(key: String) = profiles.asset("bid_appearance_${key}.png")
     fun palette(): Palette = palettes[prefs.getInt("palette",0).coerceIn(palettes.indices)]
     fun background(p: Palette): Drawable {
         val base = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,p.colors)
@@ -50,7 +51,7 @@ class BidAppearance(private val activity: Activity) {
         BitmapFactory.decodeFile(file(key).path)?.let { BitmapDrawable(activity.resources,it) }
     } catch (_: Exception) { null }
     fun show() {
-        if (activity.isFinishing || activity.isDestroyed || busy) return
+        if (activity.isFinishing || activity.isDestroyed || busy || profiles.isBusy()) return
         AlertDialog.Builder(activity).setTitle("BID · Aspect personalizat")
             .setItems(arrayOf("Paletă de culori","Fundal și pictograme","Revino la aspectul original")) { _, pos ->
                 when(pos) {
@@ -94,7 +95,7 @@ class BidAppearance(private val activity: Activity) {
     }
     fun handleResult(code:Int,result:Int,data:Intent?) {
         val i=code-requestBase
-        if(i !in keys.indices || result!=Activity.RESULT_OK || busy)return
+        if(i !in keys.indices || result!=Activity.RESULT_OK || busy || profiles.isBusy())return
         val uri=data?.data ?:return
         if(uri.scheme!="content")return
         busy=true
