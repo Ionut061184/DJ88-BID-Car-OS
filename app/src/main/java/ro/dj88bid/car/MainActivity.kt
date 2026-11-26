@@ -119,6 +119,8 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         bidForeground = false
+        cameraCheckGeneration++
+        cameraCheckPending = false
         cancelManualWeather()
         invalidateVoltageCache()
         if (::webView.isInitialized) webView.onPause()
@@ -131,6 +133,8 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         bidForeground = false
+        cameraCheckGeneration++
+        cameraCheckPending = false
         cancelManualWeather()
         manualWeatherWorker.shutdownNow()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.stop()
@@ -228,7 +232,8 @@ class MainActivity : Activity() {
         "zlink" to Pair("com.zjinnova.zlink", "com.zjinnova.android.zlink.features.main.MainActivity"),
         "carplay" to Pair("com.zjinnova.zlink", "com.zjinnova.android.zlink.features.launcher.CarPlayActivity"),
         "androidauto" to Pair("com.zjinnova.zlink", "com.zjinnova.android.zlink.features.launcher.AutoActivity"),
-        "hicar" to Pair("com.zjinnova.zlink", "com.zjinnova.android.zlink.features.launcher.HiCarActivity")
+        "hicar" to Pair("com.zjinnova.zlink", "com.zjinnova.android.zlink.features.launcher.HiCarActivity"),
+        "camera360" to Pair("com.st.carkit360camera", "com.st.carkit360camera.MainActivity")
     )
 
     /**
@@ -253,8 +258,48 @@ class MainActivity : Activity() {
         // Never substitute phone for music, or panel keys for steering keys.
         if (action in setOf("btcar", "btmusic", "steering", "panelkeys")) return null
         if (action in setOf("carplay", "androidauto", "hicar")) return null
+        if (action == "camera360") return null
         val published = packageManager.getLaunchIntentForPackage(component.first)
         return if (published != null && accessible(published)) published else null
+    }
+
+    private var cameraCheckPending = false
+    private var cameraCheckGeneration = 0
+    // Read exactly the feature flag used by the stock BlackBlue launcher.
+    private fun readOem360Flag(): Boolean? {
+        var process: Process? = null
+        return try {
+            process = ProcessBuilder("/system/bin/getprop", "persist.sys.360_camera_func")
+                .redirectErrorStream(true).start()
+            if (!process.waitFor(800, java.util.concurrent.TimeUnit.MILLISECONDS) || process.exitValue() != 0) null
+            else when (process.inputStream.bufferedReader().use { it.readText() }.trim().lowercase(java.util.Locale.ROOT)) {
+                "1", "true", "y", "yes", "on" -> true
+                "0", "false", "n", "no", "off" -> false
+                else -> null
+            }
+        } catch (_: Exception) { null }
+        finally { process?.destroy() }
+    }
+    private fun openOem360() {
+        if (!bidForeground || cameraCheckPending || isDestroyed) return
+        cameraCheckPending = true
+        val token = ++cameraCheckGeneration
+        Thread {
+            val enabled = readOem360Flag()
+            runOnUiThread {
+                if (token != cameraCheckGeneration) return@runOnUiThread
+                cameraCheckPending = false
+                if (!bidForeground || isDestroyed) return@runOnUiThread
+                val target = if (enabled == true) originalQf001Intent("camera360") else null
+                if (target != null) startSafely(target)
+                else Toast.makeText(this,
+                    when (enabled) {
+                        false -> "360° nu este activat în configurația OEM."
+                        null -> "Starea 360° OEM nu poate fi verificată."
+                        true -> "Aplicația 360° OEM nu este accesibilă."
+                    }, Toast.LENGTH_LONG).show()
+            }
+        }.start()
     }
 
     private fun assignedIntent(action: String): Intent? {
@@ -863,7 +908,7 @@ class MainActivity : Activity() {
                     FunctionTile("Informații CANBUS","canbus",listOf("qf.vehicle","canbus")),
                     FunctionTile("Cameră marșarier","reverse",listOf("backcar","rear camera")),
                     FunctionTile("TPMS","tpms",listOf("com.syt.tmps")),
-                    FunctionTile("Camere 360°","camera360",emptyList()),
+                    FunctionTile("Camere 360°","camera360",listOf("com.st.carkit360camera")),
                     FunctionTile("Comenzi volan","steering",listOf("com.qf.keystudy")),
                     FunctionTile("Butoane panou","panelkeys",listOf("com.qf.panelkeystudy")),
                     FunctionTile("Bluetooth auto","btaudio",listOf("qf.bluetooth","bluetooth")),
@@ -972,9 +1017,7 @@ class MainActivity : Activity() {
                                 "reverse" -> Toast.makeText(this@MainActivity,
                                     "Camera marșarier este controlată automat de QF001 în treapta R.",
                                     Toast.LENGTH_LONG).show()
-                                "camera360" -> Toast.makeText(this@MainActivity,
-                                    "Hardware 360° și accesul OEM nu sunt încă confirmate. Camera originală rămâne nemodificată.",
-                                    Toast.LENGTH_LONG).show()
+                                "camera360" -> openOem360()
                                 "carplay","androidauto","hicar","zlink" -> Bridge().open(tile.key)
                                 "apps" -> showApps()
                                 "indicatorpermissions" -> openIndicatorPermissions()

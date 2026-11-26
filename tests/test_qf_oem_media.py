@@ -40,7 +40,13 @@ class TestOemMedia(unittest.TestCase):
             self.assertIn(pkg,[x.attrib.get("{http://schemas.android.com/apk/res/android}name") for x in M.findall("queries/package")])
         self.assertIn('if (action in setOf("carplay", "androidauto", "hicar")) return null',K)
         self.assertIn('exact ?: originalQf001Intent("zlink")',K)
-        self.assertIn('Hardware 360°',K)
+        self.assertIn('"camera360" to Pair("com.st.carkit360camera", "com.st.carkit360camera.MainActivity")',K)
+        self.assertIn("com.st.carkit360camera",[x.attrib.get("{http://schemas.android.com/apk/res/android}name") for x in M.findall("queries/package")])
+        self.assertIn('if (action == "camera360") return null',K)
+        self.assertIn('ProcessBuilder("/system/bin/getprop", "persist.sys.360_camera_func")',K)
+        self.assertIn('if (enabled == true) originalQf001Intent("camera360") else null',K)
+        self.assertIn('if (token != cameraCheckGeneration) return@runOnUiThread',K)
+        self.assertNotIn('setprop',K)
     def test_no_new_privileged_permission(self):
         names={x.attrib.get("{http://schemas.android.com/apk/res/android}name") for x in M.findall("uses-permission")}
         self.assertFalse(names & {"android.permission.WRITE_SECURE_SETTINGS","android.permission.INJECT_EVENTS","android.permission.READ_CONTACTS"})

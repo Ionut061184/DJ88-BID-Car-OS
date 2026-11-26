@@ -29,6 +29,7 @@
         <package android:name="com.syt.tmps" />
         <package android:name="com.sprd.fileexplorer" />
         <package android:name="com.zjinnova.zlink" />
+        <package android:name="com.st.carkit360camera" />
         <package android:name="com.qf.carsettings" />
         <package android:name="com.qf.vehicle" />
         <package android:name="com.qf.carsetting" />
