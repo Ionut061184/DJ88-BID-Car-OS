@@ -24,6 +24,11 @@
         <package android:name="com.qf.soundeffect" />
         <package android:name="com.qf.keystudy" />
         <package android:name="com.qf.panelkeystudy" />
+        <package android:name="com.qf.beidougps" />
+        <package android:name="com.chartcross.gpstest" />
+        <package android:name="com.syt.tmps" />
+        <package android:name="com.sprd.fileexplorer" />
+        <package android:name="com.zjinnova.zlink" />
         <package android:name="com.qf.carsettings" />
         <package android:name="com.qf.vehicle" />
         <package android:name="com.qf.carsetting" />

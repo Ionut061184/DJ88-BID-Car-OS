@@ -30,7 +30,7 @@
   const a=d[kind+'AgeMs'];return d[kind+'Fresh']===true&&Number.isFinite(a)&&a>=0&&a<=30000;
  }
  function climateValue(d,key){
-  const v=d[key];return freshCabin(d,'climate')&&typeof v==='string'&&/^(LO|HI|[0-9]{1,3}\\.[05])$/.test(v)?v:'—';
+  const v=d[key];return freshCabin(d,'climate')&&typeof v==='string'&&/^(LO|HI|[0-9]{1,3}[.][05])$/.test(v)?v:'—';
  }
  function doorsText(d){
   const n=d.doorMaskCandidate;

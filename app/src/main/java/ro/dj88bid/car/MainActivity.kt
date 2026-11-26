@@ -185,7 +185,15 @@ class MainActivity : Activity() {
         "btmusic" to Pair("com.qf.bluetooth", "com.qf.bluetooth.MusicActivity"),
         "dsp" to Pair("com.qf.soundeffect", "com.qf.soundeffect.SoundActivity"),
         "steering" to Pair("com.qf.keystudy", "com.qf.keystudy.ui.KeyStudyActivity"),
-        "panelkeys" to Pair("com.qf.panelkeystudy", "com.qf.panelkeystudy.ui.PanelKeyStudyActivity")
+        "panelkeys" to Pair("com.qf.panelkeystudy", "com.qf.panelkeystudy.ui.PanelKeyStudyActivity"),
+        "gps" to Pair("com.qf.beidougps", "com.qf.beidougps.BeidouGpsActivity"),
+        "gpstest" to Pair("com.chartcross.gpstest", "com.chartcross.gpstest.MainActivity"),
+        "tpms" to Pair("com.syt.tmps", "com.tpms.view.TpmsMainActivity"),
+        "files" to Pair("com.sprd.fileexplorer", "com.sprd.fileexplorer.activities.FileExploreActivity"),
+        "zlink" to Pair("com.zjinnova.zlink", "com.zjinnova.android.zlink.features.main.MainActivity"),
+        "carplay" to Pair("com.zjinnova.zlink", "com.zjinnova.android.zlink.features.launcher.CarPlayActivity"),
+        "androidauto" to Pair("com.zjinnova.zlink", "com.zjinnova.android.zlink.features.launcher.AutoActivity"),
+        "hicar" to Pair("com.zjinnova.zlink", "com.zjinnova.android.zlink.features.launcher.HiCarActivity")
     )
 
     /**
@@ -209,6 +217,7 @@ class MainActivity : Activity() {
         if (accessible(explicit)) return explicit
         // Never substitute phone for music, or panel keys for steering keys.
         if (action in setOf("btcar", "btmusic", "steering", "panelkeys")) return null
+        if (action in setOf("carplay", "androidauto", "hicar")) return null
         val published = packageManager.getLaunchIntentForPackage(component.first)
         return if (published != null && accessible(published)) published else null
     }
@@ -717,6 +726,18 @@ class MainActivity : Activity() {
                     Toast.LENGTH_LONG).show()
                 return@runOnUiThread
             }
+            if (kind in setOf("gps", "tpms", "files")) {
+                val target = originalQf001Intent(kind)
+                    ?: if (kind == "gps") originalQf001Intent("gpstest") else null
+                if (target != null) {
+                    startSafely(target)
+                    return@runOnUiThread
+                }
+                // Never guess a TPMS or file manager by its translated label.
+                Toast.makeText(this@MainActivity,
+                    "Aplicația OEM nu este disponibilă: " + kind, Toast.LENGTH_LONG).show()
+                return@runOnUiThread
+            }
             val keys = when (kind) {
                 "video" -> listOf("videoplayer", "video player", "com.qf.video")
                 "files" -> listOf("fileexplorer", "file explorer", "file manager", "com.qf.file")
@@ -783,7 +804,8 @@ class MainActivity : Activity() {
                     FunctionTile("Setări auto","car",listOf("carsettings","carsetting")),
                     FunctionTile("Informații CANBUS","canbus",listOf("qf.vehicle","canbus")),
                     FunctionTile("Cameră marșarier","reverse",listOf("backcar","rear camera")),
-                    FunctionTile("TPMS","tpms",listOf("tpms")),
+                    FunctionTile("TPMS","tpms",listOf("com.syt.tmps")),
+                    FunctionTile("Camere 360°","camera360",emptyList()),
                     FunctionTile("Comenzi volan","steering",listOf("com.qf.keystudy")),
                     FunctionTile("Butoane panou","panelkeys",listOf("com.qf.panelkeystudy")),
                     FunctionTile("Bluetooth auto","btaudio",listOf("qf.bluetooth","bluetooth")),
@@ -799,6 +821,12 @@ class MainActivity : Activity() {
                     FunctionTile("Manual","manual",listOf("manual")),
                     FunctionTile("Toate aplicațiile","apps",emptyList()),
                     FunctionTile("Permisiuni indicatoare","indicatorpermissions",emptyList())
+                ),
+                "Conectare telefon" to listOf(
+                    FunctionTile("CarPlay","carplay",listOf("com.zjinnova.zlink")),
+                    FunctionTile("Android Auto","androidauto",listOf("com.zjinnova.zlink")),
+                    FunctionTile("HUAWEI HiCar","hicar",listOf("com.zjinnova.zlink")),
+                    FunctionTile("ZLink 5","zlink",listOf("com.zjinnova.zlink"))
                 )
             )
             val launcherEntries = packageManager.queryIntentActivities(
@@ -886,6 +914,10 @@ class MainActivity : Activity() {
                                 "reverse" -> Toast.makeText(this@MainActivity,
                                     "Camera marșarier este controlată automat de QF001 în treapta R.",
                                     Toast.LENGTH_LONG).show()
+                                "camera360" -> Toast.makeText(this@MainActivity,
+                                    "Hardware 360° și accesul OEM nu sunt încă confirmate. Camera originală rămâne nemodificată.",
+                                    Toast.LENGTH_LONG).show()
+                                "carplay","androidauto","hicar","zlink" -> Bridge().open(tile.key)
                                 "apps" -> showApps()
                                 "indicatorpermissions" -> openIndicatorPermissions()
                                 "car","canbus","maps","waze","youtube" -> Bridge().open(tile.key)
@@ -1085,8 +1117,17 @@ class MainActivity : Activity() {
                         ?: packageManager.getLaunchIntentForPackage("com.qf.carsetting")
                     if (original != null) startSafely(original) else startSafely(Intent(Settings.ACTION_SETTINGS))
                 }
-                "carplay" -> findCompanion(listOf("zlink", "tlink", "carlink", "carplay", "autokit"), "CarPlay")
-                "androidauto" -> findCompanion(listOf("zlink", "tlink", "carlink", "android auto", "autokit"), "Android Auto")
+                "carplay", "androidauto", "hicar", "zlink" -> {
+                    val exact = originalQf001Intent(action)
+                    val main = exact ?: originalQf001Intent("zlink")
+                    if (main != null) {
+                        if (exact == null) Toast.makeText(this@MainActivity,
+                            "Modul dedicat nu este disponibil. Verifică funcțiile activate în ZLink.",
+                            Toast.LENGTH_LONG).show()
+                        startSafely(main)
+                    } else Toast.makeText(this@MainActivity,
+                        "ZLink original nu este disponibil.", Toast.LENGTH_LONG).show()
+                }
                 "wifi" -> startSafely(Intent(Settings.ACTION_WIFI_SETTINGS))
                 "dateSettings" -> startSafely(Intent(Settings.ACTION_DATE_SETTINGS))
                 "original" -> startSafely(Intent(Settings.ACTION_HOME_SETTINGS))

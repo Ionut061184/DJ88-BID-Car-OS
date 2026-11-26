@@ -26,6 +26,21 @@ class TestOemMedia(unittest.TestCase):
         for label,route in [("Bluetooth / Telefon","btaudio"),("Muzică Bluetooth","btmusic"),("Comenzi volan","steering"),("Butoane panou","panelkeys")]:
             self.assertIn(f'FunctionTile("{label}","{route}"',K)
         self.assertIn('kind in setOf("btmusic", "steering", "panelkeys")',K)
+    def test_original_utilities_and_projection(self):
+        for action,pkg,activity in [
+            ("gps","com.qf.beidougps","com.qf.beidougps.BeidouGpsActivity"),
+            ("gpstest","com.chartcross.gpstest","com.chartcross.gpstest.MainActivity"),
+            ("tpms","com.syt.tmps","com.tpms.view.TpmsMainActivity"),
+            ("files","com.sprd.fileexplorer","com.sprd.fileexplorer.activities.FileExploreActivity"),
+            ("zlink","com.zjinnova.zlink","com.zjinnova.android.zlink.features.main.MainActivity"),
+            ("carplay","com.zjinnova.zlink","com.zjinnova.android.zlink.features.launcher.CarPlayActivity"),
+            ("androidauto","com.zjinnova.zlink","com.zjinnova.android.zlink.features.launcher.AutoActivity"),
+            ("hicar","com.zjinnova.zlink","com.zjinnova.android.zlink.features.launcher.HiCarActivity")]:
+            self.assertIn(f'"{action}" to Pair("{pkg}", "{activity}")',K)
+            self.assertIn(pkg,[x.attrib.get("{http://schemas.android.com/apk/res/android}name") for x in M.findall("queries/package")])
+        self.assertIn('if (action in setOf("carplay", "androidauto", "hicar")) return null',K)
+        self.assertIn('exact ?: originalQf001Intent("zlink")',K)
+        self.assertIn('Hardware 360°',K)
     def test_no_new_privileged_permission(self):
         names={x.attrib.get("{http://schemas.android.com/apk/res/android}name") for x in M.findall("uses-permission")}
         self.assertFalse(names & {"android.permission.WRITE_SECURE_SETTINGS","android.permission.INJECT_EVENTS","android.permission.READ_CONTACTS"})
