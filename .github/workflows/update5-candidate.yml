@@ -175,6 +175,16 @@ jobs:
       - name: Compile lab candidate only
         run: |
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          # The two previous runs were blocked by Maven Central HTTP 429.
+          # Use Google's documented Central mirror only for the two affected modules.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("settings.gradle.kts")
+          s = p.read_text()
+          assert s.count("mavenCentral()") == 2
+          mirror = 'maven { url = uri("https://maven-central.storage-download.googleapis.com/maven2/"); content { includeVersion("org.jetbrains.kotlin", "kotlin-reflect", "1.9.22"); includeVersion("org.jetbrains.kotlin", "kotlin-stdlib", "1.9.22") } }; '
+          p.write_text(s.replace("mavenCentral()", mirror + "mavenCentral()"))
+          PY
           gradle --no-daemon :app:assembleLabSafeDebug
       - name: Verify packaged assets and APK identity
         run: |
