@@ -21,6 +21,12 @@ import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private val carArtwork by lazy { BidCarArtwork(this) }
+    @Deprecated("Android document-picker result")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        carArtwork.handleResult(requestCode, resultCode, data)
+    }
     private val settingsPin by lazy { BidSettingsPin(this) }
     private lateinit var bidTrip: BidTripBridge
     private lateinit var qfVehicleProbe: QfVehicleProbe
@@ -912,7 +918,8 @@ class MainActivity : Activity() {
                     FunctionTile("Comenzi volan","steering",listOf("com.qf.keystudy")),
                     FunctionTile("Butoane panou","panelkeys",listOf("com.qf.panelkeystudy")),
                     FunctionTile("Bluetooth auto","btaudio",listOf("qf.bluetooth","bluetooth")),
-                    FunctionTile("DSP auto","dsp",listOf("soundeffect","dsp"))
+                    FunctionTile("DSP auto","dsp",listOf("soundeffect","dsp")),
+                    FunctionTile("Model DJ 88 BID","carart",emptyList())
                 ),
                 "Navigație și utilitare" to listOf(
                     FunctionTile("GPS / Sateliți","gps",listOf("beidougps","gpsinfo")),
@@ -997,7 +1004,7 @@ class MainActivity : Activity() {
                         val image = android.widget.ImageView(this@MainActivity).apply {
                             setImageDrawable(matched?.loadIcon(packageManager)
                                 ?: getDrawable(android.R.drawable.ic_menu_manage))
-                            alpha = if(matched == null && tile.key !in listOf("apps","reverse","car","canbus","indicatorpermissions")) .55f else 1f
+                            alpha = if(matched == null && tile.key !in listOf("apps","reverse","car","canbus","indicatorpermissions","carart")) .55f else 1f
                             scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
                         }
                         cell.addView(image,android.widget.LinearLayout.LayoutParams(
@@ -1018,6 +1025,7 @@ class MainActivity : Activity() {
                                     "Camera marșarier este controlată automat de QF001 în treapta R.",
                                     Toast.LENGTH_LONG).show()
                                 "camera360" -> openOem360()
+                                "carart" -> carArtwork.show()
                                 "carplay","androidauto","hicar","zlink" -> Bridge().open(tile.key)
                                 "apps" -> showApps()
                                 "indicatorpermissions" -> openIndicatorPermissions()
@@ -1219,7 +1227,7 @@ class MainActivity : Activity() {
                     if (original != null) startSafely(original) else startSafely(Intent(Settings.ACTION_SETTINGS))
                 }
                 "carplay", "androidauto", "hicar", "zlink" -> {
-                    val exact = originalQf001Intent(action)
+                    val exact = originalQf001Intent(command)
                     val main = exact ?: originalQf001Intent("zlink")
                     if (main != null) {
                         if (exact == null) Toast.makeText(this@MainActivity,

@@ -145,6 +145,8 @@ jobs:
         run: python tests/test_qf_oem_media.py
       - name: Check foreground lifecycle and cleanup contract
         run: python tests/test_qf_lifecycle.py
+      - name: Check private BID artwork import contract
+        run: python tests/test_bid_car_artwork.py
       - name: Verify preinstalled Android SDK on runner
         run: |
           test -n "$ANDROID_HOME"
