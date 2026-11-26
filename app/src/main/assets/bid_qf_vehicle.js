@@ -96,7 +96,7 @@
  }
  function remoteModeStatus(d){
   const values={app:'aplicații (0)',app_default:'aplicații (implicit)',system:'sistem (1)',unknown:'necunoscut',unreadable:'inaccesibil'};
-  return 'Mod SDK configurat: '+(values[d.remoteDemandMode]||'necunoscut')+'; BID nu inițializează SDK.';
+  return 'Mod SDK configurat: '+(values[d.remoteDemandMode]||'necunoscut')+'; BID nu folosește credențiale OEM.';
  }
  function diagnostic(d){
   if(d.listening!==true)return 'Receptor indisponibil'+(d.registrationError?' ('+d.registrationError+')':'');
@@ -142,6 +142,9 @@
    'Voltaj antet: proprietate QF; tensiune caroserie OEM: sursă separată încă neidentificată.',
    globalShareStatus(d),
    remoteModeStatus(d),
+   'SDK Binder (test 120 s): '+(d.sdkBodyAuditState||'nepornit'),
+   'SDK pachete / brute: '+(d.sdkBodyPackedCount||0)+' / '+(d.sdkBodyRawCount||0)+'; ultimul pachet: '+(d.sdkBodyLastBytes||0)+' octeți.',
+   'Abonare SDK experimentală; fără inițializare OEM, fără decodare SDK neconfirmată.',
    shareStatus(d),
    registryStatus(d),
    'Pachet BID: '+(typeof d.bodySharePackage==='string'?d.bodySharePackage:'necunoscut'),

@@ -33,6 +33,17 @@ class Lifecycle(unittest.TestCase):
         self.assertIn("firmwareExport.close()",K)
         self.assertIn("if (bidForeground && !isDestroyed) firmwareExport.open()",K)
         self.assertIn("qfExportSystemFiles",J)
+    def test_sdk_body_audit_contract(self):
+        s=(ROOT/"app/src/main/java/ro/dj88bid/car/QfSdkBodyAudit.java").read_text()
+        for x in ["VehicleService","V1.11-260615.1900","call(b,11,callback)","call(b,12,s.callback)","operation!=11&&operation!=12","getInterfaceDescriptor()","Binder.getCallingUid()!=uid","context.bindService(intent,s,0)","context.unbindService(s)"]:
+            self.assertIn(x,s)
+        for x in ["initCanbusSdkConfig","Settings.Global","WRITE_SECURE_SETTINGS","BIND_AUTO_CREATE","Runtime.getRuntime"]:
+            self.assertNotIn(x,s)
+        self.assertIn("sdkBodyAudit.start(oemCanbusVersion())",P)
+        self.assertEqual(P.count("sdkBodyAudit.stop()"),2)
+        for x in ["sdkBodyAuditState","sdkBodyPackedCount","sdkBodyRawCount","sdkBodyLastBytes"]:
+            self.assertIn(x,s)
+            self.assertIn(x,J)
     def test_no_global_pause_or_power_control(self):
         for x in ["pauseTimers()","PowerManager.goToSleep","PowerManager.wakeUp","android.permission.WAKE_LOCK"]:
             self.assertNotIn(x,K)

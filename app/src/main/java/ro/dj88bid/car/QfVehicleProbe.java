@@ -31,6 +31,7 @@ public final class QfVehicleProbe {
     private Integer doors;
     private long climateAt,doorsAt;
     private final Activity activity;
+    private final QfSdkBodyAudit sdkBodyAudit;
     private boolean listening;
     private long last;
     private int seen, valid, lastSize, wrongExtra, wrongHeader, wrongLength, emptyBody;
@@ -109,7 +110,7 @@ public final class QfVehicleProbe {
             }
         }
     };
-    public QfVehicleProbe(Activity a){activity=a;}
+    public QfVehicleProbe(Activity a){activity=a;sdkBodyAudit=new QfSdkBodyAudit(a);}
     public synchronized void start(){
         if(listening)return;
         seen=0;valid=0;wrongExtra=0;wrongHeader=0;wrongLength=0;emptyBody=0;frame=null;last=0;registrationError="";lastPacketState="none";lastSize=0;
@@ -215,6 +216,7 @@ public final class QfVehicleProbe {
         auditStarted=SystemClock.elapsedRealtime();auditReturned=0;
         beforeMessages=beforeValid=awayMessages=awayValid=afterMessages=afterValid=0;
         auditAway=false;auditActive=true;auditForeground=true;
+        sdkBodyAudit.start(oemCanbusVersion());
         auditHandler.postDelayed(auditTimeout,120000);
     }
     public synchronized void foregroundChanged(boolean foreground){
@@ -227,10 +229,12 @@ public final class QfVehicleProbe {
         else if(!auditActive)stop();
     }
     private synchronized void finishAudit(){
+        sdkBodyAudit.stop();
         auditActive=false;auditHandler.removeCallbacks(auditTimeout);
         if(!auditForeground)stop();
     }
     public synchronized void close(){
+        sdkBodyAudit.stop();
         auditActive=false;auditHandler.removeCallbacks(auditTimeout);stop();
     }
     private void auditCount(boolean candidate){
@@ -298,6 +302,7 @@ public final class QfVehicleProbe {
              .put("auditBeforeMessages",beforeMessages).put("auditBeforeValid",beforeValid)
              .put("auditAwayMessages",awayMessages).put("auditAwayValid",awayValid)
              .put("auditAfterMessages",afterMessages).put("auditAfterValid",afterValid);
+            sdkBodyAudit.snapshot(o);
             String version=oemCanbusVersion(),globalShare=globalBodyShareState();
             o.put("oemCanbusVersion",version)
              .put("globalBodyShareState",globalShare)
