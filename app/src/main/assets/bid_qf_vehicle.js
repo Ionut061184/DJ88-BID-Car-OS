@@ -18,11 +18,22 @@
  function open(){if(typeof window.closeAll==='function')window.closeAll();panel.hidden=false;refresh()}
  function read(){try{return window.BID&&typeof BID.qfVehicleSnapshot==='function'?JSON.parse(BID.qfVehicleSnapshot()):{}}catch(_){return {}}}
  function format(d,key,unit,max,decimal=0){const v=d[key];return d.fresh===true&&typeof d.ageMs==='number'&&d.ageMs>=0&&d.ageMs<=5000&&typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=max?v.toFixed(decimal)+' '+unit:'— '+unit}
+ function diagnostic(d){
+  if(d.listening!==true)return 'Receptor indisponibil'+(d.registrationError?' ('+d.registrationError+')':'');
+  if(!d.messages)return 'Niciun mesaj OEM primit în sesiunea curentă.';
+  if(!d.candidateFrames)return 'Mesaje primite, dar formatul nu corespunde decodorului.';
+  if(d.fresh!==true||typeof d.ageMs!=='number'||d.ageMs<0||d.ageMs>5000)return 'Date expirate; așteptăm un mesaj nou.';
+  return 'Pachet candidat primit; comparați cu meniul OEM.';
+ }
  function refresh(){
   const d=read();speed.textContent=format(d,'speedCandidate','km/h',300);fuel.textContent=format(d,'fuelCandidate','L',100,1);
   if(!panel.hidden)document.getElementById('qfVehicleText').textContent=[
    'Receptor: '+(d.listening===true?'activ':'indisponibil'),
    'Mesaje: '+(Number.isInteger(d.messages)?d.messages:0)+' | Pachete candidate: '+(Number.isInteger(d.candidateFrames)?d.candidateFrames:0),
+   diagnostic(d),
+   'Ultimul pachet: '+(Number.isInteger(d.lastSize)?d.lastSize:0)+' octeți (așteptat 79)',
+   'Extra absent/tip greșit: '+(d.wrongExtra||0)+' | Lungime: '+(d.wrongLength||0)+' | Antet: '+(d.wrongHeader||0),
+   'Total de la pornirea aplicației: '+(d.totalMessages||0)+' mesaje / '+(d.totalCandidates||0)+' candidate',
    'Viteză: '+speed.textContent+' | Combustibil: '+fuel.textContent,
    'Turație: '+format(d,'rpmCandidate','RPM',8500),
    'Kilometraj: '+format(d,'odometerCandidate','km',1500000,1),
