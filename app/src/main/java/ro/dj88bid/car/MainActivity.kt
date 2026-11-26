@@ -599,6 +599,9 @@ class MainActivity : Activity() {
         fun qfVehicleSnapshot(): String = if (::qfVehicleProbe.isInitialized) qfVehicleProbe.snapshot() else "{}"
 
         @JavascriptInterface
+        fun qfVehicleIcons(): String = if (::qfVehicleProbe.isInitialized) qfVehicleProbe.iconsSnapshot() else "{}"
+
+        @JavascriptInterface
         fun chooseWeatherCity() = runOnUiThread {
             val choices = (listOf("Automat · GPS") + weatherCities.keys).toTypedArray()
             android.app.AlertDialog.Builder(this@MainActivity)
