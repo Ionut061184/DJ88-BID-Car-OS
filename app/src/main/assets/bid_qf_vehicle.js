@@ -103,6 +103,11 @@
    'Date experimentale; nu sunt confirmate pentru utilizare în mers.'
   ].join('\n');
  }
- refresh();setInterval(refresh,1000);
- document.addEventListener('visibilitychange',refresh);
+ let poll=null;
+ function visibility(){
+  if(poll!==null){clearInterval(poll);poll=null;}
+  if(!document.hidden){refresh();poll=setInterval(refresh,1000);}
+ }
+ visibility();
+ document.addEventListener('visibilitychange',visibility);
 })();

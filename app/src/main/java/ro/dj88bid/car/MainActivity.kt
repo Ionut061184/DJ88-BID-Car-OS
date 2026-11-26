@@ -28,6 +28,24 @@ class MainActivity : Activity() {
     private lateinit var adaptiveDisplay: BidAdaptiveDisplay
     private var permissionRequestInProgress = false
     private var pageReady = false
+    @Volatile private var bidForeground = false
+    @Volatile private var weatherGeneration = 0
+    private val manualWeatherWorker = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private var manualWeatherTask: java.util.concurrent.Future<*>? = null
+    private val voltageLock = Any()
+    private var voltageAt = -1L
+    private var voltageCache: String? = null
+
+    private fun invalidateVoltageCache() = synchronized(voltageLock) {
+        voltageCache = null
+        voltageAt = -1L
+    }
+
+    private fun cancelManualWeather() {
+        weatherGeneration++
+        manualWeatherTask?.cancel(true)
+        manualWeatherTask = null
+    }
     private fun permissionGranted(permission: String): Boolean =
         checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
     private fun hasLocation(): Boolean =
@@ -90,13 +108,20 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        bidForeground = true
+        invalidateVoltageCache()
+        if (::webView.isInitialized) webView.onResume()
         if (::bidTrip.isInitialized) bidTrip.setForeground(true)
         if (::qfVehicleProbe.isInitialized) qfVehicleProbe.start()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.start()
-        if (pageReady && ::gpsWeather.isInitialized && autoWeather()) refreshWeather()
+        if (pageReady && ::gpsWeather.isInitialized) refreshWeather()
     }
 
     override fun onPause() {
+        bidForeground = false
+        cancelManualWeather()
+        invalidateVoltageCache()
+        if (::webView.isInitialized) webView.onPause()
         if (::qfVehicleProbe.isInitialized) qfVehicleProbe.stop()
         if (::bidTrip.isInitialized) bidTrip.setForeground(false)
         if (::gpsWeather.isInitialized) gpsWeather.stop()
@@ -105,10 +130,20 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        bidForeground = false
+        cancelManualWeather()
+        manualWeatherWorker.shutdownNow()
+        if (::adaptiveDisplay.isInitialized) adaptiveDisplay.stop()
         if (::qfVehicleProbe.isInitialized) qfVehicleProbe.stop()
         if (::bidTrip.isInitialized) bidTrip.setForeground(false)
-        if (::webView.isInitialized) webView.removeJavascriptInterface("BIDTrip")
         if (::gpsWeather.isInitialized) gpsWeather.close()
+        if (::webView.isInitialized) {
+            webView.removeJavascriptInterface("BIDTrip")
+            webView.removeJavascriptInterface("BID")
+            webView.stopLoading()
+            (webView.parent as? android.view.ViewGroup)?.removeView(webView)
+            webView.destroy()
+        }
         super.onDestroy()
     }
 
@@ -303,9 +338,14 @@ class MainActivity : Activity() {
         "Iași" to Pair(47.1585, 27.6014)
     )
     private fun emitJs(script: String) {
-        runOnUiThread { if (::webView.isInitialized) webView.evaluateJavascript(script, null) }
+        runOnUiThread {
+            if (bidForeground && !isDestroyed && ::webView.isInitialized)
+                webView.evaluateJavascript(script, null)
+        }
     }
     private fun refreshWeather() {
+        if (!bidForeground || isDestroyed) return
+        cancelManualWeather()
         if (autoWeather()) {
             gpsWeather.start()
             return
@@ -317,7 +357,8 @@ class MainActivity : Activity() {
     private fun refreshManualWeather() {
         val city = getSharedPreferences("bid_weather", MODE_PRIVATE).getString("city", "Craiova") ?: "Craiova"
         val coordinates = weatherCities[city] ?: weatherCities.getValue("Craiova")
-        Thread {
+        val token = weatherGeneration
+        manualWeatherTask = manualWeatherWorker.submit {
             var connection: HttpURLConnection? = null
             try {
                 val url = URL("https://api.open-meteo.com/v1/forecast?latitude=${coordinates.first}&longitude=${coordinates.second}&current=temperature_2m,weather_code&timezone=auto")
@@ -340,13 +381,19 @@ class MainActivity : Activity() {
                     in 95..99 -> "Furtună"
                     else -> "Vreme"
                 }
-                if (!autoWeather()) emitJs("updateWeather(${JSONObject.quote(city)},${Math.round(value)},${JSONObject.quote(label)});")
+                runOnUiThread {
+                    if (bidForeground && !isDestroyed && token == weatherGeneration && !autoWeather())
+                        emitJs("updateWeather(${JSONObject.quote(city)},${Math.round(value)},${JSONObject.quote(label)});")
+                }
             } catch (_: Exception) {
-                if (!autoWeather()) emitJs("updateWeather(${JSONObject.quote(city)},null,'');")
+                runOnUiThread {
+                    if (bidForeground && !isDestroyed && token == weatherGeneration && !autoWeather())
+                        emitJs("updateWeather(${JSONObject.quote(city)},null,'');")
+                }
             } finally {
                 connection?.disconnect()
             }
-        }.start()
+        }
     }
 
     /**
@@ -463,7 +510,18 @@ class MainActivity : Activity() {
         fun batterySnapshot(): String = androidBatterySnapshot().toString()
 
         @JavascriptInterface
-        fun vehicleVoltageSnapshot(): String = readQf001VehicleVoltage().toString()
+        fun vehicleVoltageSnapshot(): String = synchronized(voltageLock) {
+            if (!bidForeground) return@synchronized JSONObject()
+                .put("available", false).put("volts", JSONObject.NULL)
+                .put("reason", "background").toString()
+            val now = android.os.SystemClock.elapsedRealtime()
+            val cached = voltageCache
+            if (cached != null && now - voltageAt in 0L..999L) return@synchronized cached
+            val value = readQf001VehicleVoltage().toString()
+            voltageCache = value
+            voltageAt = android.os.SystemClock.elapsedRealtime()
+            value
+        }
 
         @JavascriptInterface
         fun qfVehicleSnapshot(): String = if (::qfVehicleProbe.isInitialized) qfVehicleProbe.snapshot() else "{}"
