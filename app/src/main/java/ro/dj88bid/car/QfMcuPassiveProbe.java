@@ -7,12 +7,16 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 public final class QfMcuPassiveProbe {
     private final AtomicIntegerArray counts = new AtomicIntegerArray(256);
     private final java.util.ArrayDeque<String> samples = new java.util.ArrayDeque<>();
+    private final AtomicIntegerArray frameTypes = new AtomicIntegerArray(256);
+    private final java.util.concurrent.atomic.AtomicInteger invalidFrames = new java.util.concurrent.atomic.AtomicInteger();
     private volatile boolean active;
     private volatile String status = "idle";
     private Object listener;
     public synchronized String start(Context context) {
         for (int i = 0; i < 256; i++) counts.set(i, 0);
         synchronized (samples) { samples.clear(); }
+        for(int i=0;i<256;i++) frameTypes.set(i,0);
+        invalidFrames.set(0);
         if (listener != null) { active = true; return status = "listener_reused"; }
         try {
             Object manager = context.getSystemService("mcu_service");
@@ -42,10 +46,32 @@ public final class QfMcuPassiveProbe {
         }
     }
     private void record(byte[] data) {
+        if ((data[0]&255)==0x41) {
+            int offset=1;
+            if(data.length>1 && (data[1]&255)==0xff) offset++;
+            if(offset<data.length) {
+                if(validFrame(data,offset)) frameTypes.incrementAndGet(data[offset+1]&255);
+                else invalidFrames.incrementAndGet();
+            }
+        }
         StringBuilder s = new StringBuilder();
         s.append(android.os.SystemClock.elapsedRealtime()).append(" ms len=").append(data.length).append(": ");
         for (int i=0; i<Math.min(data.length,256); i++) { int b=data[i]&255; if(b<16)s.append('0'); s.append(Integer.toHexString(b)).append(' '); }
         synchronized(samples) { if(samples.size()>=4096)samples.removeFirst(); samples.addLast(s.toString()); }
+    }
+    /** Observed Simple framing: 2e, type, length, payload, ones-complement checksum. */
+    static boolean validFrame(byte[] d,int o) {
+        if(o<0 || d.length-o<4 || (d[o]&255)!=0x2e) return false;
+        if(d.length-o != (d[o+2]&255)+4) return false;
+        int sum=0;
+        for(int i=o+1;i<d.length;i++) sum+=d[i]&255;
+        return (sum&255)==255;
+    }
+    public String frameValidation() {
+        StringBuilder s=new StringBuilder("invalid=").append(invalidFrames.get());
+        for(int i=0;i<256;i++) if(frameTypes.get(i)>0)
+            s.append(" type=0x").append(Integer.toHexString(i)).append(":").append(frameTypes.get(i));
+        return s.toString();
     }
     public String samples() { synchronized(samples) { return android.text.TextUtils.join("\n",samples); } }
     public int count(int command) { return counts.get(command & 255); }
