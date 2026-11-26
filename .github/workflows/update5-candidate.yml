@@ -149,6 +149,8 @@ jobs:
         run: python tests/test_bid_car_artwork.py
       - name: Check optional BID appearance contract
         run: python tests/test_bid_appearance.py
+      - name: Check home artwork editor and touch zone contract
+        run: python tests/test_bid_home_editor.py
       - name: Verify preinstalled Android SDK on runner
         run: |
           test -n "$ANDROID_HOME"

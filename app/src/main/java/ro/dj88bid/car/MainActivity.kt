@@ -23,11 +23,21 @@ class MainActivity : Activity() {
     private lateinit var webView: WebView
     private val carArtwork by lazy { BidCarArtwork(this) }
     private val bidAppearance by lazy { BidAppearance(this) }
+    private val bidHomeEditor by lazy { BidHomeEditor(this) { applyHomeArtwork() } }
+
+    private fun applyHomeArtwork() {
+        if (!pageReady || !::webView.isInitialized || isDestroyed) return
+        val url = bidHomeEditor.activeUrl()
+        webView.evaluateJavascript(
+            "(function(){var s=document.getElementById('stage');if(s)s.style.backgroundImage=" +
+            (if(url==null) "''" else JSONObject.quote("url('" + url + "')")) + ";})()", null)
+    }
     @Deprecated("Android document-picker result")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         carArtwork.handleResult(requestCode, resultCode, data)
         bidAppearance.handleResult(requestCode, resultCode, data)
+        bidHomeEditor.handleResult(requestCode, resultCode, data)
     }
     private val settingsPin by lazy { BidSettingsPin(this) }
     private lateinit var bidTrip: BidTripBridge
@@ -191,11 +201,18 @@ class MainActivity : Activity() {
                 super.onPageFinished(view, url)
                 if (url == "file:///android_asset/index.html") {
                     pageReady = true
+                    applyHomeArtwork()
                     configureIndicatorsOnce()
                     refreshWeather()
                 }
             }
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): android.webkit.WebResourceResponse? {
+                if (request.url.host == BidHomeEditor.HOST)
+                    return bidHomeEditor.serve(request.url, request.method)
+                return super.shouldInterceptRequest(view, request)
+            }
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                if (request.url.host == BidHomeEditor.HOST) return true
                 if (request.url.scheme != "file") {
                     startSafely(Intent(Intent.ACTION_VIEW, request.url))
                     return true
@@ -940,6 +957,11 @@ class MainActivity : Activity() {
                     FunctionTile("Android Auto","androidauto",listOf("com.zjinnova.zlink")),
                     FunctionTile("HUAWEI HiCar","hicar",listOf("com.zjinnova.zlink")),
                     FunctionTile("ZLink 5","zlink",listOf("com.zjinnova.zlink"))
+                ),
+                "Personalizare BID" to listOf(
+                    FunctionTile("Editor ecran principal","homeeditor",emptyList()),
+                    FunctionTile("Aspect BID","bidappearance",emptyList()),
+                    FunctionTile("Model DJ 88 BID","carart",emptyList())
                 )
             )
             val launcherEntries = packageManager.queryIntentActivities(
@@ -1006,7 +1028,7 @@ class MainActivity : Activity() {
                         val image = android.widget.ImageView(this@MainActivity).apply {
                             setImageDrawable(bidAppearance.icon(tile.key) ?: matched?.loadIcon(packageManager)
                                 ?: getDrawable(android.R.drawable.ic_menu_manage))
-                            alpha = if(matched == null && tile.key !in listOf("apps","reverse","car","canbus","indicatorpermissions","carart","bidappearance")) .55f else 1f
+                            alpha = if(matched == null && tile.key !in listOf("apps","reverse","car","canbus","indicatorpermissions","carart","bidappearance","homeeditor")) .55f else 1f
                             scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
                         }
                         cell.addView(image,android.widget.LinearLayout.LayoutParams(
@@ -1029,6 +1051,7 @@ class MainActivity : Activity() {
                                 "camera360" -> openOem360()
                                 "carart" -> carArtwork.show()
                                 "bidappearance" -> bidAppearance.show()
+                                "homeeditor" -> bidHomeEditor.show()
                                 "carplay","androidauto","hicar","zlink" -> Bridge().open(tile.key)
                                 "apps" -> showApps()
                                 "indicatorpermissions" -> openIndicatorPermissions()
