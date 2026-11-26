@@ -38,6 +38,18 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (firmwareExport.handleResult(requestCode, resultCode, data)) return
+        if (requestCode == 8279) {
+            val dest = data?.data
+            val log = pendingMcuLog
+            pendingMcuLog = null
+            if (resultCode == RESULT_OK && dest?.scheme == "content" && log != null) {
+                Thread {
+                    val ok = runCatching { contentResolver.openOutputStream(dest, "w")!!.use { it.write(log.toByteArray(Charsets.UTF_8)) } }.isSuccess
+                    runOnUiThread { Toast.makeText(this, if (ok) "Diagnoza MCU salvată" else "Export MCU eșuat", Toast.LENGTH_LONG).show() }
+                }.start()
+            }
+            return
+        }
         if (requestCode == QF_EXPORT_REQUEST) {
             if (resultCode == RESULT_OK && data?.data != null) exportInstalledQfApk(data.data!!)
             return
@@ -47,6 +59,7 @@ class MainActivity : Activity() {
         bidHomeEditor.handleResult(requestCode, resultCode, data)
         themeProfiles.handleResult(requestCode, resultCode, data)
     }
+    private var pendingMcuLog: String? = null
     private val QF_EXPORT_REQUEST = 8217
     // User-initiated copy of the installed OEM CANBUS base APK only; no app data or global writes.
     private fun chooseQfExport() {
@@ -660,6 +673,23 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun qfBeginBodyAudit() = runOnUiThread {
             if (bidForeground && ::qfVehicleProbe.isInitialized) qfVehicleProbe.beginAudit()
+        }
+
+        @JavascriptInterface
+        fun qfExportMcuLog() = runOnUiThread {
+            if (bidForeground && !isDestroyed && ::qfVehicleProbe.isInitialized) {
+                try {
+                    pendingMcuLog = JSONObject(qfVehicleProbe.snapshot()).toString(2)
+                    startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TITLE, "DJ88-BID-MCU-LOG.txt")
+                    }, 8279)
+                } catch (_: Exception) {
+                    pendingMcuLog = null
+                    Toast.makeText(this@MainActivity, "Export MCU indisponibil", Toast.LENGTH_LONG).show()
+                }
+            }
         }
 
         @JavascriptInterface
