@@ -144,6 +144,7 @@
    remoteModeStatus(d),
    'MCU receptor pasiv: '+(d.mcuStatus||'nepornit'),
    'MCU CANBUS (65): '+(d.mcuCanbusCount||0)+' / tensiune (41): '+(d.mcuVoltageCount||0),
+   'MCU pachete brute (hex):\n'+(d.mcuSamples||'niciun pachet'),
    'SDK Binder (test 120 s): '+(d.sdkBodyAuditState||'nepornit'),
    'SDK interfață returnată: '+(d.sdkBodyDescriptorActual||'necunoscută'),
    'SDK interfață așteptată: '+(d.sdkBodyDescriptorExpected||'necunoscută'),
