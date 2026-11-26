@@ -73,7 +73,7 @@ public final class QfVehicleProbe {
             if(!ACTION.equals(intent.getAction()))return;
             synchronized(QfVehicleProbe.this){
                 if(!listening)return;
-                seen++;totalSeen++;
+                seen++;totalSeen++;auditCount(false);
                 byte[] p;
                 try {p=intent.getByteArrayExtra("extra_DATA_SHARE");}
                 catch(RuntimeException e){p=null;}
@@ -104,7 +104,7 @@ public final class QfVehicleProbe {
                 if(p.length!=79){wrongLength++;lastPacketState="wrong_length";return;}
                 if((p[0]&255)!=0x2e || (p[1]&255)!=2){wrongHeader++;lastPacketState="wrong_header";return;}
                 QfVehiclePacket decoded=QfVehiclePacket.decode(p);
-                if(decoded!=null){valid++;totalValid++;lastPacketState="candidate";frame=decoded;last=SystemClock.elapsedRealtime();}
+                if(decoded!=null){valid++;totalValid++;auditCount(true);lastPacketState="candidate";frame=decoded;last=SystemClock.elapsedRealtime();}
                 else {emptyBody++;lastPacketState="empty_body";frame=null;last=0;}
             }
         }
@@ -173,6 +173,41 @@ public final class QfVehicleProbe {
         if("absent".equals(share)||"disabled".equals(share))return "body_sharing_not_enabled";
         return "no_body_messages";
     }
+    private final android.os.Handler auditHandler=new android.os.Handler(android.os.Looper.getMainLooper());
+    private boolean auditActive, auditAway, auditForeground=true;
+    private long auditStarted, auditReturned;
+    private int beforeMessages,beforeValid,awayMessages,awayValid,afterMessages,afterValid;
+    private final Runnable auditTimeout=()->finishAudit();
+    public synchronized void beginAudit(){
+        auditHandler.removeCallbacks(auditTimeout);
+        if(!listening)start();
+        auditStarted=SystemClock.elapsedRealtime();auditReturned=0;
+        beforeMessages=beforeValid=awayMessages=awayValid=afterMessages=afterValid=0;
+        auditAway=false;auditActive=true;auditForeground=true;
+        auditHandler.postDelayed(auditTimeout,120000);
+    }
+    public synchronized void foregroundChanged(boolean foreground){
+        auditForeground=foreground;
+        if(auditActive){
+            if(!foreground)auditAway=true;
+            else if(auditAway&&auditReturned==0)auditReturned=SystemClock.elapsedRealtime();
+        }
+        if(foreground)start();
+        else if(!auditActive)stop();
+    }
+    private synchronized void finishAudit(){
+        auditActive=false;auditHandler.removeCallbacks(auditTimeout);
+        if(!auditForeground)stop();
+    }
+    public synchronized void close(){
+        auditActive=false;auditHandler.removeCallbacks(auditTimeout);stop();
+    }
+    private void auditCount(boolean candidate){
+        if(!auditActive)return;
+        if(!auditForeground){if(candidate)awayValid++;else awayMessages++;}
+        else if(auditAway){if(candidate)afterValid++;else afterMessages++;}
+        else{if(candidate)beforeValid++;else beforeMessages++;}
+    }
     private String iconCache;
     /** Read only the allow-listed drawable resources of the installed CANBUS APK. */
     public synchronized String iconsSnapshot(){
@@ -226,6 +261,12 @@ public final class QfVehicleProbe {
              .put("radarShareState",readShareState("KeyShareRadarState"))
              .put("bodyRegistryState",readClientRegistryState())
              .put("bodySharePackage",activity.getPackageName());
+            o.put("auditActive",auditActive).put("auditStarted",auditStarted>0)
+             .put("auditAway",auditAway).put("auditReturned",auditReturned>0)
+             .put("auditRemainingSeconds",auditActive?Math.max(0,120-(SystemClock.elapsedRealtime()-auditStarted)/1000):0)
+             .put("auditBeforeMessages",beforeMessages).put("auditBeforeValid",beforeValid)
+             .put("auditAwayMessages",awayMessages).put("auditAwayValid",awayValid)
+             .put("auditAfterMessages",afterMessages).put("auditAfterValid",afterValid);
             o.put("oemCanbusVersion",oemCanbusVersion())
              .put("bodyDeliveryState",bodyDeliveryState(o.optString("bodyRegistryState"),o.optString("bodyShareState")))
              .put("globalSettingsWriteGranted",activity.checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS")==android.content.pm.PackageManager.PERMISSION_GRANTED);
