@@ -15,6 +15,8 @@ class HomeEditor(unittest.TestCase):
     def test_preview_boxes_match_home_buttons(self):
         boxes={tuple(map(int,x)) for x in re.findall(r'Zone\("[^"]+",(\d+),(\d+),(\d+),(\d+)\)',A.split("private val zones = listOf(",1)[1].split("private val patches",1)[0])}
         htmlboxes={tuple(map(int,x)) for x in re.findall(r'class="hit(?: topHit)?" style="left:(\d+)px;top:(\d+)px;width:(\d+)px;height:(\d+)px',HTML)}
+        self.assertEqual(len(htmlboxes),23)
+        self.assertEqual(len(boxes),23)
         self.assertEqual(boxes,htmlboxes)
     def test_patch_regions_and_clipping(self):
         region=A.split("private val patches = listOf(",1)[1].split("private fun choosePatch",1)[0]

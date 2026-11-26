@@ -129,24 +129,24 @@ class BidHomeEditor(private val activity: Activity, private val profiles: BidThe
     // Coordinates audited from the approved index.html. All boxes are preview-only.
     private data class Zone(val name:String,val x:Int,val y:Int,val w:Int,val h:Int)
     private val zones = listOf(
-        Zone("Acasă",25,12,90,70),Zone("Dată",283,8,275,59),Zone("BID",555,9,173,165),
-        Zone("Vreme",786,13,202,62),Zone("BT",989,13,44,62),Zone("Wi-Fi",1035,13,51,62),
-        Zone("Rețea",1088,13,45,62),Zone("Baterie",1140,13,124,62),
-        Zone("Radio",20,84,158,105),Zone("Muzică",20,191,158,92),Zone("Telefon",20,286,158,95),
-        Zone("GPS",20,383,158,95),Zone("Aplicații",20,481,158,124),
-        Zone("Mașină",1108,84,154,105),Zone("Setări",1108,191,154,92),Zone("Sunet",1108,286,154,95),
-        Zone("CarPlay",1108,383,154,95),Zone("Android Auto",1108,481,154,124),
-        Zone("Funcții",174,622,187,72),Zone("YouTube",362,622,170,72),Zone("Waze",533,622,148,72),
-        Zone("Play Store",680,622,181,72),Zone("Chrome",861,622,244,72))
+        Zone("Acasă",17,9,96,56),Zone("Dată",121,9,391,56),Zone("BID",529,4,219,218),
+        Zone("Vreme",783,9,162,56),Zone("BT",953,9,42,56),Zone("Wi-Fi",1050,9,45,56),
+        Zone("Rețea",1000,9,48,56),Zone("Baterie",1099,9,169,56),
+        Zone("Radio",64,88,198,91),Zone("Muzică",23,195,190,86),Zone("Telefon",13,298,171,83),
+        Zone("GPS",20,399,181,83),Zone("Aplicații",61,500,200,94),
+        Zone("Mașină",1022,88,194,91),Zone("Setări",1068,195,191,86),Zone("Sunet",1098,298,171,83),
+        Zone("CarPlay",1074,399,181,83),Zone("Android Auto",1022,500,195,94),
+        Zone("Funcții",200,625,180,73),Zone("YouTube",385,625,170,73),Zone("Waze",561,625,147,73),
+        Zone("Play Store",714,625,169,73),Zone("Chrome",889,625,190,73))
 
     // All regions are deliberately limited to the current artwork, not event handlers.
     // The central rectangle avoids the crest, live header, side controls and bottom dock.
     private val patches = listOf(
         Zone("Imagine centrală",270,235,740,365),
-        Zone("Radio",20,84,158,105), Zone("Muzică",20,191,158,92),
-        Zone("GPS",20,383,158,95), Zone("Sunet",1108,286,154,95),
-        Zone("YouTube",362,622,170,72), Zone("Waze",533,622,147,72),
-        Zone("Play Store",681,622,180,72), Zone("Chrome",861,622,244,72)
+        Zone("Radio",64,88,198,91), Zone("Muzică",23,195,190,86),
+        Zone("GPS",20,399,181,83), Zone("Sunet",1098,298,171,83),
+        Zone("YouTube",385,625,170,73), Zone("Waze",561,625,147,73),
+        Zone("Play Store",714,625,169,73), Zone("Chrome",889,625,190,73)
     )
     private fun choosePatch() {
         AlertDialog.Builder(activity).setTitle("Alege zona grafică")

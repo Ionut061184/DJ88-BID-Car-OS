@@ -22,9 +22,9 @@ import org.json.JSONObject
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private val carArtwork by lazy { BidCarArtwork(this) }
-    private val themeProfiles by lazy { BidThemeProfiles(this, { bidAppearance.isBusy() || bidHomeEditor.isBusy() }) { applyHomeArtwork() } }
-    private val bidAppearance by lazy { BidAppearance(this, themeProfiles) }
-    private val bidHomeEditor by lazy { BidHomeEditor(this, themeProfiles) { applyHomeArtwork() } }
+    private val themeProfiles: BidThemeProfiles by lazy { BidThemeProfiles(this, { bidAppearance.isBusy() || bidHomeEditor.isBusy() }) { applyHomeArtwork() } }
+    private val bidAppearance: BidAppearance by lazy { BidAppearance(this, themeProfiles) }
+    private val bidHomeEditor: BidHomeEditor by lazy { BidHomeEditor(this, themeProfiles) { applyHomeArtwork() } }
 
     private fun applyHomeArtwork() {
         if (!pageReady || !::webView.isInitialized || isDestroyed) return
