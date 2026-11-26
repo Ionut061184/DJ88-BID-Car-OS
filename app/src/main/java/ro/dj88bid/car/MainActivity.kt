@@ -36,11 +36,67 @@ class MainActivity : Activity() {
     @Deprecated("Android document-picker result")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == QF_EXPORT_REQUEST) {
+            if (resultCode == RESULT_OK && data?.data != null) exportInstalledQfApk(data.data!!)
+            return
+        }
         carArtwork.handleResult(requestCode, resultCode, data)
         bidAppearance.handleResult(requestCode, resultCode, data)
         bidHomeEditor.handleResult(requestCode, resultCode, data)
         themeProfiles.handleResult(requestCode, resultCode, data)
     }
+    private val QF_EXPORT_REQUEST = 8217
+    // User-initiated copy of the installed OEM CANBUS base APK only; no app data or global writes.
+    private fun chooseQfExport() {
+        try {
+            val info = packageManager.getPackageInfo("com.qf.vehicle", 0)
+            val app = info.applicationInfo ?: throw IllegalStateException("APK unavailable")
+            if (!app.splitSourceDirs.isNullOrEmpty()) {
+                Toast.makeText(this, "CANBUS are componente APK separate; exportul simplu nu este complet.", Toast.LENGTH_LONG).show()
+                return
+            }
+            val version = (info.versionName ?: "unknown").replace(Regex("[^A-Za-z0-9._-]"), "_")
+            val picker = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "application/vnd.android.package-archive"
+                putExtra(Intent.EXTRA_TITLE, "QF_Canbus_OEM_$version.apk")
+            }
+            startActivityForResult(picker, QF_EXPORT_REQUEST)
+        } catch (_: Exception) {
+            Toast.makeText(this, "Export indisponibil. Folosiți managerul de fișiere sau ADB autorizat.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun exportInstalledQfApk(destination: Uri) {
+        if (destination.scheme != "content") {
+            Toast.makeText(this, "Destinație de document invalidă.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val context = applicationContext
+        Thread {
+            val result = try {
+                val app = context.packageManager.getApplicationInfo("com.qf.vehicle", 0)
+                check(app.splitSourceDirs.isNullOrEmpty())
+                val source = java.io.File(app.sourceDir)
+                check(source.isFile && source.canRead())
+                val expected = source.length()
+                check(expected > 0)
+                val copied = source.inputStream().use { input ->
+                    val output = context.contentResolver.openOutputStream(destination, "wt")
+                        ?: throw java.io.IOException("Destination unavailable")
+                    output.use { input.copyTo(it) }
+                }
+                check(copied == expected)
+                "Copie APK CANBUS OEM salvată. Nu o instalați; trimiteți fișierul pentru analiză."
+            } catch (_: Exception) {
+                "Export eșuat sau incomplet. Nu utilizați fișierul rezultat."
+            }
+            runOnUiThread {
+                Toast.makeText(context, result, Toast.LENGTH_LONG).show()
+            }
+        }.start()
+    }
+
     private val settingsPin by lazy { BidSettingsPin(this) }
     private lateinit var bidTrip: BidTripBridge
     private lateinit var qfVehicleProbe: QfVehicleProbe
@@ -601,6 +657,11 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun qfBeginBodyAudit() = runOnUiThread {
             if (bidForeground && ::qfVehicleProbe.isInitialized) qfVehicleProbe.beginAudit()
+        }
+
+        @JavascriptInterface
+        fun qfExportInstalledApk() = runOnUiThread {
+            if (bidForeground && !isDestroyed) chooseQfExport()
         }
 
         @JavascriptInterface
