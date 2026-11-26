@@ -19,6 +19,15 @@
  function open(){if(typeof window.closeAll==='function')window.closeAll();panel.hidden=false;refresh()}
  function read(){try{return window.BID&&typeof BID.qfVehicleSnapshot==='function'?JSON.parse(BID.qfVehicleSnapshot()):{}}catch(_){return {}}}
  function format(d,key,unit,max,decimal=0){const v=d[key];return d.fresh===true&&typeof d.ageMs==='number'&&d.ageMs>=0&&d.ageMs<=5000&&typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=max?v.toFixed(decimal)+' '+unit:'— '+unit}
+ function shareStatus(d){
+  switch(d.bodyShareState){
+   case 'enabled': return 'Partajare caroserie: activată în setări (livrarea rămâne de verificat).';
+   case 'disabled': return 'Partajare caroserie: dezactivată pentru BID.';
+   case 'absent': return 'Partajare caroserie: cheie OEM absentă pentru BID.';
+   case 'unreadable': return 'Partajare caroserie: setarea nu poate fi citită.';
+   default: return 'Partajare caroserie: stare necunoscută.';
+  }
+ }
  function diagnostic(d){
   if(d.listening!==true)return 'Receptor indisponibil'+(d.registrationError?' ('+d.registrationError+')':'');
   if(!d.messages)return 'Niciun mesaj OEM primit în sesiunea curentă.';
@@ -32,6 +41,8 @@
    'Receptor: '+(d.listening===true?'activ':'indisponibil'),
    'Mesaje: '+(Number.isInteger(d.messages)?d.messages:0)+' | Pachete candidate: '+(Number.isInteger(d.candidateFrames)?d.candidateFrames:0),
    diagnostic(d),
+   shareStatus(d),
+   'Pachet BID: '+(typeof d.bodySharePackage==='string'?d.bodySharePackage:'necunoscut'),
    'Ultimul pachet: '+(Number.isInteger(d.lastSize)?d.lastSize:0)+' octeți (așteptat 79)',
    'Extra absent/tip greșit: '+(d.wrongExtra||0)+' | Lungime: '+(d.wrongLength||0)+' | Antet: '+(d.wrongHeader||0),
    'Total de la pornirea aplicației: '+(d.totalMessages||0)+' mesaje / '+(d.totalCandidates||0)+' candidate',

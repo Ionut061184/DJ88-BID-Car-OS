@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
 import android.os.SystemClock;
+import android.provider.Settings;
 import org.json.JSONObject;
 
 /** Foreground-only listener. Does not request CAN frames, write settings or send commands. */
@@ -53,6 +54,18 @@ public final class QfVehicleProbe {
         if(listening)try{activity.unregisterReceiver(receiver);}catch(RuntimeException ignored){}
         listening=false;frame=null;last=0;
     }
+    // The OEM may require per-package opt-in before emitting body data.
+    // Observe only: this is not proof of delivery and does not change system settings.
+    private String readBodyShareState(){
+        try {
+            String value=Settings.Global.getString(activity.getContentResolver(),
+                activity.getPackageName()+"KeyShareCarbodyState");
+            if(value==null)return "absent";
+            if("1".equals(value))return "enabled";
+            if("0".equals(value))return "disabled";
+            return "unknown";
+        } catch(RuntimeException e){return "unreadable";}
+    }
     public synchronized String snapshot(){
         JSONObject o=new JSONObject();
         try{
@@ -63,7 +76,9 @@ public final class QfVehicleProbe {
              .put("wrongExtra",wrongExtra).put("wrongLength",wrongLength).put("wrongHeader",wrongHeader)
              .put("registrationError",registrationError).put("lastPacketState",lastPacketState)
              .put("totalMessages",totalSeen).put("totalCandidates",totalValid)
-             .put("verified",false).put("source","OEM broadcast; sender not authenticated");
+             .put("verified",false).put("source","OEM broadcast; sender not authenticated")
+             .put("bodyShareState",readBodyShareState())
+             .put("bodySharePackage",activity.getPackageName());
             if(fresh){
                 o.put("speedCandidate",frame.speed==null?JSONObject.NULL:frame.speed);
                 o.put("rpmCandidate",frame.rpm==null?JSONObject.NULL:frame.rpm);

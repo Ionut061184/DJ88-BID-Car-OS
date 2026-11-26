@@ -22,3 +22,6 @@ Pentru integrarea live trebuie extras QF_Canbus.apk din arhivele originale deja 
 
 ## Valori observate în fotografiile OEM (nu se introduc în cod)
 Viteză, RPM, kilometraj, combustibil, consum instantaneu, tensiune auto, temperatură exterioară, frână parcare, centură, lichid parbriz. Toate necesită sursă și validare separată. Valoarea 14.0 V din antet și 14.2 V din ecranul OEM nu sunt neapărat aceeași măsurătoare. Păstrează datele indisponibile ca atare.
+
+## Pista partajării per pachet (26.11.2026)
+Referință tehnică externă: https://github.com/deviloufr-ai/Dashwheel/blob/main/app/src/main/java/com/openauto/dash/CarBox.kt . Proiectul raportează utilizarea Settings.Global cu cheia formată din numele pachetului destinatar și sufixul KeyShareCarbodyState. Nu reutilizăm codul proiectului, care are licență restrictivă. Informația este o ipoteză pentru versiunea OEM a utilizatorului, nu confirmare pe dispozitiv. BID citește acum numai valoarea propriei chei (absent/0/1/necunoscut/inaccesibil), fără scriere, root, permisiuni noi, apel Binder ori modificarea firmware-ului. Chiar și valoarea 1 nu confirmă recepția sau autenticitatea datelor. Orice activare trebuie să folosească o cale OEM/Android autorizată și să fie reversibilă; nu se forțează accesul dacă firmware-ul îl refuză. Testele browser folosesc date fictive exclusiv pentru verificarea UI.
