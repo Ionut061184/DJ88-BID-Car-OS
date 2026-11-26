@@ -26,6 +26,17 @@
   const v=d.outsideTemperatureCandidate,a=d.outsideTemperatureAgeMs;
   return d.outsideTemperatureFresh===true&&Number.isFinite(a)&&a>=0&&a<=120000&&Number.isFinite(v)&&v>=-60&&v<=85?v.toFixed(1)+' °C':'— °C';
  }
+ function freshCabin(d,kind){
+  const a=d[kind+'AgeMs'];return d[kind+'Fresh']===true&&Number.isFinite(a)&&a>=0&&a<=30000;
+ }
+ function climateValue(d,key){
+  const v=d[key];return freshCabin(d,'climate')&&typeof v==='string'&&/^(LO|HI|[0-9]{1,3}\\.[05])$/.test(v)?v:'—';
+ }
+ function doorsText(d){
+  const n=d.doorMaskCandidate;
+  if(!freshCabin(d,'door')||!Number.isInteger(n)||n<0||n>252||(n&3)!==0)return '—';
+  return [[128,'față stânga'],[64,'față dreapta'],[32,'spate stânga'],[16,'spate dreapta'],[8,'hayon'],[4,'capotă']].map(([m,label])=>label+': '+((n&m)?'deschis':'închis')).join(' | ');
+ }
  function registryStatus(d){
   switch(d.bodyRegistryState){
    case 'listed':return 'Registru OEM: BID înregistrat.';
@@ -61,7 +72,7 @@
    shareStatus(d),
    registryStatus(d),
    'Pachet BID: '+(typeof d.bodySharePackage==='string'?d.bodySharePackage:'necunoscut'),
-   'Ultimul pachet: '+(Number.isInteger(d.lastSize)?d.lastSize:0)+' octeți (așteptat 79)',
+   'Ultimul pachet: '+(Number.isInteger(d.lastSize)?d.lastSize:0)+' octeți (caroserie 79, climatizare 21, uși 3)',
    'Extra absent/tip greșit: '+(d.wrongExtra||0)+' | Lungime: '+(d.wrongLength||0)+' | Antet: '+(d.wrongHeader||0),
    'Total de la pornirea aplicației: '+(d.totalMessages||0)+' mesaje / '+(d.totalCandidates||0)+' candidate',
    'Viteză: '+speed.textContent+' | Combustibil: '+fuel.textContent,
@@ -73,6 +84,10 @@
    'Frână de mână (candidat): '+flag(d,'parkingBrakeCandidate','activă','inactivă'),
    'Centură șofer (candidat): '+flag(d,'driverBeltUnfastenedCandidate','necuplată','cuplată'),
    'Lichid parbriz (bit OEM, sens de verificat): '+flag(d,'washerFlagCandidate','1','0'),
+   'Climatronic (candidat, unitate numerică neconfirmată): '+climateValue(d,'climateLeft')+' / '+climateValue(d,'climateRight'),
+   'Uși și capace (candidat): '+doorsText(d),
+   'Mesaje climatizare/uși: '+(d.climateMessages||0)+' / '+(d.doorMessages||0),
+   'Partajare climatizare/uși: '+(d.climateShareState||'necunoscut')+' / '+(d.doorShareState||'necunoscut'),
    'Pachete caroserie goale: '+(d.emptyBody||0),
    'Date experimentale; nu sunt confirmate pentru utilizare în mers.'
   ].join('\n');

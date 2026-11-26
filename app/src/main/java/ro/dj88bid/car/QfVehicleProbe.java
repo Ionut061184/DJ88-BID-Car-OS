@@ -16,7 +16,10 @@ public final class QfVehicleProbe {
     private static final String TEMP_ACTION="com.qf.vehicle.action.TEMP_STRING";
     private Double outsideTemperature;
     private long outsideAt;
-    private int temperatureMessages;
+    private int temperatureMessages, climateMessages, doorMessages;
+    private QfCabinPacket.Climate climate;
+    private Integer doors;
+    private long climateAt,doorsAt;
     private final Activity activity;
     private boolean listening;
     private long last;
@@ -46,6 +49,22 @@ public final class QfVehicleProbe {
                 catch(RuntimeException e){p=null;}
                 lastSize=p==null?0:p.length;
                 if(p==null){wrongExtra++;lastPacketState="missing_or_wrong_extra";return;}
+                // Route different OEM message types independently; do not contaminate body counters.
+                if(p.length>=2&&(p[0]&255)==46){
+                    int type=p[1]&255;
+                    if(type==1){
+                        climateMessages++;
+                        climate=QfCabinPacket.climate(p);
+                        climateAt=climate==null?0:SystemClock.elapsedRealtime();
+                        return;
+                    }
+                    if(type==3){
+                        doorMessages++;
+                        doors=QfCabinPacket.doors(p);
+                        doorsAt=doors==null?0:SystemClock.elapsedRealtime();
+                        return;
+                    }
+                }
                 if(p.length!=79){wrongLength++;lastPacketState="wrong_length";return;}
                 if((p[0]&255)!=0x2e || (p[1]&255)!=2){wrongHeader++;lastPacketState="wrong_header";return;}
                 QfVehiclePacket decoded=QfVehiclePacket.decode(p);
@@ -60,6 +79,7 @@ public final class QfVehicleProbe {
         seen=0;valid=0;wrongExtra=0;wrongHeader=0;wrongLength=0;emptyBody=0;frame=null;last=0;registrationError="";lastPacketState="none";lastSize=0;
         try{
             outsideTemperature=null;outsideAt=0;temperatureMessages=0;
+            climate=null;doors=null;climateAt=doorsAt=0;climateMessages=doorMessages=0;
             IntentFilter filter=new IntentFilter(ACTION);
             filter.addAction(TEMP_ACTION);
             if(Build.VERSION.SDK_INT>=33)activity.registerReceiver(receiver,filter,Context.RECEIVER_EXPORTED);
@@ -70,13 +90,14 @@ public final class QfVehicleProbe {
     public synchronized void stop(){
         if(listening)try{activity.unregisterReceiver(receiver);}catch(RuntimeException ignored){}
         listening=false;frame=null;last=0;outsideTemperature=null;outsideAt=0;
+        climate=null;doors=null;climateAt=doorsAt=0;
     }
     // The OEM may require per-package opt-in before emitting body data.
     // Observe only: this is not proof of delivery and does not change system settings.
-    private String readBodyShareState(){
+    private String readShareState(String suffix){
         try {
             String value=Settings.Global.getString(activity.getContentResolver(),
-                activity.getPackageName()+"KeyShareCarbodyState");
+                activity.getPackageName()+suffix);
             if(value==null)return "absent";
             if("1".equals(value))return "enabled";
             if("0".equals(value))return "disabled";
@@ -104,7 +125,9 @@ public final class QfVehicleProbe {
              .put("registrationError",registrationError).put("lastPacketState",lastPacketState)
              .put("totalMessages",totalSeen).put("totalCandidates",totalValid)
              .put("verified",false).put("source","OEM broadcast; sender not authenticated")
-             .put("bodyShareState",readBodyShareState())
+             .put("bodyShareState",readShareState("KeyShareCarbodyState"))
+             .put("climateShareState",readShareState("KeyShareAcState"))
+             .put("doorShareState",readShareState("KeyShareDoorWindow"))
              .put("bodyRegistryState",readClientRegistryState())
              .put("bodySharePackage",activity.getPackageName());
             long tempAge=outsideAt==0?-1:SystemClock.elapsedRealtime()-outsideAt;
@@ -112,6 +135,19 @@ public final class QfVehicleProbe {
             o.put("outsideTemperatureCandidate",tempFresh?outsideTemperature:JSONObject.NULL)
              .put("outsideTemperatureAgeMs",tempAge).put("outsideTemperatureFresh",tempFresh)
              .put("temperatureMessages",temperatureMessages);
+            long now=SystemClock.elapsedRealtime();
+            long ca=climateAt==0?-1:now-climateAt,da=doorsAt==0?-1:now-doorsAt;
+            boolean cf=listening&&climate!=null&&ca>=0&&ca<=30000;
+            boolean df=listening&&doors!=null&&da>=0&&da<=30000;
+            o.put("climateFresh",cf).put("climateAgeMs",ca).put("climateMessages",climateMessages)
+             .put("doorFresh",df).put("doorAgeMs",da).put("doorMessages",doorMessages);
+            if(cf){
+                o.put("climateLeft",climate.left==null?JSONObject.NULL:climate.left)
+                 .put("climateRight",climate.right==null?JSONObject.NULL:climate.right)
+                 .put("climatePower",climate.power).put("climateAc",climate.ac)
+                 .put("climateAuto",climate.auto).put("climateDual",climate.dual);
+            }
+            if(df)o.put("doorMaskCandidate",doors);
             if(fresh){
                 o.put("speedCandidate",frame.speed==null?JSONObject.NULL:frame.speed);
                 o.put("rpmCandidate",frame.rpm==null?JSONObject.NULL:frame.rpm);
