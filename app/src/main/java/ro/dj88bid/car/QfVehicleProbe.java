@@ -173,6 +173,42 @@ public final class QfVehicleProbe {
         if("absent".equals(share)||"disabled".equals(share))return "body_sharing_not_enabled";
         return "no_body_messages";
     }
+    private String iconCache;
+    /** Read only the allow-listed drawable resources of the installed CANBUS APK. */
+    public synchronized String iconsSnapshot(){
+        if(iconCache!=null)return iconCache;
+        JSONObject icons=new JSONObject();
+        try{
+            String pkg="com.qf.vehicle";
+            android.content.res.Resources resources=activity.getPackageManager().getResourcesForApplication(pkg);
+            String[] names={"common_instantan_speed","common_engine_speed","common_oil_surplus_normal",
+                "common_oil_surplus_warn","common_driving_mile","common_handbrake_state_nomal",
+                "common_handbrake_state_warn","common_outside_temp","common_cleaning_liquid_normal",
+                "common_cleaning_liquid_warn","common_battery_voltage_normal","common_battery_voltage_warn"};
+            for(String name:names){
+                try{
+                    int id=resources.getIdentifier(name,"drawable",pkg);
+                    if(id==0)continue;
+                    android.graphics.drawable.Drawable drawable=resources.getDrawable(id,null);
+                    android.graphics.Bitmap bitmap=android.graphics.Bitmap.createBitmap(32,32,android.graphics.Bitmap.Config.ARGB_8888);
+                    try{
+                        int w=drawable.getIntrinsicWidth(),h=drawable.getIntrinsicHeight();
+                        if(w<=0||h<=0){w=32;h=32;}
+                        float scale=32f/Math.max(w,h);
+                        int dw=Math.max(1,Math.round(w*scale)),dh=Math.max(1,Math.round(h*scale));
+                        drawable.setBounds((32-dw)/2,(32-dh)/2,(32-dw)/2+dw,(32-dh)/2+dh);
+                        drawable.draw(new android.graphics.Canvas(bitmap));
+                        java.io.ByteArrayOutputStream output=new java.io.ByteArrayOutputStream();
+                        if(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,output)){
+                            icons.put(name,"data:image/png;base64,"+android.util.Base64.encodeToString(output.toByteArray(),android.util.Base64.NO_WRAP));
+                        }
+                    }finally{bitmap.recycle();}
+                }catch(Exception ignored){}
+            }
+        }catch(Exception ignored){}
+        iconCache=icons.toString();
+        return iconCache;
+    }
     public synchronized String snapshot(){
         JSONObject o=new JSONObject();
         try{
