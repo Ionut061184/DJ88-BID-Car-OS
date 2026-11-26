@@ -9,10 +9,11 @@
  const tile=(id,label)=>{const el=document.createElement('button');el.id=id;el.className='qfTile';el.setAttribute('aria-label',label+' – diagnostic CAN');const value=document.createElement('span');const caption=document.createElement('small');caption.textContent='CAN TEST';el.append(value,caption);stage.appendChild(el);el.onclick=open;return value};
  const speed=tile('qfSpeedTile','Viteză'),fuel=tile('qfFuelTile','Combustibil');
  const panel=document.createElement('div');panel.id='qfVehiclePanel';panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Diagnostic CAN-BUS OEM');
- panel.innerHTML='<section><button class="close" id="qfClose">Închide ✕</button><h1>BID Vehicle · CAN TEST</h1><p>Comparați valorile cu meniul original, numai cu mașina staționată. Sursa nu este încă autentificată.</p><div id="qfVehicleText"></div><div class="row"><button id="qfOriginal">Meniu auto original</button></div></section>';
+ panel.innerHTML='<section><button class="close" id="qfClose">Închide ✕</button><h1>BID Vehicle · CAN TEST</h1><p>Comparați valorile cu meniul original, numai cu mașina staționată. Sursa nu este încă autentificată.</p><div id="qfVehicleText"></div><div class="row"><button id="qfOriginal">Meniu auto original</button><button id="qfBodyOriginal">Informații CAN originale</button></div></section>';
  stage.appendChild(panel);
  document.getElementById('qfClose').onclick=()=>{panel.hidden=true};
  document.getElementById('qfOriginal').onclick=()=>{panel.hidden=true;if(window.BID&&typeof BID.open==='function')BID.open('car')};
+ document.getElementById('qfBodyOriginal').onclick=()=>{panel.hidden=true;if(window.BID&&typeof BID.open==='function')BID.open('canbus')};
  const oldClose=window.closeAll;if(typeof oldClose==='function')window.closeAll=function(){panel.hidden=true;return oldClose.apply(this,arguments)};
  // Preserve the original Mașină action; the two CAN tiles open this diagnostic panel.
  function open(){if(typeof window.closeAll==='function')window.closeAll();panel.hidden=false;refresh()}
