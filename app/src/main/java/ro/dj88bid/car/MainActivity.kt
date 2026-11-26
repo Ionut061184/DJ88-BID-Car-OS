@@ -22,10 +22,12 @@ import org.json.JSONObject
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private val carArtwork by lazy { BidCarArtwork(this) }
+    private val bidAppearance by lazy { BidAppearance(this) }
     @Deprecated("Android document-picker result")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         carArtwork.handleResult(requestCode, resultCode, data)
+        bidAppearance.handleResult(requestCode, resultCode, data)
     }
     private val settingsPin by lazy { BidSettingsPin(this) }
     private lateinit var bidTrip: BidTripBridge
@@ -930,7 +932,8 @@ class MainActivity : Activity() {
                     FunctionTile("Vreme","weather",listOf("weather","vreme")),
                     FunctionTile("Manual","manual",listOf("manual")),
                     FunctionTile("Toate aplicațiile","apps",emptyList()),
-                    FunctionTile("Permisiuni indicatoare","indicatorpermissions",emptyList())
+                    FunctionTile("Permisiuni indicatoare","indicatorpermissions",emptyList()),
+                    FunctionTile("Aspect BID","bidappearance",emptyList())
                 ),
                 "Conectare telefon" to listOf(
                     FunctionTile("CarPlay","carplay",listOf("com.zjinnova.zlink")),
@@ -948,16 +951,15 @@ class MainActivity : Activity() {
             val density = screen.density
             val px: (Float) -> Int = { (it * density).toInt() }
             val dialog = android.app.Dialog(this@MainActivity)
+            val palette = bidAppearance.palette()
             val root = android.widget.LinearLayout(this@MainActivity).apply {
                 orientation = android.widget.LinearLayout.VERTICAL
-                setBackground(android.graphics.drawable.GradientDrawable(
-                    android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(0xFF180B12.toInt(),0xFF4D192B.toInt(),0xFF110A10.toInt())))
+                background = bidAppearance.background(palette)
             }
             val heading = android.widget.TextView(this@MainActivity).apply {
                 text = "BID · Funcții originale QF001"
                 textSize = 23f
-                setTextColor(0xFFFFDEAE.toInt())
+                setTextColor(palette.heading)
                 gravity = android.view.Gravity.CENTER
                 setOnClickListener { dialog.dismiss() }
             }
@@ -979,7 +981,7 @@ class MainActivity : Activity() {
                     text = category
                     textSize = 19f
                     gravity = android.view.Gravity.CENTER
-                    setTextColor(0xFFEAC189.toInt())
+                    setTextColor(palette.accent)
                 }
                 page.addView(sectionLabel,android.widget.LinearLayout.LayoutParams(-1,px(34f)))
                 val grid = android.widget.GridLayout(this@MainActivity).apply {
@@ -1002,9 +1004,9 @@ class MainActivity : Activity() {
                             tile.matches.any { haystack.contains(it.lowercase(java.util.Locale.ROOT)) }
                         }
                         val image = android.widget.ImageView(this@MainActivity).apply {
-                            setImageDrawable(matched?.loadIcon(packageManager)
+                            setImageDrawable(bidAppearance.icon(tile.key) ?: matched?.loadIcon(packageManager)
                                 ?: getDrawable(android.R.drawable.ic_menu_manage))
-                            alpha = if(matched == null && tile.key !in listOf("apps","reverse","car","canbus","indicatorpermissions","carart")) .55f else 1f
+                            alpha = if(matched == null && tile.key !in listOf("apps","reverse","car","canbus","indicatorpermissions","carart","bidappearance")) .55f else 1f
                             scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
                         }
                         cell.addView(image,android.widget.LinearLayout.LayoutParams(
@@ -1026,6 +1028,7 @@ class MainActivity : Activity() {
                                     Toast.LENGTH_LONG).show()
                                 "camera360" -> openOem360()
                                 "carart" -> carArtwork.show()
+                                "bidappearance" -> bidAppearance.show()
                                 "carplay","androidauto","hicar","zlink" -> Bridge().open(tile.key)
                                 "apps" -> showApps()
                                 "indicatorpermissions" -> openIndicatorPermissions()
@@ -1058,7 +1061,7 @@ class MainActivity : Activity() {
             fun updateDots() {
                 val active = ((carousel.scrollX+width/2)/width).coerceIn(0,sections.size-1)
                 dotLabels.forEachIndexed { index,v ->
-                    v.setTextColor(if(index==active)0xFFE7BA82.toInt() else 0xFF8B7180.toInt())
+                    v.setTextColor(if(index==active)palette.activeDot else palette.inactiveDot)
                 }
             }
             carousel.setOnTouchListener { _, event ->
