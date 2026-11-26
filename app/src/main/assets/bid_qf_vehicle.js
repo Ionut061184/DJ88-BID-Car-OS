@@ -4,10 +4,29 @@
  const stage=document.getElementById('stage');
  if(!stage)return;
  const css=document.createElement('style');
- css.textContent='.qfTile{position:absolute;top:640px;width:142px;height:51px;z-index:6;border:0;border-radius:10px;background:#080609;color:#f9e7c8;font:25px Arial,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0;line-height:1.1}.qfTile small{font:12px Arial,sans-serif;color:#dfbd87}.qfTile:focus-visible{outline:2px solid #e6c080}#qfSpeedTile{left:26px}#qfFuelTile{left:1112px}#qfVehiclePanel{position:absolute;inset:0;z-index:35;background:#10060af5;padding:36px 65px;overflow:auto;color:#ffe5be}#qfVehiclePanel section{border:2px solid #c5a06a;border-radius:20px;padding:20px;background:#35121f}#qfVehicleText{white-space:pre-line;font:24px/1.5 Arial,sans-serif}';
+ css.textContent='.qfTile{position:absolute;top:625px;height:73px;z-index:6;border:0;background:#080609;color:#dfbd87;font:14px Arial,sans-serif;display:flex;flex-direction:column;align-items:stretch;justify-content:center;padding:2px 5px;box-sizing:border-box;line-height:16px;text-align:left;overflow:hidden}.qfTile:focus-visible{outline:2px solid #e6c080}#qfSpeedTile{left:17px;width:178px}#qfFuelTile{left:1084px;width:190px}.qfRow{display:flex;gap:4px;align-items:center;min-height:16px;white-space:nowrap}.qfRow img{width:15px;height:15px;object-fit:contain;flex:none}.qfRow span{overflow:hidden;text-overflow:ellipsis}.qfRow[data-tone=unknown]{color:#929292}.qfRow[data-tone=unknown] img{filter:grayscale(1);opacity:.6}.qfRow[data-tone=normal]{color:#73d68b}.qfRow[data-tone=red]{color:#ff5555}.qfRow[data-tone=yellow]{color:#ffd05c}.qfTest{font:9px Arial;color:#a89a83;align-self:flex-end;line-height:10px}#qfVehiclePanel{position:absolute;inset:0;z-index:35;background:#10060af5;padding:36px 65px;overflow:auto;color:#ffe5be}#qfVehiclePanel section{border:2px solid #c5a06a;border-radius:20px;padding:20px;background:#35121f}#qfVehicleText{white-space:pre-line;font:24px/1.5 Arial,sans-serif}';
  document.head.appendChild(css);
- const tile=(id,label)=>{const el=document.createElement('button');el.id=id;el.className='qfTile';el.setAttribute('aria-label',label+' – diagnostic CAN');const value=document.createElement('span');const caption=document.createElement('small');caption.textContent='CAN TEST';el.append(value,caption);stage.appendChild(el);el.onclick=open;return value};
- const speed=tile('qfSpeedTile','Viteză'),fuel=tile('qfFuelTile','Combustibil');
+ let icons={};
+ try{if(window.BID&&typeof BID.qfVehicleIcons==='function')icons=JSON.parse(BID.qfVehicleIcons())||{};}catch(_){}
+ const tile=(id,label)=>{const el=document.createElement('button');el.id=id;el.className='qfTile';el.setAttribute('aria-label',label+' – diagnostic CAN');stage.appendChild(el);el.onclick=open;return el};
+ const left=tile('qfSpeedTile','Viteză, turație, combustibil'),right=tile('qfFuelTile','Kilometraj, frână de mână, temperatură, lichid parbriz');
+ const row=(parent,label,icon)=>{const el=document.createElement('div');el.className='qfRow';el.dataset.tone='unknown';const img=document.createElement('img');img.alt='';img.hidden=true;const value=document.createElement('span');el.append(img,value);parent.appendChild(el);el.title=label;return {el,img,value,label,icon};};
+ const speedRow=row(left,'Viteză','common_instantan_speed');
+ const rpmRow=row(left,'Turație','common_engine_speed');
+ const fuelRow=row(left,'Combustibil','common_oil_surplus_normal');
+ const testLabel=document.createElement('small');testLabel.className='qfTest';testLabel.textContent='CAN TEST';left.appendChild(testLabel);
+ const odoRow=row(right,'Kilometraj','common_driving_mile');
+ const brakeRow=row(right,'Frână','common_handbrake_state_nomal');
+ const tempRow=row(right,'Exterior','common_outside_temp');
+ const washerRow=row(right,'Parbriz','common_cleaning_liquid_normal');
+ const speed=speedRow.value,fuel=fuelRow.value;
+ function paint(r,value,tone='unknown',icon=r.icon){
+  r.value.textContent=r.label+': '+value;
+  r.el.dataset.tone=tone;
+  const uri=icons[icon];
+  if(typeof uri==='string'&&/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(uri)){r.img.src=uri;r.img.hidden=false;}
+  else{r.img.hidden=true;r.img.removeAttribute('src');}
+ }
  const panel=document.createElement('div');panel.id='qfVehiclePanel';panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Diagnostic CAN-BUS OEM');
  panel.innerHTML='<section><button class="close" id="qfClose">Închide ✕</button><h1>BID Vehicle · CAN TEST</h1><p>Comparați valorile cu meniul original, numai cu mașina staționată. Sursa nu este încă autentificată.</p><div id="qfVehicleText"></div><div class="row"><button id="qfOriginal">Meniu auto original</button><button id="qfBodyOriginal">Informații CAN originale</button></div></section>';
  stage.appendChild(panel);
@@ -70,18 +89,33 @@
   return 'Pachet candidat primit; comparați cu meniul OEM.';
  }
  function refresh(){
-  const d=read();speed.textContent=format(d,'speedCandidate','km/h',300);fuel.textContent=format(d,'fuelCandidate','L',100,1);
+  const d=read();
+  const speedValue=format(d,'speedCandidate','km/h',300),fuelValue=format(d,'fuelCandidate','L',100,1);
+  const rpmValue=format(d,'rpmCandidate','RPM',8500),odoValue=format(d,'odometerCandidate','km',1500000,0),tempValue=outsideTemp(d);
+  const dataTone=v=>v.startsWith('—')?'unknown':'candidate';
+  paint(speedRow,speedValue,dataTone(speedValue));paint(rpmRow,rpmValue,dataTone(rpmValue));paint(fuelRow,fuelValue,dataTone(fuelValue));
+  paint(odoRow,odoValue,dataTone(odoValue));paint(tempRow,tempValue,dataTone(tempValue));
+  // Do not display a reassuring green or warning state until the installed OEM mapping has been verified.
+  const verified=d.verified===true;
+  const b=verified?flag(d,'parkingBrakeCandidate','Trasă','Normală'):'—';
+  const w=verified?flag(d,'washerFlagCandidate','Nivel scăzut','Normal'):'—';
+  paint(brakeRow,b,b==='Trasă'?'red':b==='Normală'?'normal':'unknown',b==='Trasă'?'common_handbrake_state_warn':brakeRow.icon);
+  paint(washerRow,w,w==='Nivel scăzut'?'yellow':w==='Normal'?'normal':'unknown',w==='Nivel scăzut'?'common_cleaning_liquid_warn':washerRow.icon);
   if(!panel.hidden)document.getElementById('qfVehicleText').textContent=[
    'Receptor: '+(d.listening===true?'activ':'indisponibil'),
    'Mesaje: '+(Number.isInteger(d.messages)?d.messages:0)+' | Pachete candidate: '+(Number.isInteger(d.candidateFrames)?d.candidateFrames:0),
    diagnostic(d),
+   'CANBUS OEM instalat: '+(d.oemCanbusVersion||'indisponibil'),
+   'Diagnostic livrare: '+(d.bodyDeliveryState||'necunoscut'),
+   'Drept scriere setări globale: '+(d.globalSettingsWriteGranted===true?'da':'nu')+' (BID nu scrie setări globale).',
+   'Voltaj antet: proprietate QF; tensiune caroserie OEM: sursă separată încă neidentificată.',
    shareStatus(d),
    registryStatus(d),
    'Pachet BID: '+(typeof d.bodySharePackage==='string'?d.bodySharePackage:'necunoscut'),
    'Ultimul pachet: '+(Number.isInteger(d.lastSize)?d.lastSize:0)+' octeți (caroserie 79, climatizare 21, uși 3)',
    'Extra absent/tip greșit: '+(d.wrongExtra||0)+' | Lungime: '+(d.wrongLength||0)+' | Antet: '+(d.wrongHeader||0),
    'Total de la pornirea aplicației: '+(d.totalMessages||0)+' mesaje / '+(d.totalCandidates||0)+' candidate',
-   'Viteză: '+speed.textContent+' | Combustibil: '+fuel.textContent,
+   'Viteză: '+speedValue+' | Combustibil: '+fuelValue,
    'Temperatură exterioară OEM (candidat): '+outsideTemp(d),
    'Mesaje temperatură: '+(d.temperatureMessages||0),
    'Turație: '+format(d,'rpmCandidate','RPM',8500),
