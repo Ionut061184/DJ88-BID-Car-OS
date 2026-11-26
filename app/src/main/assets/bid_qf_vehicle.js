@@ -28,9 +28,16 @@
   else{r.img.hidden=true;r.img.removeAttribute('src');}
  }
  const panel=document.createElement('div');panel.id='qfVehiclePanel';panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Diagnostic CAN-BUS OEM');
- panel.innerHTML='<section><button class="close" id="qfClose">Închide ✕</button><h1>BID Vehicle · CAN TEST</h1><p>Comparați valorile cu meniul original, numai cu mașina staționată. Sursa nu este încă autentificată.</p><div id="qfVehicleText"></div><div class="row"><button id="qfAudit">Pornește test recepție (120 s)</button><button id="qfOriginal">Meniu auto original</button><button id="qfBodyOriginal">Informații CAN originale</button></div></section>';
+ panel.innerHTML='<section><button class="close" id="qfClose">Închide ✕</button><h1>BID Vehicle · CAN TEST</h1><p>Comparați valorile cu meniul original, numai cu mașina staționată. Sursa nu este încă autentificată.</p><div class="row"><button id="qfAudit" type="button">Pornește test recepție (120 s)</button><button id="qfOriginal" type="button">Meniu auto original</button><button id="qfBodyOriginal" type="button">Informații CAN originale</button></div><p id="qfAuditStatus" role="status" aria-live="polite" style="font: bold 24px Arial; color:#ffd05c">Test nepornit.</p><div id="qfVehicleText"></div></section>';
  stage.appendChild(panel);
- document.getElementById('qfAudit').onclick=()=>{if(window.BID&&typeof BID.qfBeginBodyAudit==='function'){BID.qfBeginBodyAudit();refresh();}};
+ const auditButton=document.getElementById('qfAudit'), auditStatus=document.getElementById('qfAuditStatus');
+ let auditRequestedAt=0, auditError='';
+ auditButton.onclick=()=>{
+  auditError='';auditRequestedAt=0;
+  if(!window.BID||typeof BID.qfBeginBodyAudit!=='function'){auditError='Comanda Android pentru test lipsește.';auditStatus.textContent=auditError;return;}
+  auditRequestedAt=Date.now();auditButton.disabled=true;auditStatus.textContent='Solicitare trimisă. Se așteaptă confirmarea receptorului…';
+  try{BID.qfBeginBodyAudit();}catch(e){auditRequestedAt=0;auditError='Comanda Android a eșuat.';auditButton.disabled=false;auditStatus.textContent=auditError;}
+ };
  document.getElementById('qfClose').onclick=()=>{panel.hidden=true};
  document.getElementById('qfOriginal').onclick=()=>{panel.hidden=true;if(window.BID&&typeof BID.open==='function')BID.open('car')};
  document.getElementById('qfBodyOriginal').onclick=()=>{panel.hidden=true;if(window.BID&&typeof BID.open==='function')BID.open('canbus')};
@@ -91,6 +98,14 @@
  }
  function refresh(){
   const d=read();
+  if(d.auditActive===true){
+   auditRequestedAt=0;auditError='';auditButton.disabled=true;
+   auditStatus.textContent='Test activ: '+(d.auditRemainingSeconds||0)+' s. '+(d.listening===true?'Receptor activ. Deschideți meniul OEM și reveniți.':'Receptor indisponibil: '+(d.registrationError||'cauză necunoscută'));
+  }else if(auditRequestedAt){
+   if(Date.now()-auditRequestedAt>=5000){auditRequestedAt=0;auditError='Android nu a confirmat pornirea testului în 5 s.';auditButton.disabled=false;auditStatus.textContent=auditError;}
+  }else{
+   auditButton.disabled=false;auditStatus.textContent=auditError||(d.auditStarted?'Test încheiat. Consultați contoarele.':'Test nepornit.');
+  }
   const speedValue=format(d,'speedCandidate','km/h',300),fuelValue=format(d,'fuelCandidate','L',100,1);
   const rpmValue=format(d,'rpmCandidate','RPM',8500),odoValue=format(d,'odometerCandidate','km',1500000,0),tempValue=outsideTemp(d);
   const dataTone=v=>v.startsWith('—')?'unknown':'candidate';
