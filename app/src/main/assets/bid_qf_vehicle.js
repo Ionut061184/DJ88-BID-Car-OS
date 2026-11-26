@@ -82,12 +82,20 @@
  }
  function shareStatus(d){
   switch(d.bodyShareState){
-   case 'enabled': return 'Partajare caroserie: activată în setări (livrarea rămâne de verificat).';
+   case 'enabled': return 'Partajare caroserie: activată pentru BID (livrarea rămâne de verificat).';
    case 'disabled': return 'Partajare caroserie: dezactivată pentru BID.';
    case 'absent': return 'Partajare caroserie: cheie OEM absentă pentru BID.';
    case 'unreadable': return 'Partajare caroserie: setarea nu poate fi citită.';
    default: return 'Partajare caroserie: stare necunoscută.';
   }
+ }
+ function globalShareStatus(d){
+  const values={enabled:'activă (cel puțin un client OEM)',disabled:'inactivă (niciun client activ)',unknown:'necunoscută',unreadable:'inaccesibilă'};
+  return 'Partajare globală caroserie: '+(values[d.globalBodyShareState]||'necunoscută')+'.';
+ }
+ function remoteModeStatus(d){
+  const values={app:'aplicații (0)',app_default:'aplicații (implicit)',system:'sistem (1)',unknown:'necunoscut',unreadable:'inaccesibil'};
+  return 'Mod SDK configurat: '+(values[d.remoteDemandMode]||'necunoscut')+'; BID nu inițializează SDK.';
  }
  function diagnostic(d){
   if(d.listening!==true)return 'Receptor indisponibil'+(d.registrationError?' ('+d.registrationError+')':'');
@@ -131,6 +139,8 @@
    'Diagnostic livrare: '+(d.bodyDeliveryState||'necunoscut'),
    'Drept scriere setări globale: '+(d.globalSettingsWriteGranted===true?'da':'nu')+' (BID nu scrie setări globale).',
    'Voltaj antet: proprietate QF; tensiune caroserie OEM: sursă separată încă neidentificată.',
+   globalShareStatus(d),
+   remoteModeStatus(d),
    shareStatus(d),
    registryStatus(d),
    'Pachet BID: '+(typeof d.bodySharePackage==='string'?d.bodySharePackage:'necunoscut'),
