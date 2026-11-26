@@ -28,8 +28,9 @@
   else{r.img.hidden=true;r.img.removeAttribute('src');}
  }
  const panel=document.createElement('div');panel.id='qfVehiclePanel';panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Diagnostic CAN-BUS OEM');
- panel.innerHTML='<section><button class="close" id="qfClose">Închide ✕</button><h1>BID Vehicle · CAN TEST</h1><p>Comparați valorile cu meniul original, numai cu mașina staționată. Sursa nu este încă autentificată.</p><div id="qfVehicleText"></div><div class="row"><button id="qfOriginal">Meniu auto original</button><button id="qfBodyOriginal">Informații CAN originale</button></div></section>';
+ panel.innerHTML='<section><button class="close" id="qfClose">Închide ✕</button><h1>BID Vehicle · CAN TEST</h1><p>Comparați valorile cu meniul original, numai cu mașina staționată. Sursa nu este încă autentificată.</p><div id="qfVehicleText"></div><div class="row"><button id="qfAudit">Pornește test recepție (120 s)</button><button id="qfOriginal">Meniu auto original</button><button id="qfBodyOriginal">Informații CAN originale</button></div></section>';
  stage.appendChild(panel);
+ document.getElementById('qfAudit').onclick=()=>{if(window.BID&&typeof BID.qfBeginBodyAudit==='function'){BID.qfBeginBodyAudit();refresh();}};
  document.getElementById('qfClose').onclick=()=>{panel.hidden=true};
  document.getElementById('qfOriginal').onclick=()=>{panel.hidden=true;if(window.BID&&typeof BID.open==='function')BID.open('car')};
  document.getElementById('qfBodyOriginal').onclick=()=>{panel.hidden=true;if(window.BID&&typeof BID.open==='function')BID.open('canbus')};
@@ -104,6 +105,11 @@
   if(!panel.hidden)document.getElementById('qfVehicleText').textContent=[
    'Receptor: '+(d.listening===true?'activ':'indisponibil'),
    'Mesaje: '+(Number.isInteger(d.messages)?d.messages:0)+' | Pachete candidate: '+(Number.isInteger(d.candidateFrames)?d.candidateFrames:0),
+   'Test temporar: '+(d.auditStarted?(d.auditActive?'activ, '+(d.auditRemainingSeconds||0)+' s':'încheiat'):'nepornit'),
+   'Mesaje/pachete înainte: '+(d.auditBeforeMessages||0)+' / '+(d.auditBeforeValid||0),
+   'Mesaje/pachete cât BID nu era în prim-plan: '+(d.auditAwayMessages||0)+' / '+(d.auditAwayValid||0),
+   'Mesaje/pachete după revenire: '+(d.auditAfterMessages||0)+' / '+(d.auditAfterValid||0),
+   'În test: deschideți manual secțiunea OEM, reveniți în BID în 120 s. Contorul nu identifică pagina OEM.',
    diagnostic(d),
    'CANBUS OEM instalat: '+(d.oemCanbusVersion||'indisponibil'),
    'Diagnostic livrare: '+(d.bodyDeliveryState||'necunoscut'),
