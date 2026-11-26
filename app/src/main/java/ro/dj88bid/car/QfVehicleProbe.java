@@ -32,6 +32,7 @@ public final class QfVehicleProbe {
     private long climateAt,doorsAt;
     private final Activity activity;
     private final QfSdkBodyAudit sdkBodyAudit;
+    private final QfMcuPassiveProbe mcuProbe = new QfMcuPassiveProbe();
     private boolean listening;
     private long last;
     private int seen, valid, lastSize, wrongExtra, wrongHeader, wrongLength, emptyBody;
@@ -217,6 +218,7 @@ public final class QfVehicleProbe {
         beforeMessages=beforeValid=awayMessages=awayValid=afterMessages=afterValid=0;
         auditAway=false;auditActive=true;auditForeground=true;
         sdkBodyAudit.start(oemCanbusVersion());
+        mcuProbe.start(activity);
         auditHandler.postDelayed(auditTimeout,120000);
     }
     public synchronized void foregroundChanged(boolean foreground){
@@ -230,11 +232,13 @@ public final class QfVehicleProbe {
     }
     private synchronized void finishAudit(){
         sdkBodyAudit.stop();
+        mcuProbe.stopCapture();
         auditActive=false;auditHandler.removeCallbacks(auditTimeout);
         if(!auditForeground)stop();
     }
     public synchronized void close(){
         sdkBodyAudit.stop();
+        mcuProbe.stopCapture();
         auditActive=false;auditHandler.removeCallbacks(auditTimeout);stop();
     }
     private void auditCount(boolean candidate){
@@ -303,6 +307,7 @@ public final class QfVehicleProbe {
              .put("auditAwayMessages",awayMessages).put("auditAwayValid",awayValid)
              .put("auditAfterMessages",afterMessages).put("auditAfterValid",afterValid);
             sdkBodyAudit.snapshot(o);
+            o.put("mcuStatus",mcuProbe.status()).put("mcuCanbusCount",mcuProbe.count(65)).put("mcuVoltageCount",mcuProbe.count(41));
             String version=oemCanbusVersion(),globalShare=globalBodyShareState();
             o.put("oemCanbusVersion",version)
              .put("globalBodyShareState",globalShare)
