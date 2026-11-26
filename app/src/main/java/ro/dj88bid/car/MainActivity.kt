@@ -21,6 +21,7 @@ import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private val firmwareExport = QfFirmwareExport(this)
     private val carArtwork by lazy { BidCarArtwork(this) }
     private val themeProfiles: BidThemeProfiles by lazy { BidThemeProfiles(this, { bidAppearance.isBusy() || bidHomeEditor.isBusy() }) { applyHomeArtwork() } }
     private val bidAppearance: BidAppearance by lazy { BidAppearance(this, themeProfiles) }
@@ -36,6 +37,7 @@ class MainActivity : Activity() {
     @Deprecated("Android document-picker result")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (firmwareExport.handleResult(requestCode, resultCode, data)) return
         if (requestCode == QF_EXPORT_REQUEST) {
             if (resultCode == RESULT_OK && data?.data != null) exportInstalledQfApk(data.data!!)
             return
@@ -208,6 +210,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        firmwareExport.close()
         bidForeground = false
         cameraCheckGeneration++
         cameraCheckPending = false
@@ -662,6 +665,11 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun qfExportInstalledApk() = runOnUiThread {
             if (bidForeground && !isDestroyed) chooseQfExport()
+        }
+
+        @JavascriptInterface
+        fun qfExportSystemFiles() = runOnUiThread {
+            if (bidForeground && !isDestroyed) firmwareExport.open()
         }
 
         @JavascriptInterface
