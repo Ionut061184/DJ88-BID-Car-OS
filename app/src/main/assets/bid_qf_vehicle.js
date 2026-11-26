@@ -22,6 +22,15 @@
  function flag(d,key,on,off){
   return d.fresh===true&&typeof d.ageMs==='number'&&d.ageMs>=0&&d.ageMs<=5000&&typeof d[key]==='boolean'?(d[key]?on:off):'—';
  }
+ function registryStatus(d){
+  switch(d.bodyRegistryState){
+   case 'listed':return 'Registru OEM: BID înregistrat.';
+   case 'not_listed':return 'Registru OEM: BID nu este înregistrat.';
+   case 'absent':return 'Registru OEM: absent sau gol.';
+   case 'unreadable':return 'Registru OEM: inaccesibil.';
+   default:return 'Registru OEM: stare necunoscută.';
+  }
+ }
  function shareStatus(d){
   switch(d.bodyShareState){
    case 'enabled': return 'Partajare caroserie: activată în setări (livrarea rămâne de verificat).';
@@ -46,6 +55,7 @@
    'Mesaje: '+(Number.isInteger(d.messages)?d.messages:0)+' | Pachete candidate: '+(Number.isInteger(d.candidateFrames)?d.candidateFrames:0),
    diagnostic(d),
    shareStatus(d),
+   registryStatus(d),
    'Pachet BID: '+(typeof d.bodySharePackage==='string'?d.bodySharePackage:'necunoscut'),
    'Ultimul pachet: '+(Number.isInteger(d.lastSize)?d.lastSize:0)+' octeți (așteptat 79)',
    'Extra absent/tip greșit: '+(d.wrongExtra||0)+' | Lungime: '+(d.wrongLength||0)+' | Antet: '+(d.wrongHeader||0),

@@ -67,6 +67,16 @@ public final class QfVehicleProbe {
             return "unknown";
         } catch(RuntimeException e){return "unreadable";}
     }
+    private String readClientRegistryState(){
+        try {
+            String value=Settings.Global.getString(activity.getContentResolver(),"KeyAllPackages");
+            if(value==null || value.isEmpty())return "absent";
+            for(String client:value.split(",")){
+                if(activity.getPackageName().equals(client))return "listed";
+            }
+            return "not_listed";
+        } catch(RuntimeException e){return "unreadable";}
+    }
     public synchronized String snapshot(){
         JSONObject o=new JSONObject();
         try{
@@ -79,6 +89,7 @@ public final class QfVehicleProbe {
              .put("totalMessages",totalSeen).put("totalCandidates",totalValid)
              .put("verified",false).put("source","OEM broadcast; sender not authenticated")
              .put("bodyShareState",readBodyShareState())
+             .put("bodyRegistryState",readClientRegistryState())
              .put("bodySharePackage",activity.getPackageName());
             if(fresh){
                 o.put("speedCandidate",frame.speed==null?JSONObject.NULL:frame.speed);
