@@ -130,6 +130,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Run native decoder regression (synthetic frames)
+        run: |
+          mkdir -p /tmp/bid-qf-tests
+          javac -d /tmp/bid-qf-tests app/src/main/java/ro/dj88bid/car/QfVehiclePacket.java tests/QfVehiclePacketTest.java
+          java -cp /tmp/bid-qf-tests ro.dj88bid.car.QfVehiclePacketTest
       - name: Verify preinstalled Android SDK on runner
         run: |
           test -n "$ANDROID_HOME"

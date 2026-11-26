@@ -16,7 +16,7 @@ public final class QfVehicleProbe {
     private final Activity activity;
     private boolean listening;
     private long last;
-    private int seen, valid, lastSize, wrongExtra, wrongHeader, wrongLength;
+    private int seen, valid, lastSize, wrongExtra, wrongHeader, wrongLength, emptyBody;
     private int totalSeen, totalValid;
     private String registrationError = "";
     private String lastPacketState = "none";
@@ -36,13 +36,14 @@ public final class QfVehicleProbe {
                 if((p[0]&255)!=0x2e || (p[1]&255)!=2){wrongHeader++;lastPacketState="wrong_header";return;}
                 QfVehiclePacket decoded=QfVehiclePacket.decode(p);
                 if(decoded!=null){valid++;totalValid++;lastPacketState="candidate";frame=decoded;last=SystemClock.elapsedRealtime();}
+                else {emptyBody++;lastPacketState="empty_body";frame=null;last=0;}
             }
         }
     };
     public QfVehicleProbe(Activity a){activity=a;}
     public synchronized void start(){
         if(listening)return;
-        seen=0;valid=0;wrongExtra=0;wrongHeader=0;wrongLength=0;frame=null;last=0;registrationError="";lastPacketState="none";lastSize=0;
+        seen=0;valid=0;wrongExtra=0;wrongHeader=0;wrongLength=0;emptyBody=0;frame=null;last=0;registrationError="";lastPacketState="none";lastSize=0;
         try{
             IntentFilter filter=new IntentFilter(ACTION);
             if(Build.VERSION.SDK_INT>=33)activity.registerReceiver(receiver,filter,Context.RECEIVER_EXPORTED);
@@ -73,7 +74,7 @@ public final class QfVehicleProbe {
             boolean fresh=listening&&frame!=null&&age>=0&&age<=5000;
             o.put("listening",listening).put("messages",seen).put("candidateFrames",valid)
              .put("lastSize",lastSize).put("ageMs",age).put("fresh",fresh)
-             .put("wrongExtra",wrongExtra).put("wrongLength",wrongLength).put("wrongHeader",wrongHeader)
+             .put("wrongExtra",wrongExtra).put("wrongLength",wrongLength).put("wrongHeader",wrongHeader).put("emptyBody",emptyBody)
              .put("registrationError",registrationError).put("lastPacketState",lastPacketState)
              .put("totalMessages",totalSeen).put("totalCandidates",totalValid)
              .put("verified",false).put("source","OEM broadcast; sender not authenticated")
@@ -85,6 +86,9 @@ public final class QfVehicleProbe {
                 o.put("fuelCandidate",frame.fuel==null?JSONObject.NULL:frame.fuel);
                 o.put("odometerCandidate",frame.odometer==null?JSONObject.NULL:frame.odometer);
                 o.put("consumptionCandidate",frame.consumption==null?JSONObject.NULL:frame.consumption);
+                o.put("parkingBrakeCandidate",frame.parkingBrake==null?JSONObject.NULL:frame.parkingBrake);
+                o.put("driverBeltUnfastenedCandidate",frame.driverBeltUnfastened==null?JSONObject.NULL:frame.driverBeltUnfastened);
+                o.put("washerFlagCandidate",frame.washerFlag==null?JSONObject.NULL:frame.washerFlag);
             }
         }catch(Exception ignored){}
         return o.toString();

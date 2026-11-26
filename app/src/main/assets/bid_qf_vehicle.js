@@ -19,6 +19,9 @@
  function open(){if(typeof window.closeAll==='function')window.closeAll();panel.hidden=false;refresh()}
  function read(){try{return window.BID&&typeof BID.qfVehicleSnapshot==='function'?JSON.parse(BID.qfVehicleSnapshot()):{}}catch(_){return {}}}
  function format(d,key,unit,max,decimal=0){const v=d[key];return d.fresh===true&&typeof d.ageMs==='number'&&d.ageMs>=0&&d.ageMs<=5000&&typeof v==='number'&&Number.isFinite(v)&&v>=0&&v<=max?v.toFixed(decimal)+' '+unit:'— '+unit}
+ function flag(d,key,on,off){
+  return d.fresh===true&&typeof d.ageMs==='number'&&d.ageMs>=0&&d.ageMs<=5000&&typeof d[key]==='boolean'?(d[key]?on:off):'—';
+ }
  function shareStatus(d){
   switch(d.bodyShareState){
    case 'enabled': return 'Partajare caroserie: activată în setări (livrarea rămâne de verificat).';
@@ -31,6 +34,7 @@
  function diagnostic(d){
   if(d.listening!==true)return 'Receptor indisponibil'+(d.registrationError?' ('+d.registrationError+')':'');
   if(!d.messages)return 'Niciun mesaj OEM primit în sesiunea curentă.';
+  if(d.lastPacketState==='empty_body')return 'Pachet caroserie fără informații utile; valorile au fost retrase.';
   if(!d.candidateFrames)return 'Mesaje primite, dar formatul nu corespunde decodorului.';
   if(d.fresh!==true||typeof d.ageMs!=='number'||d.ageMs<0||d.ageMs>5000)return 'Date expirate; așteptăm un mesaj nou.';
   return 'Pachet candidat primit; comparați cu meniul OEM.';
@@ -50,6 +54,10 @@
    'Turație: '+format(d,'rpmCandidate','RPM',8500),
    'Kilometraj: '+format(d,'odometerCandidate','km',1500000,1),
    'Consum: '+format(d,'consumptionCandidate','L/100 km',100,1),
+   'Frână de mână (candidat): '+flag(d,'parkingBrakeCandidate','activă','inactivă'),
+   'Centură șofer (candidat): '+flag(d,'driverBeltUnfastenedCandidate','necuplată','cuplată'),
+   'Lichid parbriz (bit OEM, sens de verificat): '+flag(d,'washerFlagCandidate','1','0'),
+   'Pachete caroserie goale: '+(d.emptyBody||0),
    'Date experimentale; nu sunt confirmate pentru utilizare în mers.'
   ].join('\n');
  }
