@@ -9,14 +9,29 @@ with sync_playwright() as p:
     page.goto((assets/"index.html").as_uri())
     page.wait_for_selector("#qfSpeedTile")
     assert "— km/h" in page.locator("#qfSpeedTile").inner_text()
-    assert "— L" in page.locator("#qfFuelTile").inner_text()
-    for id,x1,x2 in [("qfSpeedTile",18,178),("qfFuelTile",1105,1263)]:
+    assert "— L" in page.locator("#qfSpeedTile").inner_text()
+    for id,x1,x2 in [("qfSpeedTile",17,195),("qfFuelTile",1084,1274)]:
         box=page.locator("#"+id).bounding_box()
-        assert box and box["x"]>=x1 and box["x"]+box["width"]<=x2 and box["y"]>=630 and box["y"]+box["height"]<=700, box
+        assert box and box["x"]>=x1 and box["x"]+box["width"]<=x2 and box["y"]>=625 and box["y"]+box["height"]<=700, box
     page.evaluate("window.sample={fresh:true,ageMs:100,speedCandidate:0,fuelCandidate:18,rpmCandidate:828,messages:2,candidateFrames:1}")
-    page.wait_for_function("document.querySelector('#qfFuelTile').textContent.includes('18.0 L')")
+    page.wait_for_function("document.querySelector('#qfSpeedTile').textContent.includes('18.0 L')")
     assert "0 km/h" in page.locator("#qfSpeedTile").inner_text()
-    assert "CAN TEST" in page.locator("#qfFuelTile").inner_text()
+    assert "CAN TEST" in page.locator("#qfSpeedTile").inner_text()
+    assert page.locator("#qfSpeedTile .qfRow").count()==3
+    assert page.locator("#qfFuelTile .qfRow").count()==4
+    assert "18.0 L" not in page.locator("#qfFuelTile").inner_text()
+    page.evaluate("Object.assign(window.sample,{odometerCandidate:378688,parkingBrakeCandidate:true,washerFlagCandidate:true,outsideTemperatureCandidate:4.5,outsideTemperatureFresh:true,outsideTemperatureAgeMs:100,verified:false})")
+    page.wait_for_function("document.querySelector('#qfFuelTile').textContent.includes('378688 km')")
+    assert "Frână: —" in page.locator("#qfFuelTile").inner_text()
+    page.evaluate("window.sample.verified=true")
+    page.wait_for_function("document.querySelector('#qfFuelTile .qfRow:nth-child(2)').dataset.tone==='red'")
+    assert page.locator("#qfFuelTile .qfRow:nth-child(4)").get_attribute("data-tone")=="yellow"
+    page.evaluate("Object.assign(window.sample,{parkingBrakeCandidate:false,washerFlagCandidate:false})")
+    page.wait_for_function("document.querySelector('#qfFuelTile .qfRow:nth-child(2)').dataset.tone==='normal'")
+    assert page.locator("#qfFuelTile .qfRow:nth-child(4)").get_attribute("data-tone")=="normal"
+    page.evaluate("window.sample.verified=false")
+    page.wait_for_function("document.querySelector('#qfFuelTile .qfRow:nth-child(2)').dataset.tone==='unknown'")
+
     car=page.locator('button[aria-label="Mașină"]')
     assert car.count()==1, "Original car menu button missing"
     car.click()
@@ -26,6 +41,12 @@ with sync_playwright() as p:
     page.locator("#qfSpeedTile").click()
     assert page.locator("#qfVehiclePanel").is_visible()
     assert "828 RPM" in page.locator("#qfVehicleText").inner_text()
+    page.evaluate("window.BID.qfBeginBodyAudit=()=>calls.push('audit')")
+    page.locator("#qfAudit").click()
+    assert page.evaluate("calls.includes('audit')")
+    page.evaluate("Object.assign(window.sample,{auditStarted:true,auditActive:true,auditRemainingSeconds:110,auditBeforeMessages:1,auditBeforeValid:0,auditAwayMessages:3,auditAwayValid:2,auditAfterMessages:4,auditAfterValid:1})")
+    page.wait_for_function("document.querySelector('#qfVehicleText').textContent.includes('cât BID nu era în prim-plan: 3 / 2')")
+
     page.evaluate("Object.assign(window.sample,{radarFresh:true,radarAgeMs:100,radarLevelsCandidate:[null,3,...Array(18).fill(null)],steeringFresh:true,steeringAgeMs:100,steeringRawCandidate:-42,reverseFresh:true,reverseAgeMs:100,reverseEventCandidate:true})")
     page.wait_for_function("document.querySelector('#qfVehicleText').textContent.includes('Radar (niveluri brute, candidat): — / 3')")
     assert "nu grade): -42" in page.locator("#qfVehicleText").inner_text()
@@ -74,7 +95,7 @@ with sync_playwright() as p:
     page.evaluate("window.sample={listening:false,registrationError:'SecurityException'}")
     page.wait_for_function("document.querySelector('#qfVehicleText').textContent.includes('SecurityException')")
     page.evaluate("window.sample={listening:true,fresh:true,ageMs:100,speedCandidate:0,fuelCandidate:18,rpmCandidate:828,messages:2,candidateFrames:1}")
-    page.wait_for_function("document.querySelector('#qfFuelTile').textContent.includes('18.0 L')")
+    page.wait_for_function("document.querySelector('#qfSpeedTile').textContent.includes('18.0 L')")
     page.locator("#qfOriginal").click()
     assert page.evaluate("calls.includes('car')")
     page.evaluate("window.calls=[]")
@@ -83,10 +104,10 @@ with sync_playwright() as p:
     assert page.evaluate("calls.includes('canbus')")
     assert not page.locator("#qfVehiclePanel").is_visible()
     page.evaluate("window.sample.ageMs=6000")
-    page.wait_for_function("document.querySelector('#qfFuelTile').textContent.includes('— L')")
+    page.wait_for_function("document.querySelector('#qfSpeedTile').textContent.includes('— L')")
     page.evaluate("window.sample={fresh:true,ageMs:100,speedCandidate:999,fuelCandidate:-1}")
     page.wait_for_timeout(1200)
     assert "— km/h" in page.locator("#qfSpeedTile").inner_text()
-    assert "— L" in page.locator("#qfFuelTile").inner_text()
+    assert "— L" in page.locator("#qfSpeedTile").inner_text()
     browser.close()
 print("PASS: CAN test tile geometry, original menu, valid zero, invalid and stale data")
