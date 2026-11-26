@@ -24,7 +24,7 @@
   r.value.textContent=r.label+': '+value;
   r.el.dataset.tone=tone;
   const uri=icons[icon];
-  if(typeof uri==='string'&&/^data:image\\/png;base64,[A-Za-z0-9+/=]+$/.test(uri)){r.img.src=uri;r.img.hidden=false;}
+  if(typeof uri==='string'&&uri.startsWith('data:image/png;base64,')&&/^[A-Za-z0-9+/=]+$/.test(uri.slice(22))){r.img.src=uri;r.img.hidden=false;}
   else{r.img.hidden=true;r.img.removeAttribute('src');}
  }
  const panel=document.createElement('div');panel.id='qfVehiclePanel';panel.hidden=true;panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Diagnostic CAN-BUS OEM');
