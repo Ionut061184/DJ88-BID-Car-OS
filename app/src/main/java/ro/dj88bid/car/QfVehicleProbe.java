@@ -157,6 +157,22 @@ public final class QfVehicleProbe {
             return "not_listed";
         } catch(RuntimeException e){return "unreadable";}
     }
+    // Read-only diagnosis of OEM registration; no writes to Settings.Global.
+    private String oemCanbusVersion(){
+        try {
+            String version=activity.getPackageManager().getPackageInfo("com.qf.vehicle",0).versionName;
+            return version==null?"unknown":version;
+        }catch(Exception e){return "unavailable";}
+    }
+    private String bodyDeliveryState(String registry,String share){
+        if(!listening)return "receiver_unavailable";
+        if(valid>0)return "candidate_received";
+        if(seen>0)return "frames_without_valid_body";
+        if("unreadable".equals(registry)||"unreadable".equals(share))return "registration_unreadable";
+        if("absent".equals(registry)||"not_listed".equals(registry))return "client_not_registered";
+        if("absent".equals(share)||"disabled".equals(share))return "body_sharing_not_enabled";
+        return "no_body_messages";
+    }
     public synchronized String snapshot(){
         JSONObject o=new JSONObject();
         try{
@@ -174,6 +190,9 @@ public final class QfVehicleProbe {
              .put("radarShareState",readShareState("KeyShareRadarState"))
              .put("bodyRegistryState",readClientRegistryState())
              .put("bodySharePackage",activity.getPackageName());
+            o.put("oemCanbusVersion",oemCanbusVersion())
+             .put("bodyDeliveryState",bodyDeliveryState(o.optString("bodyRegistryState"),o.optString("bodyShareState")))
+             .put("globalSettingsWriteGranted",activity.checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS")==android.content.pm.PackageManager.PERMISSION_GRANTED);
             long tempAge=outsideAt==0?-1:SystemClock.elapsedRealtime()-outsideAt;
             boolean tempFresh=listening&&outsideTemperature!=null&&tempAge>=0&&tempAge<=120000;
             o.put("outsideTemperatureCandidate",tempFresh?outsideTemperature:JSONObject.NULL)
