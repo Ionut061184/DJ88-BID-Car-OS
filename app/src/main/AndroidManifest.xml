@@ -22,6 +22,8 @@
         <package android:name="com.qf.musicplayer" />
         <package android:name="com.qf.bluetooth" />
         <package android:name="com.qf.soundeffect" />
+        <package android:name="com.qf.keystudy" />
+        <package android:name="com.qf.panelkeystudy" />
         <package android:name="com.qf.carsettings" />
         <package android:name="com.qf.vehicle" />
         <package android:name="com.qf.carsetting" />

@@ -141,6 +141,8 @@ jobs:
           java -cp /tmp/bid-qf-tests ro.dj88bid.car.QfCabinPacketTest
           javac -d /tmp/bid-qf-tests app/src/main/java/ro/dj88bid/car/QfRadarPacket.java tests/QfRadarPacketTest.java
           java -cp /tmp/bid-qf-tests ro.dj88bid.car.QfRadarPacketTest
+      - name: Check exact OEM multimedia and key routing
+        run: python tests/test_qf_oem_media.py
       - name: Verify preinstalled Android SDK on runner
         run: |
           test -n "$ANDROID_HOME"

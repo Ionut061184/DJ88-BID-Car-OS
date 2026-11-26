@@ -182,7 +182,10 @@ class MainActivity : Activity() {
         "radio" to Pair("com.android.fmradio.ext", "com.android.fmradio.FmMainActivity"),
         "music" to Pair("com.qf.musicplayer", "com.qf.musicplayer.ui.MainActivity"),
         "btcar" to Pair("com.qf.bluetooth", "com.qf.bluetooth.BluetoothActivity"),
-        "dsp" to Pair("com.qf.soundeffect", "com.qf.soundeffect.SoundActivity")
+        "btmusic" to Pair("com.qf.bluetooth", "com.qf.bluetooth.MusicActivity"),
+        "dsp" to Pair("com.qf.soundeffect", "com.qf.soundeffect.SoundActivity"),
+        "steering" to Pair("com.qf.keystudy", "com.qf.keystudy.ui.KeyStudyActivity"),
+        "panelkeys" to Pair("com.qf.panelkeystudy", "com.qf.panelkeystudy.ui.PanelKeyStudyActivity")
     )
 
     /**
@@ -192,17 +195,22 @@ class MainActivity : Activity() {
      */
     private fun originalQf001Intent(action: String): Intent? {
         val component = knownQf001[action] ?: return null
-        // Preferred: Android's published launcher entry (not a private component).
-        val published = packageManager.getLaunchIntentForPackage(component.first)
-        if (published != null &&
-            published.resolveActivity(packageManager) != null) return published
-
-        // Fallback: firmware-declared activity, only if the current OS exports it.
+        // Prefer the exact activity audited in OEM build 55446. The Bluetooth
+        // package has two launcher activities; a package-only lookup is ambiguous.
+        fun accessible(intent: Intent): Boolean {
+            val info = packageManager.resolveActivity(intent, 0)?.activityInfo ?: return false
+            return info.exported && info.enabled && info.applicationInfo.enabled &&
+                (info.permission.isNullOrEmpty() ||
+                    packageManager.checkPermission(info.permission, packageName) == PackageManager.PERMISSION_GRANTED)
+        }
         val explicit = Intent(Intent.ACTION_MAIN)
             .setClassName(component.first, component.second)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        val resolved = packageManager.resolveActivity(explicit, 0)
-        return if (resolved != null && resolved.activityInfo.exported) explicit else null
+        if (accessible(explicit)) return explicit
+        // Never substitute phone for music, or panel keys for steering keys.
+        if (action in setOf("btcar", "btmusic", "steering", "panelkeys")) return null
+        val published = packageManager.getLaunchIntentForPackage(component.first)
+        return if (published != null && accessible(published)) published else null
     }
 
     private fun assignedIntent(action: String): Intent? {
@@ -695,9 +703,18 @@ class MainActivity : Activity() {
                 return@runOnUiThread
             }
             if (kind == "btaudio") {
+                // Legacy UI route: Bluetooth / Telefon, not A2DP music.
                 val target = assignedIntent("btcar") ?: originalQf001Intent("btcar")
                 if (target != null) startSafely(target)
                 else chooseAutoApp("btcar")
+                return@runOnUiThread
+            }
+            if (kind in setOf("btmusic", "steering", "panelkeys")) {
+                val target = originalQf001Intent(kind)
+                if (target != null) startSafely(target)
+                else Toast.makeText(this@MainActivity,
+                    "Funcția OEM nu este disponibilă sau accesibilă: " + kind,
+                    Toast.LENGTH_LONG).show()
                 return@runOnUiThread
             }
             val keys = when (kind) {
@@ -754,7 +771,7 @@ class MainActivity : Activity() {
                     FunctionTile("Radio FM","radio",listOf("fmradio","radio")),
                     FunctionTile("Muzică","music",listOf("musicplayer","muzică","music")),
                     FunctionTile("Bluetooth / Telefon","btaudio",listOf("qf.bluetooth","bluetooth")),
-                    FunctionTile("Muzică Bluetooth","btaudio",listOf("bt music","bluetooth music")),
+                    FunctionTile("Muzică Bluetooth","btmusic",listOf("com.qf.bluetooth","bt music","bluetooth music")),
                     FunctionTile("Video","video",listOf("videoplayer","video")),
                     FunctionTile("DSP / Egalizator","dsp",listOf("soundeffect","dsp")),
                     FunctionTile("Fișiere USB","files",listOf("fileexplorer","file manager")),
@@ -767,7 +784,8 @@ class MainActivity : Activity() {
                     FunctionTile("Informații CANBUS","canbus",listOf("qf.vehicle","canbus")),
                     FunctionTile("Cameră marșarier","reverse",listOf("backcar","rear camera")),
                     FunctionTile("TPMS","tpms",listOf("tpms")),
-                    FunctionTile("Comenzi volan","steering",listOf("keystudy","key study")),
+                    FunctionTile("Comenzi volan","steering",listOf("com.qf.keystudy")),
+                    FunctionTile("Butoane panou","panelkeys",listOf("com.qf.panelkeystudy")),
                     FunctionTile("Bluetooth auto","btaudio",listOf("qf.bluetooth","bluetooth")),
                     FunctionTile("DSP auto","dsp",listOf("soundeffect","dsp"))
                 ),
