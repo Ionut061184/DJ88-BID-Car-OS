@@ -132,7 +132,7 @@ class MainActivity : Activity() {
         invalidateVoltageCache()
         if (::webView.isInitialized) webView.onResume()
         if (::bidTrip.isInitialized) bidTrip.setForeground(true)
-        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.start()
+        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.foregroundChanged(true)
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.start()
         if (pageReady && ::gpsWeather.isInitialized) refreshWeather()
     }
@@ -144,7 +144,7 @@ class MainActivity : Activity() {
         cancelManualWeather()
         invalidateVoltageCache()
         if (::webView.isInitialized) webView.onPause()
-        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.stop()
+        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.foregroundChanged(false)
         if (::bidTrip.isInitialized) bidTrip.setForeground(false)
         if (::gpsWeather.isInitialized) gpsWeather.stop()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.stop()
@@ -158,7 +158,7 @@ class MainActivity : Activity() {
         cancelManualWeather()
         manualWeatherWorker.shutdownNow()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.stop()
-        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.stop()
+        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.close()
         if (::bidTrip.isInitialized) bidTrip.setForeground(false)
         if (::gpsWeather.isInitialized) gpsWeather.close()
         if (::webView.isInitialized) {
@@ -597,6 +597,11 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun qfVehicleSnapshot(): String = if (::qfVehicleProbe.isInitialized) qfVehicleProbe.snapshot() else "{}"
+
+        @JavascriptInterface
+        fun qfBeginBodyAudit() = runOnUiThread {
+            if (bidForeground && ::qfVehicleProbe.isInitialized) qfVehicleProbe.beginAudit()
+        }
 
         @JavascriptInterface
         fun qfVehicleIcons(): String = if (::qfVehicleProbe.isInitialized) qfVehicleProbe.iconsSnapshot() else "{}"
