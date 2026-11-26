@@ -88,7 +88,7 @@ class QfFirmwareExport(private val activity: Activity) {
         }
     }
     private fun permittedName(name: String): Boolean {
-        if (name.any { it.code < 32 || it == \'\\\\\' || it == \':\' }) return false
+        if (name.any { it.code < 32 || it == '\\' || it == ':' }) return false
         val n = name.lowercase(Locale.ROOT)
         if (n in setOf("security","keystore","credentials","accounts","keys","private","secrets")) return false
         if (n.contains("password") || n.contains("passwd") || n.contains("shadow") ||
