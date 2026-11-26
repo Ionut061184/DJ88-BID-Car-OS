@@ -41,7 +41,9 @@ class Lifecycle(unittest.TestCase):
             self.assertNotIn(x,s)
         self.assertIn("sdkBodyAudit.start(oemCanbusVersion())",P)
         self.assertEqual(P.count("sdkBodyAudit.stop()"),2)
-        for x in ["sdkBodyAuditState","sdkBodyPackedCount","sdkBodyRawCount","sdkBodyLastBytes"]:
+        self.assertIn("if(!FEATURE.equals(actual)){report(\"descriptor_mismatch\");return;}",s)
+        self.assertLess(s.index("if(!FEATURE.equals(actual))"),s.index("report(call(b,11,callback)"))
+        for x in ["sdkBodyAuditState","sdkBodyPackedCount","sdkBodyRawCount","sdkBodyLastBytes","sdkBodyDescriptorExpected","sdkBodyDescriptorActual","sdkBodyComponent"]:
             self.assertIn(x,s)
             self.assertIn(x,J)
     def test_no_global_pause_or_power_control(self):

@@ -58,6 +58,9 @@ final class QfSdkBodyAudit {
     void snapshot(JSONObject o)throws org.json.JSONException{
         Session s=session;
         o.put("sdkBodyAuditState",state)
+         .put("sdkBodyDescriptorExpected",FEATURE)
+         .put("sdkBodyDescriptorActual",s==null?"not_read":s.descriptor)
+         .put("sdkBodyComponent",s==null?"not_connected":s.component)
          .put("sdkBodyPackedCount",s==null?0:s.packed.get())
          .put("sdkBodyRawCount",s==null?0:s.raw.get())
          .put("sdkBodyLastBytes",s==null?0:s.lastBytes.get());
@@ -78,6 +81,7 @@ final class QfSdkBodyAudit {
         volatile boolean active=true,registerAttempted;
         boolean bound;
         volatile IBinder remote;
+        volatile String descriptor="not_read",component="not_connected";
         Session(int uid){this.uid=uid;}
         final Binder callback=new Binder(){
             @Override protected boolean onTransact(int code,Parcel data,Parcel reply,int flags)throws RemoteException{
@@ -97,10 +101,14 @@ final class QfSdkBodyAudit {
         @Override public void onServiceConnected(ComponentName name,IBinder b){
             if(!active||session!=this)return;
             remote=b;
+            component=name==null?"null":name.flattenToShortString();
             worker.execute(()->{
                 if(!active)return;
                 try{
-                    if(!FEATURE.equals(b.getInterfaceDescriptor())){report("descriptor_mismatch");return;}
+                    String actual=b.getInterfaceDescriptor();
+                    descriptor=actual==null?"<null>":actual.isEmpty()?"<empty>":actual.substring(0,Math.min(actual.length(),512));
+                    // Never infer transaction IDs or send subscription calls to an unknown interface.
+                    if(!FEATURE.equals(actual)){report("descriptor_mismatch");return;}
                     registerAttempted=true;
                     report(call(b,11,callback)?"subscribed_unverified":"subscription_rejected");
                 }catch(Exception e){report("subscription_error_"+e.getClass().getSimpleName());}
