@@ -142,6 +142,8 @@
    'Voltaj antet: proprietate QF; tensiune caroserie OEM: sursă separată încă neidentificată.',
    globalShareStatus(d),
    remoteModeStatus(d),
+   'MCU receptor pasiv: '+(d.mcuStatus||'nepornit'),
+   'MCU CANBUS (65): '+(d.mcuCanbusCount||0)+' / tensiune (41): '+(d.mcuVoltageCount||0),
    'SDK Binder (test 120 s): '+(d.sdkBodyAuditState||'nepornit'),
    'SDK interfață returnată: '+(d.sdkBodyDescriptorActual||'necunoscută'),
    'SDK interfață așteptată: '+(d.sdkBodyDescriptorExpected||'necunoscută'),
