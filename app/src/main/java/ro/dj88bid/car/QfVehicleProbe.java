@@ -164,13 +164,44 @@ public final class QfVehicleProbe {
             return version==null?"unknown":version;
         }catch(Exception e){return "unavailable";}
     }
-    private String bodyDeliveryState(String registry,String share){
+    // V1.11 GlobalSettingUtil checks whether ANY registered package has value 1.
+    // Missing flags default to zero in the OEM. No registry names or other client data leave this probe.
+    private String globalBodyShareState(){
+        try {
+            String registry=Settings.Global.getString(activity.getContentResolver(),"KeyAllPackages");
+            if(registry==null||registry.isEmpty())return "disabled";
+            if(registry.length()>16384)return "unknown";
+            String[] clients=registry.split(",");
+            if(clients.length>128)return "unknown";
+            boolean unknown=false;
+            for(String client:clients){
+                if(client.isEmpty())continue;
+                try{
+                    String flag=Settings.Global.getString(activity.getContentResolver(),client+"KeyShareCarbodyState");
+                    if(flag!=null&&Integer.parseInt(flag)==1)return "enabled";
+                }catch(RuntimeException e){unknown=true;}
+            }
+            return unknown?"unknown":"disabled";
+        }catch(RuntimeException e){return "unreadable";}
+    }
+    // The OEM factory defaults to app mode (0), chooses system mode for 1.
+    // The setting is a configuration observation, not proof of a successful binding.
+    private String remoteMode(){
+        try{
+            String raw=Settings.Global.getString(activity.getContentResolver(),"KeyRemoteDemandType");
+            if(raw==null)return "app_default";
+            if("0".equals(raw))return "app";
+            if("1".equals(raw))return "system";
+            return "unknown";
+        }catch(RuntimeException e){return "unreadable";}
+    }
+    private String bodyDeliveryState(String globalShare,String version){
         if(!listening)return "receiver_unavailable";
         if(valid>0)return "candidate_received";
         if(seen>0)return "frames_without_valid_body";
-        if("unreadable".equals(registry)||"unreadable".equals(share))return "registration_unreadable";
-        if("absent".equals(registry)||"not_listed".equals(registry))return "client_not_registered";
-        if("absent".equals(share)||"disabled".equals(share))return "body_sharing_not_enabled";
+        if(!"V1.11-260615.1900".equals(version))return "unverified_oem_version";
+        if("disabled".equals(globalShare))return "global_body_sharing_disabled";
+        if(!"enabled".equals(globalShare))return "global_body_sharing_unknown";
         return "no_body_messages";
     }
     private final android.os.Handler auditHandler=new android.os.Handler(android.os.Looper.getMainLooper());
@@ -267,8 +298,11 @@ public final class QfVehicleProbe {
              .put("auditBeforeMessages",beforeMessages).put("auditBeforeValid",beforeValid)
              .put("auditAwayMessages",awayMessages).put("auditAwayValid",awayValid)
              .put("auditAfterMessages",afterMessages).put("auditAfterValid",afterValid);
-            o.put("oemCanbusVersion",oemCanbusVersion())
-             .put("bodyDeliveryState",bodyDeliveryState(o.optString("bodyRegistryState"),o.optString("bodyShareState")))
+            String version=oemCanbusVersion(),globalShare=globalBodyShareState();
+            o.put("oemCanbusVersion",version)
+             .put("globalBodyShareState",globalShare)
+             .put("remoteDemandMode",remoteMode())
+             .put("bodyDeliveryState",bodyDeliveryState(globalShare,version))
              .put("globalSettingsWriteGranted",activity.checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS")==android.content.pm.PackageManager.PERMISSION_GRANTED);
             long tempAge=outsideAt==0?-1:SystemClock.elapsedRealtime()-outsideAt;
             boolean tempFresh=listening&&outsideTemperature!=null&&tempAge>=0&&tempAge<=120000;
