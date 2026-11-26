@@ -23,6 +23,16 @@ class Lifecycle(unittest.TestCase):
         for k in ["auditBeforeValid","auditAwayValid","auditAfterValid"]:
             self.assertIn(k,P)
             self.assertIn(k,J)
+    def test_system_research_export_contract(self):
+        f=(ROOT/"app/src/main/java/ro/dj88bid/car/QfFirmwareExport.kt").read_text()
+        for expected in ["ACTION_OPEN_DOCUMENT_TREE","PART_BYTES","SHA-256","Os.lstat","S_ISLNK","FLAG_UPDATED_SYSTEM_APP","completeFirmware", "cancelled.get()","deleteDocument"]:
+            self.assertIn(expected,f)
+        for forbidden in ["Runtime.getRuntime","ProcessBuilder","/dev/block","Settings.Global.put","getExternalStorageDirectory","WRITE_SECURE_SETTINGS"]:
+            self.assertNotIn(forbidden,f)
+        self.assertIn("firmwareExport.handleResult(requestCode, resultCode, data)",K)
+        self.assertIn("firmwareExport.close()",K)
+        self.assertIn("if (bidForeground && !isDestroyed) firmwareExport.open()",K)
+        self.assertIn("qfExportSystemFiles",J)
     def test_no_global_pause_or_power_control(self):
         for x in ["pauseTimers()","PowerManager.goToSleep","PowerManager.wakeUp","android.permission.WAKE_LOCK"]:
             self.assertNotIn(x,K)
