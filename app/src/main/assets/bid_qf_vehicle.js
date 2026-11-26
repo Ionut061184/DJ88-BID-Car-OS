@@ -22,6 +22,10 @@
  function flag(d,key,on,off){
   return d.fresh===true&&typeof d.ageMs==='number'&&d.ageMs>=0&&d.ageMs<=5000&&typeof d[key]==='boolean'?(d[key]?on:off):'—';
  }
+ function outsideTemp(d){
+  const v=d.outsideTemperatureCandidate,a=d.outsideTemperatureAgeMs;
+  return d.outsideTemperatureFresh===true&&Number.isFinite(a)&&a>=0&&a<=120000&&Number.isFinite(v)&&v>=-60&&v<=85?v.toFixed(1)+' °C':'— °C';
+ }
  function registryStatus(d){
   switch(d.bodyRegistryState){
    case 'listed':return 'Registru OEM: BID înregistrat.';
@@ -61,6 +65,8 @@
    'Extra absent/tip greșit: '+(d.wrongExtra||0)+' | Lungime: '+(d.wrongLength||0)+' | Antet: '+(d.wrongHeader||0),
    'Total de la pornirea aplicației: '+(d.totalMessages||0)+' mesaje / '+(d.totalCandidates||0)+' candidate',
    'Viteză: '+speed.textContent+' | Combustibil: '+fuel.textContent,
+   'Temperatură exterioară OEM (candidat): '+outsideTemp(d),
+   'Mesaje temperatură: '+(d.temperatureMessages||0),
    'Turație: '+format(d,'rpmCandidate','RPM',8500),
    'Kilometraj: '+format(d,'odometerCandidate','km',1500000,1),
    'Consum: '+format(d,'consumptionCandidate','L/100 km',100,1),

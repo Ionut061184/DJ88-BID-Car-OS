@@ -13,6 +13,10 @@ import org.json.JSONObject;
 /** Foreground-only listener. Does not request CAN frames, write settings or send commands. */
 public final class QfVehicleProbe {
     private static final String ACTION="com.qf.vehicle.action.DATA_SHARE";
+    private static final String TEMP_ACTION="com.qf.vehicle.action.TEMP_STRING";
+    private Double outsideTemperature;
+    private long outsideAt;
+    private int temperatureMessages;
     private final Activity activity;
     private boolean listening;
     private long last;
@@ -23,6 +27,16 @@ public final class QfVehicleProbe {
     private QfVehiclePacket frame;
     private final BroadcastReceiver receiver=new BroadcastReceiver(){
         @Override public void onReceive(Context c,Intent intent){
+            if(TEMP_ACTION.equals(intent.getAction())){
+                synchronized(QfVehicleProbe.this){
+                    if(!listening)return;
+                    temperatureMessages++;
+                    try {outsideTemperature=QfOutsideTemperature.parse(intent.getStringExtra("extra_string"));}
+                    catch(RuntimeException e){outsideTemperature=null;}
+                    outsideAt=outsideTemperature==null?0:SystemClock.elapsedRealtime();
+                }
+                return;
+            }
             if(!ACTION.equals(intent.getAction()))return;
             synchronized(QfVehicleProbe.this){
                 if(!listening)return;
@@ -45,7 +59,9 @@ public final class QfVehicleProbe {
         if(listening)return;
         seen=0;valid=0;wrongExtra=0;wrongHeader=0;wrongLength=0;emptyBody=0;frame=null;last=0;registrationError="";lastPacketState="none";lastSize=0;
         try{
+            outsideTemperature=null;outsideAt=0;temperatureMessages=0;
             IntentFilter filter=new IntentFilter(ACTION);
+            filter.addAction(TEMP_ACTION);
             if(Build.VERSION.SDK_INT>=33)activity.registerReceiver(receiver,filter,Context.RECEIVER_EXPORTED);
             else activity.registerReceiver(receiver,filter);
             listening=true;
@@ -53,7 +69,7 @@ public final class QfVehicleProbe {
     }
     public synchronized void stop(){
         if(listening)try{activity.unregisterReceiver(receiver);}catch(RuntimeException ignored){}
-        listening=false;frame=null;last=0;
+        listening=false;frame=null;last=0;outsideTemperature=null;outsideAt=0;
     }
     // The OEM may require per-package opt-in before emitting body data.
     // Observe only: this is not proof of delivery and does not change system settings.
@@ -91,6 +107,11 @@ public final class QfVehicleProbe {
              .put("bodyShareState",readBodyShareState())
              .put("bodyRegistryState",readClientRegistryState())
              .put("bodySharePackage",activity.getPackageName());
+            long tempAge=outsideAt==0?-1:SystemClock.elapsedRealtime()-outsideAt;
+            boolean tempFresh=listening&&outsideTemperature!=null&&tempAge>=0&&tempAge<=120000;
+            o.put("outsideTemperatureCandidate",tempFresh?outsideTemperature:JSONObject.NULL)
+             .put("outsideTemperatureAgeMs",tempAge).put("outsideTemperatureFresh",tempFresh)
+             .put("temperatureMessages",temperatureMessages);
             if(fresh){
                 o.put("speedCandidate",frame.speed==null?JSONObject.NULL:frame.speed);
                 o.put("rpmCandidate",frame.rpm==null?JSONObject.NULL:frame.rpm);
