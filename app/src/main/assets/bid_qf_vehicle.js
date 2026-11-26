@@ -37,6 +37,12 @@
   if(!freshCabin(d,'door')||!Number.isInteger(n)||n<0||n>252||(n&3)!==0)return '—';
   return [[128,'față stânga'],[64,'față dreapta'],[32,'spate stânga'],[16,'spate dreapta'],[8,'hayon'],[4,'capotă']].map(([m,label])=>label+': '+((n&m)?'deschis':'închis')).join(' | ');
  }
+ function recent(d,k){const a=d[k+'AgeMs'];return d[k+'Fresh']===true&&Number.isFinite(a)&&a>=0&&a<=5000;}
+ function radarText(d){
+  const v=d.radarLevelsCandidate;
+  if(!recent(d,'radar')||!Array.isArray(v)||v.length!==20)return '—';
+  return v.map(n=>Number.isInteger(n)&&n>=0&&n<255?String(n):'—').join(' / ');
+ }
  function registryStatus(d){
   switch(d.bodyRegistryState){
    case 'listed':return 'Registru OEM: BID înregistrat.';
@@ -88,6 +94,11 @@
    'Uși și capace (candidat): '+doorsText(d),
    'Mesaje climatizare/uși: '+(d.climateMessages||0)+' / '+(d.doorMessages||0),
    'Partajare climatizare/uși: '+(d.climateShareState||'necunoscut')+' / '+(d.doorShareState||'necunoscut'),
+   'Radar (niveluri brute, candidat): '+radarText(d),
+   'Volan (valoare brută, nu grade): '+(recent(d,'steering')&&Number.isInteger(d.steeringRawCandidate)?d.steeringRawCandidate:'—'),
+   'Ultimul eveniment marșarier: '+(recent(d,'reverse')&&typeof d.reverseEventCandidate==='boolean'?(d.reverseEventCandidate?'START':'STOP'):'—'),
+   'Mesaje radar/volan/marșarier: '+(d.radarMessages||0)+' / '+(d.steeringMessages||0)+' / '+(d.reverseMessages||0),
+   'Partajare radar: '+(d.radarShareState||'necunoscut'),
    'Pachete caroserie goale: '+(d.emptyBody||0),
    'Date experimentale; nu sunt confirmate pentru utilizare în mers.'
   ].join('\n');

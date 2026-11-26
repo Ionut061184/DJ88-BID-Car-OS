@@ -139,6 +139,8 @@ jobs:
           java -cp /tmp/bid-qf-tests ro.dj88bid.car.QfOutsideTemperatureTest
           javac -d /tmp/bid-qf-tests app/src/main/java/ro/dj88bid/car/QfCabinPacket.java tests/QfCabinPacketTest.java
           java -cp /tmp/bid-qf-tests ro.dj88bid.car.QfCabinPacketTest
+          javac -d /tmp/bid-qf-tests app/src/main/java/ro/dj88bid/car/QfRadarPacket.java tests/QfRadarPacketTest.java
+          java -cp /tmp/bid-qf-tests ro.dj88bid.car.QfRadarPacketTest
       - name: Verify preinstalled Android SDK on runner
         run: |
           test -n "$ANDROID_HOME"

@@ -9,11 +9,21 @@ import android.os.Build;
 import android.os.SystemClock;
 import android.provider.Settings;
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 /** Foreground-only listener. Does not request CAN frames, write settings or send commands. */
 public final class QfVehicleProbe {
     private static final String ACTION="com.qf.vehicle.action.DATA_SHARE";
     private static final String TEMP_ACTION="com.qf.vehicle.action.TEMP_STRING";
+    private static final String SWA_ACTION="com.qf.vehicle.action.swa";
+    private static final String REVERSE_ON="com.qf.action.BACKCAR_START";
+    private static final String REVERSE_OFF="com.qf.action.BACKCAR_STOP";
+    private Integer[] radarLevels;
+    private Integer steeringRaw;
+    private Float steeringRate;
+    private Boolean reverseEvent;
+    private long radarAt,steeringAt,reverseAt;
+    private int radarMessages,steeringMessages,reverseMessages;
     private Double outsideTemperature;
     private long outsideAt;
     private int temperatureMessages, climateMessages, doorMessages;
@@ -30,6 +40,26 @@ public final class QfVehicleProbe {
     private QfVehiclePacket frame;
     private final BroadcastReceiver receiver=new BroadcastReceiver(){
         @Override public void onReceive(Context c,Intent intent){
+            String action=intent.getAction();
+            if(SWA_ACTION.equals(action)||REVERSE_ON.equals(action)||REVERSE_OFF.equals(action)){
+                synchronized(QfVehicleProbe.this){
+                    if(!listening)return;
+                    long now=SystemClock.elapsedRealtime();
+                    if(SWA_ACTION.equals(action)){
+                        steeringMessages++;
+                        try {
+                            steeringRaw=intent.hasExtra("extra_angle")?intent.getIntExtra("extra_angle",Integer.MIN_VALUE):null;
+                            steeringRate=intent.hasExtra("extra_rate")?intent.getFloatExtra("extra_rate",Float.NaN):null;
+                            if(steeringRaw!=null&&(steeringRaw==Integer.MIN_VALUE||Math.abs((long)steeringRaw)>1000000))steeringRaw=null;
+                            if(steeringRate!=null&&!Float.isFinite(steeringRate))steeringRate=null;
+                        }catch(RuntimeException e){steeringRaw=null;steeringRate=null;}
+                        steeringAt=steeringRaw==null?0:now;
+                    }else{
+                        reverseMessages++;reverseEvent=REVERSE_ON.equals(action);reverseAt=now;
+                    }
+                }
+                return;
+            }
             if(TEMP_ACTION.equals(intent.getAction())){
                 synchronized(QfVehicleProbe.this){
                     if(!listening)return;
@@ -58,6 +88,12 @@ public final class QfVehicleProbe {
                         climateAt=climate==null?0:SystemClock.elapsedRealtime();
                         return;
                     }
+                    if(type==4){
+                        radarMessages++;
+                        radarLevels=QfRadarPacket.levels(p);
+                        radarAt=radarLevels==null?0:SystemClock.elapsedRealtime();
+                        return;
+                    }
                     if(type==3){
                         doorMessages++;
                         doors=QfCabinPacket.doors(p);
@@ -81,7 +117,12 @@ public final class QfVehicleProbe {
             outsideTemperature=null;outsideAt=0;temperatureMessages=0;
             climate=null;doors=null;climateAt=doorsAt=0;climateMessages=doorMessages=0;
             IntentFilter filter=new IntentFilter(ACTION);
+            radarLevels=null;steeringRaw=null;steeringRate=null;reverseEvent=null;
+            radarAt=steeringAt=reverseAt=0;radarMessages=steeringMessages=reverseMessages=0;
             filter.addAction(TEMP_ACTION);
+            filter.addAction(SWA_ACTION);
+            filter.addAction(REVERSE_ON);
+            filter.addAction(REVERSE_OFF);
             if(Build.VERSION.SDK_INT>=33)activity.registerReceiver(receiver,filter,Context.RECEIVER_EXPORTED);
             else activity.registerReceiver(receiver,filter);
             listening=true;
@@ -91,6 +132,8 @@ public final class QfVehicleProbe {
         if(listening)try{activity.unregisterReceiver(receiver);}catch(RuntimeException ignored){}
         listening=false;frame=null;last=0;outsideTemperature=null;outsideAt=0;
         climate=null;doors=null;climateAt=doorsAt=0;
+        radarLevels=null;steeringRaw=null;steeringRate=null;reverseEvent=null;
+        radarAt=steeringAt=reverseAt=0;
     }
     // The OEM may require per-package opt-in before emitting body data.
     // Observe only: this is not proof of delivery and does not change system settings.
@@ -128,6 +171,7 @@ public final class QfVehicleProbe {
              .put("bodyShareState",readShareState("KeyShareCarbodyState"))
              .put("climateShareState",readShareState("KeyShareAcState"))
              .put("doorShareState",readShareState("KeyShareDoorWindow"))
+             .put("radarShareState",readShareState("KeyShareRadarState"))
              .put("bodyRegistryState",readClientRegistryState())
              .put("bodySharePackage",activity.getPackageName());
             long tempAge=outsideAt==0?-1:SystemClock.elapsedRealtime()-outsideAt;
@@ -148,6 +192,20 @@ public final class QfVehicleProbe {
                  .put("climateAuto",climate.auto).put("climateDual",climate.dual);
             }
             if(df)o.put("doorMaskCandidate",doors);
+            long ra=radarAt==0?-1:now-radarAt,sa=steeringAt==0?-1:now-steeringAt,rev=reverseAt==0?-1:now-reverseAt;
+            boolean rf=listening&&radarLevels!=null&&ra>=0&&ra<=5000;
+            boolean sf=listening&&steeringRaw!=null&&sa>=0&&sa<=5000;
+            boolean vf=listening&&reverseEvent!=null&&rev>=0&&rev<=5000;
+            o.put("radarAgeMs",ra).put("radarFresh",rf).put("radarMessages",radarMessages)
+             .put("steeringAgeMs",sa).put("steeringFresh",sf).put("steeringMessages",steeringMessages)
+             .put("reverseAgeMs",rev).put("reverseFresh",vf).put("reverseMessages",reverseMessages);
+            if(rf){
+                JSONArray levels=new JSONArray();
+                for(Integer v:radarLevels)levels.put(v==null?JSONObject.NULL:v);
+                o.put("radarLevelsCandidate",levels);
+            }
+            if(sf)o.put("steeringRawCandidate",steeringRaw).put("steeringRateCandidate",steeringRate==null?JSONObject.NULL:steeringRate);
+            if(vf)o.put("reverseEventCandidate",reverseEvent);
             if(fresh){
                 o.put("speedCandidate",frame.speed==null?JSONObject.NULL:frame.speed);
                 o.put("rpmCandidate",frame.rpm==null?JSONObject.NULL:frame.rpm);
