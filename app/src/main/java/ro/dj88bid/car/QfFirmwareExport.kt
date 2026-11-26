@@ -49,7 +49,7 @@ class QfFirmwareExport(private val activity: Activity) {
         progress = ProgressDialog(activity).apply {
             setTitle(title); setMessage("Se verifică fișierele…")
             setCancelable(false)
-            setButton(ProgressDialog.BUTTON_NEGATIVE, "Oprește") { _, _ -> cancelled.set(true) }
+            setButton(android.content.DialogInterface.BUTTON_NEGATIVE, "Oprește") { _, _ -> cancelled.set(true) }
             show()
         }
     }
@@ -88,6 +88,7 @@ class QfFirmwareExport(private val activity: Activity) {
         }
     }
     private fun permittedName(name: String): Boolean {
+        if (name.any { it.code < 32 || it == \'\\\\\' || it == \':\' }) return false
         val n = name.lowercase(Locale.ROOT)
         if (n in setOf("security","keystore","credentials","accounts","keys","private","secrets")) return false
         if (n.contains("password") || n.contains("passwd") || n.contains("shadow") ||
@@ -117,10 +118,12 @@ class QfFirmwareExport(private val activity: Activity) {
                     children.sortedBy { it.name }.forEach { walk(it, name + "/" + it.name, root, depth+1) }
                 } else if (OsConstants.S_ISREG(stat.st_mode)) {
                     if (!file.canRead() || stat.st_size > PART_BYTES || stat.st_size < 0) { omit(name); return }
+                    file.inputStream().use { it.read() } // check actual read access, not only permission bits
                     if (seen.add(canonical.path)) items.add(Item(canonical, name, stat.st_size))
                 } else omit(name)
             } catch (e: android.system.ErrnoException) { omit(name) }
               catch (e: SecurityException) { omit(name) }
+              catch (e: IOException) { if (cancelled.get() || closed || visited > FILE_LIMIT) throw e; omit(name) }
         }
         // Only named static directories on known OS partitions; never enumerate /data or /dev.
         val dirs = listOf("app","priv-app","framework","lib","lib64","bin","xbin","etc",
@@ -128,6 +131,7 @@ class QfFirmwareExport(private val activity: Activity) {
         val roots = listOf("/system","/vendor","/product","/odm","/system_ext","/oem")
         for (partition in roots) {
             val base = File(partition).canonicalFile
+            if (base.path !in roots && base.path !in roots.filter { it != "/system" }.map { "/system" + it }) { omit(partition); continue }
             if (!base.isDirectory) { omit(partition); continue }
             for (dir in dirs) {
                 val f = File(base,dir)
