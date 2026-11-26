@@ -13,6 +13,10 @@ class Artwork(unittest.TestCase):
             self.assertIn(value,A)
         self.assertNotIn('setprop',A)
         self.assertNotIn('com.st.carkit360camera',A)
+    def test_export_reference_package(self):
+        for value in ['Intent.ACTION_CREATE_DOCUMENT','application/zip','ZipOutputStream','MessageDigest.getInstance("SHA-256")','ZipEntry("manifest.json")','put("nativeBirdviewModel", false)','openOutputStream(uri, "w")','slotIds[i]']:
+            self.assertIn(value,A)
+        self.assertNotIn('MANAGE_EXTERNAL_STORAGE',A)
     def test_zlink_regression(self):
         self.assertIn('val exact = originalQf001Intent(command)',K)
         self.assertNotIn('val exact = originalQf001Intent(action)',K)
