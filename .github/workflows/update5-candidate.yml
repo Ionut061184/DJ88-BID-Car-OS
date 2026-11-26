@@ -123,7 +123,12 @@ jobs:
           ]:
               assert s.count(old) == 1, old
               s = s.replace(old, new)
-          assert 'manifestPlaceholders["bidHomeEnabled"] = "false"' in s
+          import os
+          old_home = 'manifestPlaceholders["bidHomeEnabled"] = "false"'
+          assert s.count(old_home) == 1
+          # Only the body-CANBUS test branch enables HOME; keep same BID package.
+          if os.environ["GITHUB_REF_NAME"] == "feature/update5-body-canbus-fix":
+              s = s.replace(old_home, 'manifestPlaceholders["bidHomeEnabled"] = "true"')
           p.write_text(s)
           PY
       - uses: actions/setup-java@v4
@@ -185,6 +190,19 @@ jobs:
                   if p.is_file() and p.name.startswith(("bid_", "index.html")):
                       assert z.read("assets/" + p.name) == p.read_bytes(), p.name
           print("Packaged assets verified.")
+          PY
+          "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump xmltree dist/DJ88-BID-Update5-CANBUS-FIX-TEST.apk AndroidManifest.xml > /tmp/bid-manifest.txt
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          s = Path("/tmp/bid-manifest.txt").read_text()
+          alias = s.split("E: activity-alias", 1)[1]
+          assert "android.intent.category.HOME" in alias
+          assert "android.intent.category.DEFAULT" in alias
+          expected = "0xffffffff" if os.environ["GITHUB_REF_NAME"] == "feature/update5-body-canbus-fix" else "0x0"
+          enabled = next(l for l in alias.splitlines() if "android:enabled(" in l)
+          assert enabled.strip().endswith(expected), enabled
+          print("Packaged HOME eligibility verified:", enabled)
           PY
           sha256sum dist/*.apk > dist/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
