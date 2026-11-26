@@ -10,7 +10,8 @@ public final class QfMcuPassiveProbe {
     private volatile String status = "idle";
     private Object listener;
     public synchronized String start(Context context) {
-        if (listener != null) return status;
+        for (int i = 0; i < 256; i++) counts.set(i, 0);
+        if (listener != null) { active = true; return status = "listener_reused"; }
         try {
             Object manager = context.getSystemService("mcu_service");
             if (manager == null) return status = "service_unavailable";
@@ -34,6 +35,7 @@ public final class QfMcuPassiveProbe {
             return status = "listener_requested";
         } catch (Exception | LinkageError e) {
             active = false;
+            listener = null;
             return status = "failed:" + e.getClass().getSimpleName();
         }
     }
