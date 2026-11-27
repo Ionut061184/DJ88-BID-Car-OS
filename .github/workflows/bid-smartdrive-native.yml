@@ -1,7 +1,7 @@
-name: BID Smart Drive native donor
+name: BID Maps Widget native donor
 on:
   push:
-    branches: [feature/bid-smartdrive-native-lab]
+    branches: [feature/bid-maps-widget-lab]
   workflow_dispatch:
 permissions:
   contents: read
@@ -37,6 +37,6 @@ jobs:
       - name: Upload native donor (not final launcher)
         uses: actions/upload-artifact@v4
         with:
-          name: BID-SMARTDRIVE-NATIVE-DONOR
+          name: BID-MAPS-WIDGET-DONOR
           path: app/build/outputs/apk/labSafe/debug/*.apk
           if-no-files-found: error
