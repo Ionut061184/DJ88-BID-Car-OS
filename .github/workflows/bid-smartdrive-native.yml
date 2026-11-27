@@ -1,7 +1,7 @@
-name: BID Maps Widget native donor
+name: BID QF001 CAN diagnostic
 on:
   push:
-    branches: [feature/bid-maps-widget-lab]
+    branches: [feature/bid-qf001-readonly-probe]
   workflow_dispatch:
 permissions:
   contents: read
@@ -34,9 +34,9 @@ jobs:
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platforms;android-35" "build-tools;35.0.0" "platform-tools"
       - name: Compile isolated Android 10 compatible donor
         run: gradle --no-daemon --stacktrace :app:assembleLabSafeDebug
-      - name: Upload native donor (not final launcher)
+      - name: Upload isolated diagnostic APK
         uses: actions/upload-artifact@v4
         with:
-          name: BID-MAPS-WIDGET-DONOR
+          name: BID-QF001-CAN-DIAGNOSTIC
           path: app/build/outputs/apk/labSafe/debug/*.apk
           if-no-files-found: error
