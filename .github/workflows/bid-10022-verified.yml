@@ -158,6 +158,19 @@ jobs:
           node --check app/src/main/assets/bid_theme_builder.js
           cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
           for f in tests/editor10022/test_*.js; do node "$f" || exit 1; done
+      - name: Integrate native exit snapshots and verified layout previews
+        run: |
+          python integration10022/apply_native_exit.py DJ88-BID-10022-PROIECT-INTEGRAT
+          python integration10022/apply_catalog_layout_preview.py DJ88-BID-10022-PROIECT-INTEGRAT
+          cd DJ88-BID-10022-PROIECT-INTEGRAT
+          node --check app/src/main/assets/bid_theme_builder.js
+          cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
+          for f in tests/editor10022/test_*.js; do node "$f" || exit 1; done
+          cd app/src/main/assets
+          sha256sum -c <<'EOF'
+          17afdcd419307951af50666dfad6666139cdaedb34007318cdc931731f662f5f  bid_approved.png
+          17afdcd419307951af50666dfad6666139cdaedb34007318cdc931731f662f5f  bid_fullbleed.png
+          EOF
       - name: Configure separate test application
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
@@ -186,6 +199,6 @@ jobs:
           printf '%s\n' 'Separate debug-signed test application. Does not update the existing BID package. Test only while parked. Google Maps authorization may require the new package and certificate. Device behavior not validated.' > dist/README.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: DJ88-BID-10022-TEST-PREVIEWS
+          name: DJ88-BID-10022-TEST-EXIT-PREVIEWS
           path: DJ88-BID-10022-PROIECT-INTEGRAT/dist/
           if-no-files-found: error
