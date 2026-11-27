@@ -20,8 +20,8 @@ android {
         create("labSafe") {
             dimension = "activation"
             // Distinct app ID: installs beside any previous BID version, without uninstalling it.
-            applicationIdSuffix = ".widgetlab"
-            manifestPlaceholders["bidAppLabel"] = "DJ 88 BID WIDGET LAB"
+            applicationIdSuffix = ".canbusprobe"
+            manifestPlaceholders["bidAppLabel"] = "BID CAN Diagnostic"
             manifestPlaceholders["bidHomeEnabled"] = "false"
         }
         create("themesCandidate") {
