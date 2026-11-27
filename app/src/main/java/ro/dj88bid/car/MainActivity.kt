@@ -21,6 +21,7 @@ import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private lateinit var osmTiles: BidOsmTiles
     private lateinit var themeWidgets: BidThemeWidgets
     private lateinit var themeFiles: BidThemeFiles
     private lateinit var bidThemeImage: BidThemeImage
@@ -95,6 +96,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (::mapWidget.isInitialized) mapWidget.start()
+        if (::osmTiles.isInitialized) osmTiles.start()
         if (::themeWidgets.isInitialized) themeWidgets.start()
         speedForeground = true
         if (pageReady && ::bidGpsSpeed.isInitialized) bidGpsSpeed.start()
@@ -104,6 +106,7 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         if (::mapWidget.isInitialized) mapWidget.stop()
+        if (::osmTiles.isInitialized) osmTiles.stop()
         if (::themeWidgets.isInitialized) themeWidgets.stop()
         speedForeground = false
         if (::bidGpsSpeed.isInitialized) bidGpsSpeed.stop()
@@ -161,8 +164,11 @@ class MainActivity : Activity() {
         webView.settings.allowContentAccess = false
         webView.settings.allowFileAccessFromFileURLs = false
         webView.settings.allowUniversalAccessFromFileURLs = false
+        osmTiles=BidOsmTiles(this,webView)
+        webView.addJavascriptInterface(osmTiles,"BIDOsm")
         webView.webChromeClient = WebChromeClient()
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldInterceptRequest(view:WebView,request:WebResourceRequest):android.webkit.WebResourceResponse? = osmTiles.intercept(request) ?: super.shouldInterceptRequest(view,request)
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 if (url == "file:///android_asset/index.html") {
