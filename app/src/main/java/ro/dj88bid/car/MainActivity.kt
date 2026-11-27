@@ -22,6 +22,8 @@ import org.json.JSONObject
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var gpsWeather: BidGpsWeather
+    private lateinit var bidGpsSpeed: BidGpsSpeed
+    private var speedForeground = false
     private lateinit var adaptiveDisplay: BidAdaptiveDisplay
     private var permissionRequestInProgress = false
     private var pageReady = false
@@ -87,17 +89,22 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        speedForeground = true
+        if (pageReady && ::bidGpsSpeed.isInitialized) bidGpsSpeed.start()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.start()
         if (pageReady && ::gpsWeather.isInitialized && autoWeather()) refreshWeather()
     }
 
     override fun onPause() {
+        speedForeground = false
+        if (::bidGpsSpeed.isInitialized) bidGpsSpeed.stop()
         if (::gpsWeather.isInitialized) gpsWeather.stop()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.stop()
         super.onPause()
     }
 
     override fun onDestroy() {
+        if (::bidGpsSpeed.isInitialized) bidGpsSpeed.stop()
         if (::gpsWeather.isInitialized) gpsWeather.close()
         super.onDestroy()
     }
@@ -107,6 +114,7 @@ class MainActivity : Activity() {
         if (requestCode == 417 || requestCode == 418 || requestCode == 419) {
             permissionRequestInProgress = false
             if (autoWeather() && ::gpsWeather.isInitialized) gpsWeather.start()
+            if (speedForeground && pageReady && ::bidGpsSpeed.isInitialized) bidGpsSpeed.start()
         }
     }
 
@@ -134,6 +142,7 @@ class MainActivity : Activity() {
                 super.onPageFinished(view, url)
                 if (url == "file:///android_asset/index.html") {
                     pageReady = true
+                    if (speedForeground && ::bidGpsSpeed.isInitialized) bidGpsSpeed.start()
                     configureIndicatorsOnce()
                     refreshWeather()
                 }
@@ -149,6 +158,7 @@ class MainActivity : Activity() {
         webView.addJavascriptInterface(Bridge(), "BID")
         setContentView(webView)
         gpsWeather = BidGpsWeather(this, ::emitJs)
+        bidGpsSpeed = BidGpsSpeed(this, webView)
         adaptiveDisplay = BidAdaptiveDisplay(this)
         webView.loadUrl("file:///android_asset/index.html")
 
