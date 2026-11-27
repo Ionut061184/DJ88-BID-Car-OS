@@ -186,6 +186,13 @@ jobs:
           node --check app/src/main/assets/bid_theme_builder.js
           cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
           for f in tests/editor10022/test_*.js; do node "$f" || exit 1; done
+      - name: Extend personal theme mask library
+        run: |
+          python integration10022/apply_mask_library.py DJ88-BID-10022-PROIECT-INTEGRAT
+          cd DJ88-BID-10022-PROIECT-INTEGRAT
+          node --check app/src/main/assets/bid_theme_builder.js
+          cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
+          for f in tests/editor10022/test_*.js; do node "$f" || exit 1; done
       - name: Configure separate test application
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
