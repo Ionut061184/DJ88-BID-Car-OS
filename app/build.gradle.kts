@@ -20,8 +20,8 @@ android {
         create("labSafe") {
             dimension = "activation"
             // Distinct app ID: installs beside any previous BID version, without uninstalling it.
-            applicationIdSuffix = ".gpslab"
-            manifestPlaceholders["bidAppLabel"] = "DJ 88 BID GPS TEST"
+            applicationIdSuffix = ".smartdrivelab"
+            manifestPlaceholders["bidAppLabel"] = "DJ 88 BID SMART DRIVE LAB"
             manifestPlaceholders["bidHomeEnabled"] = "false"
         }
         create("themesCandidate") {
