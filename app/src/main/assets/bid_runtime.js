@@ -132,7 +132,7 @@ try{if(localStorage.getItem('bid_mode')==='driving')driving()}catch(e){}
  const drive=document.getElementById('drive'), panel=document.querySelector('#overlay .row');
  if(!drive||!panel)return;
  const key='bid_native_maps_driving_v1';
- const defaults={mode:'normal',zoom:16,traffic:false,heading:false};
+ const defaults={mode:'normal',zoom:16,traffic:false,heading:false,x:0,y:0,w:100,h:100};
  let prefs={...defaults},fix=null,fixAt=0,active=false;
  try{prefs={...defaults,...JSON.parse(localStorage.getItem(key)||'{}')}}catch(e){}
  const modes=['normal','satellite','hybrid','terrain','night'];
@@ -145,6 +145,30 @@ try{if(localStorage.getItem('bid_mode')==='driving')driving()}catch(e){}
  drive.appendChild(box);
  const q=s=>box.querySelector(s),mode=q('[data-mode]'),zoom=q('[data-zoom]'),traffic=q('[data-traffic]'),heading=q('[data-heading]'),slot=q('[data-map]'),status=q('[data-status]');
  mode.value=prefs.mode;zoom.value=prefs.zoom;traffic.checked=!!prefs.traffic;heading.checked=!!prefs.heading;
+ const area=document.createElement('div');
+ area.style.cssText='position:absolute;top:125px;left:12px;right:12px;bottom:12px;overflow:hidden;border:1px solid #62564d;box-sizing:border-box';
+ box.insertBefore(area,slot);area.appendChild(slot);
+ const controls=document.createElement('div');
+ controls.style.cssText='display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+ q('[data-status]').before(controls);
+ const clamp=(n,min,max,fallback)=>Number.isFinite(Number(n))?Math.min(max,Math.max(min,Number(n))):fallback;
+ const fields={};
+ for(const [k,label,min] of [['x','X',0],['y','Y',0],['w','Lățime',30],['h','Înălțime',30]]){
+  const l=document.createElement('label'),i=document.createElement('input');
+  i.type='number';i.min=min;i.max=100;i.step=5;i.style.width='54px';l.textContent=label+' % ';l.appendChild(i);controls.appendChild(l);fields[k]=i;
+  i.addEventListener('change',()=>{prefs[k]=clamp(i.value,min,100,defaults[k]);applyLayout(k);save()});
+ }
+ const reset=document.createElement('button');reset.textContent='Reset poziție';controls.appendChild(reset);
+ reset.onclick=()=>{Object.assign(prefs,{x:0,y:0,w:100,h:100});applyLayout();save()};
+ function applyLayout(changed){
+  prefs.w=clamp(prefs.w,30,100,100);prefs.h=clamp(prefs.h,30,100,100);
+  prefs.x=clamp(prefs.x,0,70,0);prefs.y=clamp(prefs.y,0,70,0);
+  if(changed==='x')prefs.w=Math.min(prefs.w,100-prefs.x);else prefs.x=Math.min(prefs.x,100-prefs.w);
+  if(changed==='y')prefs.h=Math.min(prefs.h,100-prefs.y);else prefs.y=Math.min(prefs.y,100-prefs.h);
+  for(const k of Object.keys(fields))fields[k].value=prefs[k];
+  Object.assign(slot.style,{left:prefs.x+'%',top:prefs.y+'%',width:prefs.w+'%',height:prefs.h+'%',right:'auto',bottom:'auto'});
+ }
+ applyLayout();
  function hide(){if(window.BIDGoogleMap)try{BIDGoogleMap.sync('{"show":false}')}catch(e){}}
  function sync(){
   if(!active||!drive.classList.contains('on')||document.hidden){hide();return}
@@ -157,7 +181,7 @@ try{if(localStorage.getItem('bid_mode')==='driving')driving()}catch(e){}
   BIDGoogleMap.sync(JSON.stringify({show:true,vw:innerWidth,vh:innerHeight,x:r.left,y:r.top,w:r.width,h:r.height,lat:fix.lat,lon:fix.lon,bearing:prefs.heading?Number(fix.bearing)||0:0,zoom:prefs.zoom,mode:prefs.mode,traffic:prefs.traffic,stationary:false,alpha:1}));
   status.textContent=st.detail||'Inițializare hartă.';
  }
- function save(){prefs={mode:mode.value,zoom:Number(zoom.value),traffic:traffic.checked,heading:heading.checked};try{localStorage.setItem(key,JSON.stringify(prefs))}catch(e){status.textContent='Salvarea locală a eșuat.'}sync()}
+ function save(){prefs={...prefs,mode:mode.value,zoom:Number(zoom.value),traffic:traffic.checked,heading:heading.checked};try{localStorage.setItem(key,JSON.stringify(prefs))}catch(e){status.textContent='Salvarea locală a eșuat.'}sync()}
  [mode,zoom,traffic,heading].forEach(el=>el.addEventListener('change',save));
  const oldFix=window.bidDriveFix;window.bidDriveFix=function(d){if(typeof oldFix==='function')oldFix(d);if(d&&Number.isFinite(d.lat)&&Number.isFinite(d.lon)&&d.lat>=-85&&d.lat<=85&&Math.abs(d.lon)<=180){fix=d;fixAt=Date.now();sync()}};
  const oldState=window.bidGoogleMapState;window.bidGoogleMapState=function(d){if(typeof oldState==='function')oldState(d);if(active&&d&&d.detail)status.textContent=d.detail};
