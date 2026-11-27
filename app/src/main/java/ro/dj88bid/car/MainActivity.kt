@@ -21,6 +21,7 @@ import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private lateinit var themeWidgets: BidThemeWidgets
     private lateinit var bidThemeImage: BidThemeImage
     private lateinit var mapWidget: BidMapWidget
     private lateinit var gpsWeather: BidGpsWeather
@@ -93,6 +94,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (::mapWidget.isInitialized) mapWidget.start()
+        if (::themeWidgets.isInitialized) themeWidgets.start()
         speedForeground = true
         if (pageReady && ::bidGpsSpeed.isInitialized) bidGpsSpeed.start()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.start()
@@ -101,6 +103,7 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         if (::mapWidget.isInitialized) mapWidget.stop()
+        if (::themeWidgets.isInitialized) themeWidgets.stop()
         speedForeground = false
         if (::bidGpsSpeed.isInitialized) bidGpsSpeed.stop()
         if (::gpsWeather.isInitialized) gpsWeather.stop()
@@ -109,6 +112,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (::themeWidgets.isInitialized) themeWidgets.close()
         if (::bidThemeImage.isInitialized) bidThemeImage.close()
         if (::bidDriveContext.isInitialized) {
             if (::webView.isInitialized) webView.removeJavascriptInterface("BIDDrive")
@@ -122,6 +126,7 @@ class MainActivity : Activity() {
     @Suppress("DEPRECATION")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
+        if (::themeWidgets.isInitialized && themeWidgets.result(requestCode,resultCode)) return
         if (::bidThemeImage.isInitialized && bidThemeImage.result(requestCode,resultCode,data)) return
         if (::mapWidget.isInitialized) mapWidget.result(requestCode,resultCode)
     }
@@ -178,6 +183,8 @@ class MainActivity : Activity() {
         setContentView(root)
         mapWidget = BidMapWidget(this,root,webView)
         webView.addJavascriptInterface(mapWidget,"BIDWidget")
+        themeWidgets=BidThemeWidgets(this,root,webView)
+        webView.addJavascriptInterface(themeWidgets,"BIDThemeWidgets")
         bidThemeImage = BidThemeImage(this,webView)
         webView.addJavascriptInterface(bidThemeImage,"BIDThemeImage")
         gpsWeather = BidGpsWeather(this, ::emitJs)
