@@ -290,6 +290,13 @@ jobs:
           node tests/editor10022/test_duplicate_page.js
       - name: Harden native widget synchronization
         run: python integration10022/apply_widget_sync_validation.py DJ88-BID-10022-PROIECT-INTEGRAT
+      - name: Protect page integrity and locked elements
+        run: |
+          python integration10022/apply_page_integrity.py DJ88-BID-10022-PROIECT-INTEGRAT
+          cd DJ88-BID-10022-PROIECT-INTEGRAT
+          node --check app/src/main/assets/bid_theme_builder.js
+          cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
+          node tests/editor10022/test_page_integrity.js
       - name: Configure separate test application
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
