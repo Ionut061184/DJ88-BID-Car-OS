@@ -1,7 +1,7 @@
 name: BID Full Theme native donor
 on:
   push:
-    branches: [feature/bid-theme-media-icons]
+    branches: [feature/bid-theme-external-widgets]
   workflow_dispatch:
 permissions:
   contents: read
@@ -37,6 +37,6 @@ jobs:
       - name: Upload native donor (not final launcher)
         uses: actions/upload-artifact@v4
         with:
-          name: BID-THEME-MEDIA-DONOR
+          name: BID-THEME-WIDGETS-DONOR
           path: app/build/outputs/apk/labSafe/debug/*.apk
           if-no-files-found: error
