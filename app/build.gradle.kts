@@ -3,6 +3,7 @@ android {
     namespace = "ro.dj88bid.car"
     compileSdk = 35
     defaultConfig {
+        manifestPlaceholders["bidGoogleMapsKey"] = System.getenv("BID_GOOGLE_MAPS_KEY")?.takeIf { it.isNotBlank() } ?: "BID_KEY_NOT_CONFIGURED"
         applicationId = "ro.dj88bid.car"
         minSdk = 23
         targetSdk = 28
@@ -64,3 +65,5 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
 }
+
+dependencies { implementation("com.google.android.gms:play-services-maps:19.0.0") }
