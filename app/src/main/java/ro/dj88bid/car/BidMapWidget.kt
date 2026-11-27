@@ -105,8 +105,8 @@ class BidMapWidget(private val activity: Activity, private val root: FrameLayout
         if(w<=0||h<=0)return
         // Preserve the provider's layout and scale the whole RemoteViews surface.
         // Never clip attribution by cropping the content or force a tiny provider layout.
-        val requestedW=maxOf(w,(info.minWidth*density).roundToInt()).coerceAtMost(4096)
-        val requestedH=maxOf(h,(info.minHeight*density).roundToInt()).coerceAtMost(4096)
+        val requestedW=maxOf(w,info.minWidth).coerceAtMost(4096)
+        val requestedH=maxOf(h,info.minHeight).coerceAtMost(4096)
         val scale=minOf(w.toFloat()/requestedW,h.toFloat()/requestedH,1f)
         v.layoutParams=FrameLayout.LayoutParams(requestedW,requestedH)
         v.pivotX=0f;v.pivotY=0f
@@ -168,7 +168,7 @@ class BidMapWidget(private val activity: Activity, private val root: FrameLayout
                 .setMessage("Versiunea Google Maps instalată nu publică widgeturi Android vizibile acestui launcher. Nu se poate integra o hartă prin AppWidgetHost. Smart Drive Foto rămâne disponibil.")
                 .setPositiveButton("OK",null).show();emit();return
         }
-        val labels=entries.map { it.loadLabel(activity.packageManager)+" · "+it.minWidth+" × "+it.minHeight+" dp\n"+it.provider.className.substringAfterLast('.') }.toTypedArray()
+        val labels=entries.map { it.loadLabel(activity.packageManager)+" · "+it.minWidth+" × "+it.minHeight+" px\n"+it.provider.className.substringAfterLast('.') }.toTypedArray()
         AlertDialog.Builder(activity).setTitle("Widgeturi publicate de Google Maps")
             .setItems(labels){_, i ->
                 val info=entries[i]
