@@ -23,6 +23,7 @@ class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var gpsWeather: BidGpsWeather
     private lateinit var bidGpsSpeed: BidGpsSpeed
+    private lateinit var bidDriveContext: BidDriveContext
     private var speedForeground = false
     private lateinit var adaptiveDisplay: BidAdaptiveDisplay
     private var permissionRequestInProgress = false
@@ -104,6 +105,10 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (::bidDriveContext.isInitialized) {
+            if (::webView.isInitialized) webView.removeJavascriptInterface("BIDDrive")
+            bidDriveContext.close()
+        }
         if (::bidGpsSpeed.isInitialized) bidGpsSpeed.stop()
         if (::gpsWeather.isInitialized) gpsWeather.close()
         super.onDestroy()
@@ -158,7 +163,9 @@ class MainActivity : Activity() {
         webView.addJavascriptInterface(Bridge(), "BID")
         setContentView(webView)
         gpsWeather = BidGpsWeather(this, ::emitJs)
-        bidGpsSpeed = BidGpsSpeed(this, webView)
+        bidDriveContext = BidDriveContext(this, webView)
+        webView.addJavascriptInterface(bidDriveContext, "BIDDrive")
+        bidGpsSpeed = BidGpsSpeed(this, webView, bidDriveContext)
         adaptiveDisplay = BidAdaptiveDisplay(this)
         webView.loadUrl("file:///android_asset/index.html")
 
