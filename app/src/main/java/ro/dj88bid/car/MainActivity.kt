@@ -21,6 +21,7 @@ import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private val firmwareExport = QfFirmwareExport(this)
     private val carArtwork by lazy { BidCarArtwork(this) }
     private val themeProfiles: BidThemeProfiles by lazy { BidThemeProfiles(this, { bidAppearance.isBusy() || bidHomeEditor.isBusy() }) { applyHomeArtwork() } }
     private val bidAppearance: BidAppearance by lazy { BidAppearance(this, themeProfiles) }
@@ -36,11 +37,81 @@ class MainActivity : Activity() {
     @Deprecated("Android document-picker result")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (firmwareExport.handleResult(requestCode, resultCode, data)) return
+        if (requestCode == 8279) {
+            val dest = data?.data
+            val log = pendingMcuLog
+            pendingMcuLog = null
+            if (resultCode == RESULT_OK && dest?.scheme == "content" && log != null) {
+                Thread {
+                    val ok = runCatching { contentResolver.openOutputStream(dest, "w")!!.use { it.write(log.toByteArray(Charsets.UTF_8)) } }.isSuccess
+                    runOnUiThread { Toast.makeText(this, if (ok) "Diagnoza MCU salvată" else "Export MCU eșuat", Toast.LENGTH_LONG).show() }
+                }.start()
+            }
+            return
+        }
+        if (requestCode == QF_EXPORT_REQUEST) {
+            if (resultCode == RESULT_OK && data?.data != null) exportInstalledQfApk(data.data!!)
+            return
+        }
         carArtwork.handleResult(requestCode, resultCode, data)
         bidAppearance.handleResult(requestCode, resultCode, data)
         bidHomeEditor.handleResult(requestCode, resultCode, data)
         themeProfiles.handleResult(requestCode, resultCode, data)
     }
+    private var pendingMcuLog: String? = null
+    private val QF_EXPORT_REQUEST = 8217
+    // User-initiated copy of the installed OEM CANBUS base APK only; no app data or global writes.
+    private fun chooseQfExport() {
+        try {
+            val info = packageManager.getPackageInfo("com.qf.vehicle", 0)
+            val app = info.applicationInfo ?: throw IllegalStateException("APK unavailable")
+            if (!app.splitSourceDirs.isNullOrEmpty()) {
+                Toast.makeText(this, "CANBUS are componente APK separate; exportul simplu nu este complet.", Toast.LENGTH_LONG).show()
+                return
+            }
+            val version = (info.versionName ?: "unknown").replace(Regex("[^A-Za-z0-9._-]"), "_")
+            val picker = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "application/vnd.android.package-archive"
+                putExtra(Intent.EXTRA_TITLE, "QF_Canbus_OEM_$version.apk")
+            }
+            startActivityForResult(picker, QF_EXPORT_REQUEST)
+        } catch (_: Exception) {
+            Toast.makeText(this, "Export indisponibil. Folosiți managerul de fișiere sau ADB autorizat.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun exportInstalledQfApk(destination: Uri) {
+        if (destination.scheme != "content") {
+            Toast.makeText(this, "Destinație de document invalidă.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val context = applicationContext
+        Thread {
+            val result = try {
+                val app = context.packageManager.getApplicationInfo("com.qf.vehicle", 0)
+                check(app.splitSourceDirs.isNullOrEmpty())
+                val source = java.io.File(app.sourceDir)
+                check(source.isFile && source.canRead())
+                val expected = source.length()
+                check(expected > 0)
+                val copied = source.inputStream().use { input ->
+                    val output = context.contentResolver.openOutputStream(destination, "wt")
+                        ?: throw java.io.IOException("Destination unavailable")
+                    output.use { input.copyTo(it) }
+                }
+                check(copied == expected)
+                "Copie APK CANBUS OEM salvată. Nu o instalați; trimiteți fișierul pentru analiză."
+            } catch (_: Exception) {
+                "Export eșuat sau incomplet. Nu utilizați fișierul rezultat."
+            }
+            runOnUiThread {
+                Toast.makeText(context, result, Toast.LENGTH_LONG).show()
+            }
+        }.start()
+    }
+
     private val settingsPin by lazy { BidSettingsPin(this) }
     private lateinit var bidTrip: BidTripBridge
     private lateinit var qfVehicleProbe: QfVehicleProbe
@@ -132,7 +203,7 @@ class MainActivity : Activity() {
         invalidateVoltageCache()
         if (::webView.isInitialized) webView.onResume()
         if (::bidTrip.isInitialized) bidTrip.setForeground(true)
-        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.start()
+        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.foregroundChanged(true)
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.start()
         if (pageReady && ::gpsWeather.isInitialized) refreshWeather()
     }
@@ -144,7 +215,7 @@ class MainActivity : Activity() {
         cancelManualWeather()
         invalidateVoltageCache()
         if (::webView.isInitialized) webView.onPause()
-        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.stop()
+        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.foregroundChanged(false)
         if (::bidTrip.isInitialized) bidTrip.setForeground(false)
         if (::gpsWeather.isInitialized) gpsWeather.stop()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.stop()
@@ -152,13 +223,14 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        firmwareExport.close()
         bidForeground = false
         cameraCheckGeneration++
         cameraCheckPending = false
         cancelManualWeather()
         manualWeatherWorker.shutdownNow()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.stop()
-        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.stop()
+        if (::qfVehicleProbe.isInitialized) qfVehicleProbe.close()
         if (::bidTrip.isInitialized) bidTrip.setForeground(false)
         if (::gpsWeather.isInitialized) gpsWeather.close()
         if (::webView.isInitialized) {
@@ -597,6 +669,41 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun qfVehicleSnapshot(): String = if (::qfVehicleProbe.isInitialized) qfVehicleProbe.snapshot() else "{}"
+
+        @JavascriptInterface
+        fun qfBeginBodyAudit() = runOnUiThread {
+            if (bidForeground && ::qfVehicleProbe.isInitialized) qfVehicleProbe.beginAudit()
+        }
+
+        @JavascriptInterface
+        fun qfExportMcuLog() = runOnUiThread {
+            if (bidForeground && !isDestroyed && ::qfVehicleProbe.isInitialized) {
+                try {
+                    pendingMcuLog = JSONObject(qfVehicleProbe.snapshot()).toString(2)
+                    startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TITLE, "DJ88-BID-MCU-LOG.txt")
+                    }, 8279)
+                } catch (_: Exception) {
+                    pendingMcuLog = null
+                    Toast.makeText(this@MainActivity, "Export MCU indisponibil", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun qfExportInstalledApk() = runOnUiThread {
+            if (bidForeground && !isDestroyed) chooseQfExport()
+        }
+
+        @JavascriptInterface
+        fun qfExportSystemFiles() = runOnUiThread {
+            if (bidForeground && !isDestroyed) firmwareExport.open()
+        }
+
+        @JavascriptInterface
+        fun qfVehicleIcons(): String = if (::qfVehicleProbe.isInitialized) qfVehicleProbe.iconsSnapshot() else "{}"
 
         @JavascriptInterface
         fun chooseWeatherCity() = runOnUiThread {
@@ -1238,7 +1345,27 @@ class MainActivity : Activity() {
                     val diagnostic = "com.qf.vehicle"
                     val app = packageManager.getLaunchIntentForPackage(diagnostic)
                     if (app != null) {
-                        startSafely(app)
+                        android.app.AlertDialog.Builder(this@MainActivity)
+                            .setTitle("CANBUS OEM · test fereastră")
+                            .setItems(arrayOf("Deschidere normală", "Test fereastră redimensionată")) { _, choice ->
+                                if (choice == 0) startSafely(app)
+                                else {
+                                    val freeform = packageManager.hasSystemFeature("android.software.freeform_window_management")
+                                    if (android.os.Build.VERSION.SDK_INT >= 24 && freeform) {
+                                        val dm = resources.displayMetrics
+                                        val bounds = android.graphics.Rect(dm.widthPixels / 2, dm.heightPixels / 8,
+                                            dm.widthPixels, dm.heightPixels * 7 / 8)
+                                        try {
+                                            val options = android.app.ActivityOptions.makeBasic().setLaunchBounds(bounds)
+                                            startActivity(app, options.toBundle())
+                                        } catch (_: Exception) {
+                                            Toast.makeText(this@MainActivity, "Fereastra OEM nu a putut fi lansată.", Toast.LENGTH_LONG).show()
+                                        }
+                                    } else {
+                                        Toast.makeText(this@MainActivity, "Firmware-ul nu declară suport pentru ferestre libere.", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            }.setNegativeButton("Închide", null).show()
                     } else {
                         android.app.AlertDialog.Builder(this@MainActivity)
                             .setTitle("BID · CANBUS QF001")

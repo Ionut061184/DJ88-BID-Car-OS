@@ -4,14 +4,48 @@ import unittest
 ROOT=Path(__file__).resolve().parents[1]
 K=(ROOT/"app/src/main/java/ro/dj88bid/car/MainActivity.kt").read_text()
 J=(ROOT/"app/src/main/assets/bid_qf_vehicle.js").read_text()
+P=(ROOT/"app/src/main/java/ro/dj88bid/car/QfVehicleProbe.java").read_text()
 class Lifecycle(unittest.TestCase):
     def test_foreground_and_cleanup(self):
         resume=K.split("override fun onResume()",1)[1].split("override fun onPause()",1)[0]
         pause=K.split("override fun onPause()",1)[1].split("override fun onDestroy()",1)[0]
         destroy=K.split("override fun onDestroy()",1)[1].split("override fun onRequestPermissionsResult",1)[0]
         for x in ["bidForeground = true","webView.onResume()","invalidateVoltageCache()"]: self.assertIn(x,resume)
-        for x in ["bidForeground = false","cancelManualWeather()","webView.onPause()","gpsWeather.stop()","qfVehicleProbe.stop()"]: self.assertIn(x,pause)
-        for x in ["manualWeatherWorker.shutdownNow()","gpsWeather.close()","webView.destroy()","removeJavascriptInterface(\"BID\")"]: self.assertIn(x,destroy)
+        for x in ["bidForeground = false","cancelManualWeather()","webView.onPause()","gpsWeather.stop()","qfVehicleProbe.foregroundChanged(false)"]: self.assertIn(x,pause)
+        for x in ["manualWeatherWorker.shutdownNow()","gpsWeather.close()","webView.destroy()","qfVehicleProbe.close()","removeJavascriptInterface(\"BID\")"]: self.assertIn(x,destroy)
+    def test_explicit_bounded_audit(self):
+        self.assertIn("qfVehicleProbe.foregroundChanged(true)",K)
+        self.assertIn("if (bidForeground && ::qfVehicleProbe.isInitialized) qfVehicleProbe.beginAudit()",K)
+        self.assertIn("postDelayed(auditTimeout,120000)",P)
+        self.assertIn("else if(!auditActive)stop()",P)
+        self.assertIn("if(!auditForeground)stop()",P)
+        self.assertIn("auditHandler.removeCallbacks(auditTimeout);stop();",P)
+        for k in ["auditBeforeValid","auditAwayValid","auditAfterValid"]:
+            self.assertIn(k,P)
+            self.assertIn(k,J)
+    def test_system_research_export_contract(self):
+        f=(ROOT/"app/src/main/java/ro/dj88bid/car/QfFirmwareExport.kt").read_text()
+        for expected in ["ACTION_OPEN_DOCUMENT_TREE","PART_BYTES","SHA-256","Os.lstat","S_ISLNK","FLAG_UPDATED_SYSTEM_APP","completeFirmware", "cancelled.get()","deleteDocument"]:
+            self.assertIn(expected,f)
+        for forbidden in ["Runtime.getRuntime","ProcessBuilder","/dev/block","Settings.Global.put","getExternalStorageDirectory","WRITE_SECURE_SETTINGS"]:
+            self.assertNotIn(forbidden,f)
+        self.assertIn("firmwareExport.handleResult(requestCode, resultCode, data)",K)
+        self.assertIn("firmwareExport.close()",K)
+        self.assertIn("if (bidForeground && !isDestroyed) firmwareExport.open()",K)
+        self.assertIn("qfExportSystemFiles",J)
+    def test_sdk_body_audit_contract(self):
+        s=(ROOT/"app/src/main/java/ro/dj88bid/car/QfSdkBodyAudit.java").read_text()
+        for x in ["VehicleService","V1.11-260615.1900","call(b,11,callback)","call(b,12,s.callback)","operation!=11&&operation!=12","getInterfaceDescriptor()","Binder.getCallingUid()!=uid","context.bindService(intent,s,0)","context.unbindService(s)"]:
+            self.assertIn(x,s)
+        for x in ["initCanbusSdkConfig","Settings.Global","WRITE_SECURE_SETTINGS","BIND_AUTO_CREATE","Runtime.getRuntime"]:
+            self.assertNotIn(x,s)
+        self.assertIn("sdkBodyAudit.start(oemCanbusVersion())",P)
+        self.assertEqual(P.count("sdkBodyAudit.stop()"),2)
+        self.assertIn("if(!FEATURE.equals(actual)){report(\"descriptor_mismatch\");return;}",s)
+        self.assertLess(s.index("if(!FEATURE.equals(actual))"),s.index("report(call(b,11,callback)"))
+        for x in ["sdkBodyAuditState","sdkBodyPackedCount","sdkBodyRawCount","sdkBodyLastBytes","sdkBodyDescriptorExpected","sdkBodyDescriptorActual","sdkBodyComponent"]:
+            self.assertIn(x,s)
+            self.assertIn(x,J)
     def test_no_global_pause_or_power_control(self):
         for x in ["pauseTimers()","PowerManager.goToSleep","PowerManager.wakeUp","android.permission.WAKE_LOCK"]:
             self.assertNotIn(x,K)

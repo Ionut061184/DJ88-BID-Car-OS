@@ -31,6 +31,8 @@ public final class QfVehicleProbe {
     private Integer doors;
     private long climateAt,doorsAt;
     private final Activity activity;
+    private final QfSdkBodyAudit sdkBodyAudit;
+    private final QfMcuPassiveProbe mcuProbe = new QfMcuPassiveProbe();
     private boolean listening;
     private long last;
     private int seen, valid, lastSize, wrongExtra, wrongHeader, wrongLength, emptyBody;
@@ -73,7 +75,7 @@ public final class QfVehicleProbe {
             if(!ACTION.equals(intent.getAction()))return;
             synchronized(QfVehicleProbe.this){
                 if(!listening)return;
-                seen++;totalSeen++;
+                seen++;totalSeen++;auditCount(false);
                 byte[] p;
                 try {p=intent.getByteArrayExtra("extra_DATA_SHARE");}
                 catch(RuntimeException e){p=null;}
@@ -104,12 +106,12 @@ public final class QfVehicleProbe {
                 if(p.length!=79){wrongLength++;lastPacketState="wrong_length";return;}
                 if((p[0]&255)!=0x2e || (p[1]&255)!=2){wrongHeader++;lastPacketState="wrong_header";return;}
                 QfVehiclePacket decoded=QfVehiclePacket.decode(p);
-                if(decoded!=null){valid++;totalValid++;lastPacketState="candidate";frame=decoded;last=SystemClock.elapsedRealtime();}
+                if(decoded!=null){valid++;totalValid++;auditCount(true);lastPacketState="candidate";frame=decoded;last=SystemClock.elapsedRealtime();}
                 else {emptyBody++;lastPacketState="empty_body";frame=null;last=0;}
             }
         }
     };
-    public QfVehicleProbe(Activity a){activity=a;}
+    public QfVehicleProbe(Activity a){activity=a;sdkBodyAudit=new QfSdkBodyAudit(a);}
     public synchronized void start(){
         if(listening)return;
         seen=0;valid=0;wrongExtra=0;wrongHeader=0;wrongLength=0;emptyBody=0;frame=null;last=0;registrationError="";lastPacketState="none";lastSize=0;
@@ -157,6 +159,130 @@ public final class QfVehicleProbe {
             return "not_listed";
         } catch(RuntimeException e){return "unreadable";}
     }
+    // Read-only diagnosis of OEM registration; no writes to Settings.Global.
+    private String oemCanbusVersion(){
+        try {
+            String version=activity.getPackageManager().getPackageInfo("com.qf.vehicle",0).versionName;
+            return version==null?"unknown":version;
+        }catch(Exception e){return "unavailable";}
+    }
+    // V1.11 GlobalSettingUtil checks whether ANY registered package has value 1.
+    // Missing flags default to zero in the OEM. No registry names or other client data leave this probe.
+    private String globalBodyShareState(){
+        try {
+            String registry=Settings.Global.getString(activity.getContentResolver(),"KeyAllPackages");
+            if(registry==null||registry.isEmpty())return "disabled";
+            if(registry.length()>16384)return "unknown";
+            String[] clients=registry.split(",");
+            if(clients.length>128)return "unknown";
+            boolean unknown=false;
+            for(String client:clients){
+                if(client.isEmpty())continue;
+                try{
+                    String flag=Settings.Global.getString(activity.getContentResolver(),client+"KeyShareCarbodyState");
+                    if(flag!=null&&Integer.parseInt(flag)==1)return "enabled";
+                }catch(RuntimeException e){unknown=true;}
+            }
+            return unknown?"unknown":"disabled";
+        }catch(RuntimeException e){return "unreadable";}
+    }
+    // The OEM factory defaults to app mode (0), chooses system mode for 1.
+    // The setting is a configuration observation, not proof of a successful binding.
+    private String remoteMode(){
+        try{
+            String raw=Settings.Global.getString(activity.getContentResolver(),"KeyRemoteDemandType");
+            if(raw==null)return "app_default";
+            if("0".equals(raw))return "app";
+            if("1".equals(raw))return "system";
+            return "unknown";
+        }catch(RuntimeException e){return "unreadable";}
+    }
+    private String bodyDeliveryState(String globalShare,String version){
+        if(!listening)return "receiver_unavailable";
+        if(valid>0)return "candidate_received";
+        if(seen>0)return "frames_without_valid_body";
+        if(!"V1.11-260615.1900".equals(version))return "unverified_oem_version";
+        if("disabled".equals(globalShare))return "global_body_sharing_disabled";
+        if(!"enabled".equals(globalShare))return "global_body_sharing_unknown";
+        return "no_body_messages";
+    }
+    private final android.os.Handler auditHandler=new android.os.Handler(android.os.Looper.getMainLooper());
+    private boolean auditActive, auditAway, auditForeground=true;
+    private long auditStarted, auditReturned;
+    private int beforeMessages,beforeValid,awayMessages,awayValid,afterMessages,afterValid;
+    private final Runnable auditTimeout=()->finishAudit();
+    public synchronized void beginAudit(){
+        auditHandler.removeCallbacks(auditTimeout);
+        if(!listening)start();
+        auditStarted=SystemClock.elapsedRealtime();auditReturned=0;
+        beforeMessages=beforeValid=awayMessages=awayValid=afterMessages=afterValid=0;
+        auditAway=false;auditActive=true;auditForeground=true;
+        sdkBodyAudit.start(oemCanbusVersion());
+        mcuProbe.start(activity);
+        auditHandler.postDelayed(auditTimeout,120000);
+    }
+    public synchronized void foregroundChanged(boolean foreground){
+        auditForeground=foreground;
+        if(auditActive){
+            if(!foreground)auditAway=true;
+            else if(auditAway&&auditReturned==0)auditReturned=SystemClock.elapsedRealtime();
+        }
+        if(foreground)start();
+        else if(!auditActive)stop();
+    }
+    private synchronized void finishAudit(){
+        sdkBodyAudit.stop();
+        mcuProbe.stopCapture();
+        auditActive=false;auditHandler.removeCallbacks(auditTimeout);
+        if(!auditForeground)stop();
+    }
+    public synchronized void close(){
+        sdkBodyAudit.stop();
+        mcuProbe.stopCapture();
+        auditActive=false;auditHandler.removeCallbacks(auditTimeout);stop();
+    }
+    private void auditCount(boolean candidate){
+        if(!auditActive)return;
+        if(!auditForeground){if(candidate)awayValid++;else awayMessages++;}
+        else if(auditAway){if(candidate)afterValid++;else afterMessages++;}
+        else{if(candidate)beforeValid++;else beforeMessages++;}
+    }
+    private String iconCache;
+    /** Read only the allow-listed drawable resources of the installed CANBUS APK. */
+    public synchronized String iconsSnapshot(){
+        if(iconCache!=null)return iconCache;
+        JSONObject icons=new JSONObject();
+        try{
+            String pkg="com.qf.vehicle";
+            android.content.res.Resources resources=activity.getPackageManager().getResourcesForApplication(pkg);
+            String[] names={"common_instantan_speed","common_engine_speed","common_oil_surplus_normal",
+                "common_oil_surplus_warn","common_driving_mile","common_handbrake_state_nomal",
+                "common_handbrake_state_warn","common_outside_temp","common_cleaning_liquid_normal",
+                "common_cleaning_liquid_warn","common_battery_voltage_normal","common_battery_voltage_warn"};
+            for(String name:names){
+                try{
+                    int id=resources.getIdentifier(name,"drawable",pkg);
+                    if(id==0)continue;
+                    android.graphics.drawable.Drawable drawable=resources.getDrawable(id,null);
+                    android.graphics.Bitmap bitmap=android.graphics.Bitmap.createBitmap(32,32,android.graphics.Bitmap.Config.ARGB_8888);
+                    try{
+                        int w=drawable.getIntrinsicWidth(),h=drawable.getIntrinsicHeight();
+                        if(w<=0||h<=0){w=32;h=32;}
+                        float scale=32f/Math.max(w,h);
+                        int dw=Math.max(1,Math.round(w*scale)),dh=Math.max(1,Math.round(h*scale));
+                        drawable.setBounds((32-dw)/2,(32-dh)/2,(32-dw)/2+dw,(32-dh)/2+dh);
+                        drawable.draw(new android.graphics.Canvas(bitmap));
+                        java.io.ByteArrayOutputStream output=new java.io.ByteArrayOutputStream();
+                        if(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,output)){
+                            icons.put(name,"data:image/png;base64,"+android.util.Base64.encodeToString(output.toByteArray(),android.util.Base64.NO_WRAP));
+                        }
+                    }finally{bitmap.recycle();}
+                }catch(Exception ignored){}
+            }
+        }catch(Exception ignored){}
+        iconCache=icons.toString();
+        return iconCache;
+    }
     public synchronized String snapshot(){
         JSONObject o=new JSONObject();
         try{
@@ -174,6 +300,22 @@ public final class QfVehicleProbe {
              .put("radarShareState",readShareState("KeyShareRadarState"))
              .put("bodyRegistryState",readClientRegistryState())
              .put("bodySharePackage",activity.getPackageName());
+            o.put("auditActive",auditActive).put("auditStarted",auditStarted>0)
+             .put("auditAway",auditAway).put("auditReturned",auditReturned>0)
+             .put("auditRemainingSeconds",auditActive?Math.max(0,120-(SystemClock.elapsedRealtime()-auditStarted)/1000):0)
+             .put("auditBeforeMessages",beforeMessages).put("auditBeforeValid",beforeValid)
+             .put("auditAwayMessages",awayMessages).put("auditAwayValid",awayValid)
+             .put("auditAfterMessages",afterMessages).put("auditAfterValid",afterValid);
+            sdkBodyAudit.snapshot(o);
+            o.put("mcuSamples",mcuProbe.samples());
+            o.put("mcuFrameValidation",mcuProbe.frameValidation());
+            o.put("mcuStatus",mcuProbe.status()).put("mcuCanbusCount",mcuProbe.count(65)).put("mcuVoltageCount",mcuProbe.count(41));
+            String version=oemCanbusVersion(),globalShare=globalBodyShareState();
+            o.put("oemCanbusVersion",version)
+             .put("globalBodyShareState",globalShare)
+             .put("remoteDemandMode",remoteMode())
+             .put("bodyDeliveryState",bodyDeliveryState(globalShare,version))
+             .put("globalSettingsWriteGranted",activity.checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS")==android.content.pm.PackageManager.PERMISSION_GRANTED);
             long tempAge=outsideAt==0?-1:SystemClock.elapsedRealtime()-outsideAt;
             boolean tempFresh=listening&&outsideTemperature!=null&&tempAge>=0&&tempAge<=120000;
             o.put("outsideTemperatureCandidate",tempFresh?outsideTemperature:JSONObject.NULL)

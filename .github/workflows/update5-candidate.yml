@@ -1,14 +1,14 @@
 name: Update 5 - Build 14 verified candidate
 on:
   push:
-    branches: [feature/update5-smart-system]
-    paths: ['DJ88-BID-Update3-Etapa8-System-candidat.zip', '.github/workflows/update5-candidate.yml', 'tools/import_update3.py', 'app/src/main/java/ro/dj88bid/car/**', 'app/src/main/assets/bid_qf_vehicle.js', 'tests/test_update4_can_browser.py', 'tools/apply_update5_antiglare.py', 'tests/test_update5_antiglare.py', 'tools/apply_update5_battery_guard.py', 'app/src/main/assets/bid_service.js', 'tests/test_update5_service.py', 'tools/apply_update5_quickstart.py', 'tests/test_update5_quickstart.py', 'app/src/main/assets/bid_security.js', 'tests/test_update5_security.py', 'tools/apply_update5_recovery.py', 'tests/test_update5_recovery.py', 'tools/apply_update5_smart_display.py', 'tests/test_update5_smart_display.py']
+    branches: [feature/update5-smart-system, feature/update5-body-canbus-fix]
+    paths: ['DJ88-BID-Update3-Etapa8-System-candidat.zip', '.github/workflows/update5-candidate.yml', 'tools/import_update3.py', 'app/src/main/java/ro/dj88bid/car/**', 'app/src/main/assets/bid_qf_vehicle.js', 'tests/test_update4_can_browser.py', 'tests/test_qf_lifecycle.py', 'tools/apply_update5_antiglare.py', 'tests/test_update5_antiglare.py', 'tools/apply_update5_battery_guard.py', 'app/src/main/assets/bid_service.js', 'tests/test_update5_service.py', 'tools/apply_update5_quickstart.py', 'tests/test_update5_quickstart.py', 'app/src/main/assets/bid_security.js', 'tests/test_update5_security.py', 'tools/apply_update5_recovery.py', 'tests/test_update5_recovery.py', 'tools/apply_update5_smart_display.py', 'tests/test_update5_smart_display.py']
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   candidate:
-    if: github.ref == 'refs/heads/feature/update5-smart-system'
+    if: github.ref == 'refs/heads/feature/update5-smart-system' || github.ref == 'refs/heads/feature/update5-body-canbus-fix'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -123,7 +123,12 @@ jobs:
           ]:
               assert s.count(old) == 1, old
               s = s.replace(old, new)
-          assert 'manifestPlaceholders["bidHomeEnabled"] = "false"' in s
+          import os
+          old_home = 'manifestPlaceholders["bidHomeEnabled"] = "false"'
+          assert s.count(old_home) == 1
+          # Only the body-CANBUS test branch enables HOME; keep same BID package.
+          if os.environ["GITHUB_REF_NAME"] == "feature/update5-body-canbus-fix":
+              s = s.replace(old_home, 'manifestPlaceholders["bidHomeEnabled"] = "true"')
           p.write_text(s)
           PY
       - uses: actions/setup-java@v4
@@ -170,25 +175,48 @@ jobs:
       - name: Compile lab candidate only
         run: |
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          # The two previous runs were blocked by Maven Central HTTP 429.
+          # Use Google's documented Central mirror only for the two affected modules.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("settings.gradle.kts")
+          s = p.read_text()
+          assert s.count("mavenCentral()") == 2
+          mirror = 'maven { url = uri("https://maven-central.storage-download.googleapis.com/maven2/"); content { includeVersion("org.jetbrains.kotlin", "kotlin-reflect", "1.9.22"); includeVersion("org.jetbrains.kotlin", "kotlin-stdlib", "1.9.22") } }; '
+          p.write_text(s.replace("mavenCentral()", mirror + "mavenCentral()"))
+          PY
           gradle --no-daemon :app:assembleLabSafeDebug
       - name: Verify packaged assets and APK identity
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/labSafe/debug/app-labSafe-debug.apk dist/DJ88-BID-Update5-SMART-SYSTEM-TEST.apk
-          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/DJ88-BID-Update5-SMART-SYSTEM-TEST.apk
-          "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging dist/DJ88-BID-Update5-SMART-SYSTEM-TEST.apk | grep -F "package: name='ro.dj88bid.car.update5test'"
+          cp app/build/outputs/apk/labSafe/debug/app-labSafe-debug.apk dist/DJ88-BID-Update5-CANBUS-FIX-TEST.apk
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/DJ88-BID-Update5-CANBUS-FIX-TEST.apk
+          "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging dist/DJ88-BID-Update5-CANBUS-FIX-TEST.apk | grep -F "package: name='ro.dj88bid.car.update5test'"
           python3 - <<'PY'
           from zipfile import ZipFile
           from pathlib import Path
-          with ZipFile("dist/DJ88-BID-Update5-SMART-SYSTEM-TEST.apk") as z:
+          with ZipFile("dist/DJ88-BID-Update5-CANBUS-FIX-TEST.apk") as z:
               for p in Path("app/src/main/assets").iterdir():
                   if p.is_file() and p.name.startswith(("bid_", "index.html")):
                       assert z.read("assets/" + p.name) == p.read_bytes(), p.name
           print("Packaged assets verified.")
           PY
+          "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump xmltree dist/DJ88-BID-Update5-CANBUS-FIX-TEST.apk AndroidManifest.xml > /tmp/bid-manifest.txt
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          s = Path("/tmp/bid-manifest.txt").read_text()
+          alias = s.split("E: activity-alias", 1)[1]
+          assert "android.intent.category.HOME" in alias
+          assert "android.intent.category.DEFAULT" in alias
+          expected = "0xffffffff" if os.environ["GITHUB_REF_NAME"] == "feature/update5-body-canbus-fix" else "0x0"
+          enabled = next(l for l in alias.splitlines() if "android:enabled(" in l)
+          assert enabled.strip().endswith(expected), enabled
+          print("Packaged HOME eligibility verified:", enabled)
+          PY
           sha256sum dist/*.apk > dist/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: DJ88-BID-Update5-SMART-SYSTEM-TEST
+          name: DJ88-BID-Update5-CANBUS-FIX-TEST
           path: dist/
           if-no-files-found: error
