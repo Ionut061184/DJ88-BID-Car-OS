@@ -17,6 +17,10 @@ public class ProbeActivity extends Activity {
  Intent.ACTION_POWER_CONNECTED,Intent.ACTION_POWER_DISCONNECTED,Intent.ACTION_SCREEN_ON,Intent.ACTION_SCREEN_OFF,
  android.bluetooth.BluetoothDevice.ACTION_ACL_CONNECTED,android.bluetooth.BluetoothDevice.ACTION_ACL_DISCONNECTED};
  private static boolean listening=false;
+ private static final String SESSION=java.util.UUID.randomUUID().toString();
+ public static class WakeReceiver extends android.content.BroadcastReceiver {
+ @Override public void onReceive(android.content.Context c, Intent i){ if(c.getSharedPreferences("acc_probe",0).getBoolean("enabled",false) && "com.qf.action.ACC_ON".equals(i.getAction())) persist(c,"Manifest ACC_ON (emitent neautentificat)"); }
+ }
  private static final android.content.BroadcastReceiver accReceiver=new android.content.BroadcastReceiver(){
   @Override public void onReceive(android.content.Context c,Intent i){
    persist(c,"Eveniment nevalidat: "+i.getAction());
@@ -26,7 +30,7 @@ public class ProbeActivity extends Activity {
   String stamp=new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS",java.util.Locale.ROOT).format(new java.util.Date());
   android.content.SharedPreferences p=context.getSharedPreferences("acc_probe",MODE_PRIVATE);
   String previous=p.getString("journal","");
-  String next=previous+stamp+" elapsed="+android.os.SystemClock.elapsedRealtime()+" "+event+"\n";
+  String next=previous+stamp+" elapsed="+android.os.SystemClock.elapsedRealtime()+" pid="+android.os.Process.myPid()+" session="+SESSION+" "+event+"\n";
   if(next.length()>48000)next=next.substring(next.length()-48000);
   p.edit().putString("journal",next).commit();
   }
@@ -47,18 +51,19 @@ public class ProbeActivity extends Activity {
  @Override protected void onDestroy(){record("Activity onDestroy");super.onDestroy();}
  private TextView log; private final EditText[] fields=new EditText[4];
  private void append(String s){log.append("\n"+s);}
- @Override public void onCreate(Bundle b){super.onCreate(b);ScrollView scroll=new ScrollView(this);LinearLayout col=new LinearLayout(this);col.setOrientation(1);col.setPadding(18,18,18,18);scroll.addView(col);setContentView(scroll);
+ @Override public void onCreate(Bundle b){super.onCreate(b);persist(this,"Activity onCreate; session="+SESSION);ScrollView scroll=new ScrollView(this);LinearLayout col=new LinearLayout(this);col.setOrientation(1);col.setPadding(18,18,18,18);scroll.addView(col);setContentView(scroll);
  TextView title=new TextView(this);title.setText("BID QF001 • Freeform diagnostic\nTestați exclusiv cu mașina staționată. Nicio setare de sistem nu este modificată.");title.setTextSize(20);col.addView(title);
  String[] labels={"X (%)","Y (%)","Lățime (%)","Înălțime (%)"};String[] values={"55","15","40","70"};LinearLayout row=new LinearLayout(this);col.addView(row);
  for(int i=0;i<4;i++){LinearLayout cell=new LinearLayout(this);cell.setOrientation(1);TextView t=new TextView(this);t.setText(labels[i]);cell.addView(t);fields[i]=new EditText(this);fields[i].setSingleLine(true);fields[i].setInputType(2);fields[i].setText(values[i]);cell.addView(fields[i]);row.addView(cell,new LinearLayout.LayoutParams(0,-2,1));}
  add(col,"Google Maps – cerere fereastră",()->confirmLaunch("com.google.android.apps.maps"));add(col,"Waze – cerere fereastră",()->confirmLaunch("com.waze"));add(col,"Copiază jurnalul",()->{ClipboardManager c=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);c.setPrimaryClip(ClipData.newPlainText("BID diagnostic",log.getText()));});
  log=new TextView(this);log.setTextIsSelectable(true);col.addView(log);append("Android SDK: "+Build.VERSION.SDK_INT+" / "+Build.DISPLAY);append("Freeform declarat: "+getPackageManager().hasSystemFeature("android.software.freeform_window_management"));append("Maps detectat: "+(getPackageManager().getLaunchIntentForPackage("com.google.android.apps.maps")!=null));append("Waze detectat: "+(getPackageManager().getLaunchIntentForPackage("com.waze")!=null));append("Android poate ignora coordonatele. Confirmarea este exclusiv vizuală.");
  add(col,"Pornește diagnostic ACC",()->listen());
+ add(col,"Reîmprospătează jurnal ACC",()->append(getSharedPreferences("acc_probe",MODE_PRIVATE).getString("journal","")));
  add(col,"Marcaj manual: contact pus",()->record("UTILIZATOR: contact pus"));
  add(col,"Marcaj manual: contact scos",()->record("UTILIZATOR: contact scos"));
  add(col,"Copiază jurnal ACC persistent",()->{ClipboardManager c=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);c.setPrimaryClip(ClipData.newPlainText("ACC diagnostic",getSharedPreferences("acc_probe",MODE_PRIVATE).getString("journal","")));});
  add(col,"Șterge jurnal ACC",()->new AlertDialog.Builder(this).setMessage("Ștergi jurnalul local?").setNegativeButton("Nu",null).setPositiveButton("Da",(d,w)->{getSharedPreferences("acc_probe",MODE_PRIVATE).edit().remove("journal").commit();append("Jurnal șters");}).show());
- append("ACC V2: receptor în contextul aplicației, fără wake lock; procesul poate fi oprit de sistem.");
+ append("ACC V3: receptor în contextul aplicației, fără wake lock; procesul poate fi oprit de sistem.");
  if(getSharedPreferences("acc_probe",MODE_PRIVATE).getBoolean("enabled",false))listen();
  add(col,"Oprește diagnostic ACC",()->{if(listening){getApplicationContext().unregisterReceiver(accReceiver);listening=false;}getSharedPreferences("acc_probe",MODE_PRIVATE).edit().putBoolean("enabled",false).commit();record("Diagnostic oprit");});
  }
