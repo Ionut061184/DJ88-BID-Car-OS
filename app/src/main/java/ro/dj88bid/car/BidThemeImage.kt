@@ -38,7 +38,7 @@ class BidThemeImage(private val activity: Activity, private val web: WebView) {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "image/*"
-                putExtra(Intent.EXTRA_MIME_TYPES,arrayOf("image/jpeg","image/png","image/webp"))
+                putExtra(Intent.EXTRA_MIME_TYPES,arrayOf("image/jpeg","image/png","image/webp","image/gif"))
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             try { activity.startActivityForResult(intent,REQUEST) }
@@ -60,9 +60,40 @@ class BidThemeImage(private val activity: Activity, private val web: WebView) {
         worker.execute {
             try {
                 val type=activity.contentResolver.getType(uri)
-                if(type!=null && type !in listOf("image/jpeg","image/png","image/webp"))error("Format neacceptat. Alege JPG, PNG sau WebP.")
+                if(type!=null && type !in listOf("image/jpeg","image/png","image/webp","image/gif"))error("Format neacceptat. Alege JPG, PNG sau WebP.")
+                if(type=="image/gif"){
+                    val cr=activity.contentResolver
+                    val b=cr.openInputStream(uri)?.use { input ->
+                        val out=ByteArrayOutputStream(); val buf=ByteArray(8192)
+                        while(true){val n=input.read(buf);if(n<0)break;if(out.size()+n>400000)error("GIF maxim 400 KB.");out.write(buf,0,n)}
+                        out.toByteArray()
+                    } ?: error("GIF indisponibil.")
+                    require(b.size>=13 && (String(b,0,6,Charsets.US_ASCII)=="GIF87a" || String(b,0,6,Charsets.US_ASCII)=="GIF89a")){"GIF invalid."}
+                    val w=(b[6].toInt() and 255)+256*(b[7].toInt() and 255)
+                    val h=(b[8].toInt() and 255)+256*(b[9].toInt() and 255)
+                    require(w in 1..1280 && h in 1..720){"GIF maxim 1280 × 720."}
+                    reply("data:image/gif;base64,"+Base64.encodeToString(b,Base64.NO_WRAP),"GIF selectat. Salvează tema.")
+                    return@execute
+                }
                 val bitmap=decode(uri)
                 try {
+                    if(bitmap.hasAlpha() && type!="image/jpeg"){
+                        var current=bitmap
+                        try {
+                            while(true){
+                                val out=ByteArrayOutputStream()
+                                if(!current.compress(Bitmap.CompressFormat.PNG,100,out))error("PNG invalid.")
+                                if(out.size()<=400000){
+                                    reply("data:image/png;base64,"+Base64.encodeToString(out.toByteArray(),Base64.NO_WRAP),"Imagine cu transparență păstrată.")
+                                    return@execute
+                                }
+                                if(max(current.width,current.height)<=160)error("PNG prea mare.")
+                                val scaled=Bitmap.createScaledBitmap(current,(current.width*0.75).roundToInt().coerceAtLeast(1),(current.height*0.75).roundToInt().coerceAtLeast(1),true)
+                                if(current!==bitmap)current.recycle()
+                                current=scaled
+                            }
+                        } finally { if(current!==bitmap)current.recycle() }
+                    }
                     var bytes:ByteArray?=null
                     for(q in listOf(82,68,52,36)){
                         val stream=ByteArrayOutputStream()
