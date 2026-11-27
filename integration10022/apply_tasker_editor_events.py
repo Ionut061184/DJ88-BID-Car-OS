@@ -8,10 +8,9 @@ s+="""
 'use strict';
 let previous=null;
 function notifyEditorVisibility(){
- const editor=document.querySelector('#bfOverlay');
+ const editor=document.querySelector('#bfShell');
  if(!editor)return;
- const style=getComputedStyle(editor);
- const visible=editor.getClientRects().length>0&&style.visibility!=='hidden'&&style.display!=='none'&&style.opacity!=='0';
+ const visible=editor.classList.contains('on');
  if(previous===null){previous=visible;return;}
  if(previous===visible)return;
  previous=visible;
@@ -19,7 +18,7 @@ function notifyEditorVisibility(){
 }
 const observer=new MutationObserver(notifyEditorVisibility);
 function bind(){
- const editor=document.querySelector('#bfOverlay');
+ const editor=document.querySelector('#bfShell');
  if(!editor)return false;
  observer.observe(editor,{attributes:true,attributeFilter:['class','style','hidden','aria-hidden']});
  notifyEditorVisibility();
@@ -34,5 +33,5 @@ if(!bind()){
 # Refuse to integrate against an editor without the required actual DOM anchor.
 html=(root/"app/src/main/assets/index.html").read_text()
 builder=(root/"app/src/main/assets/bid_theme_builder.js").read_text()
-assert 'bfOverlay' in html or 'bfOverlay' in builder, "Editor visibility anchor missing"
+assert 'bfShell' in html or 'bfShell' in builder, "Editor visibility anchor missing"
 p.write_text(s)
