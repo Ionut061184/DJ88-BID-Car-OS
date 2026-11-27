@@ -70,6 +70,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
+      - name: Configure sideload-only target SDK lint exception
+        working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("app/build.gradle.kts")
+          s = p.read_text()
+          assert s.count("android {") == 1
+          assert "targetSdk = 28" in s
+          s = s.replace("android {", 'android {\n    // QF001 sideload compatibility: not a Google Play release.\n    lint { disable += "ExpiredTargetSdkVersion" }', 1)
+          p.write_text(s)
+          PY
       - name: Build signed update
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         env:
