@@ -144,6 +144,13 @@ jobs:
         run: |
           python integration10022/apply_tasker_editor_events.py DJ88-BID-10022-PROIECT-INTEGRAT
           node --check DJ88-BID-10022-PROIECT-INTEGRAT/app/src/main/assets/bid_general.js
+      - name: Integrate native widget entrance animation
+        run: |
+          python integration10022/apply_native_entrance.py DJ88-BID-10022-PROIECT-INTEGRAT
+          cd DJ88-BID-10022-PROIECT-INTEGRAT
+          node --check app/src/main/assets/bid_theme_builder.js
+          cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
+          for f in tests/editor10022/test_*.js; do node "$f" || exit 1; done
       - name: Configure separate test application
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
@@ -172,6 +179,6 @@ jobs:
           printf '%s\n' 'Separate debug-signed test application. Does not update the existing BID package. Test only while parked. Google Maps authorization may require the new package and certificate. Device behavior not validated.' > dist/README.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: DJ88-BID-10022-TEST-EDITOR-EVENTS
+          name: DJ88-BID-10022-TEST-NATIVE-MOTION
           path: DJ88-BID-10022-PROIECT-INTEGRAT/dist/
           if-no-files-found: error
