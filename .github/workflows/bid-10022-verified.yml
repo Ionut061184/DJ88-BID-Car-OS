@@ -82,6 +82,20 @@ jobs:
           s = s.replace("android {", 'android {\n    // QF001 sideload compatibility: not a Google Play release.\n    lint { disable += "ExpiredTargetSdkVersion" }', 1)
           p.write_text(s)
           PY
+      - name: Integrate additional general settings
+        run: |
+          python integration10022/apply_general.py DJ88-BID-10022-PROIECT-INTEGRAT
+          cp integration10022/bid_general.js DJ88-BID-10022-PROIECT-INTEGRAT/app/src/main/assets/
+          cd DJ88-BID-10022-PROIECT-INTEGRAT
+          node --check app/src/main/assets/bid_general.js
+          node --check app/src/main/assets/bid_theme_builder.js
+          cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
+          for f in tests/editor10022/test_*.js; do node "$f" || exit 1; done
+          cd app/src/main/assets
+          sha256sum -c <<'EOF'
+          17afdcd419307951af50666dfad6666139cdaedb34007318cdc931731f662f5f  bid_approved.png
+          17afdcd419307951af50666dfad6666139cdaedb34007318cdc931731f662f5f  bid_fullbleed.png
+          EOF
       - name: Configure separate test application
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
@@ -110,6 +124,6 @@ jobs:
           printf '%s\n' 'Separate debug-signed test application. Does not update the existing BID package. Test only while parked. Google Maps authorization may require the new package and certificate. Device behavior not validated.' > dist/README.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: DJ88-BID-10022-TEST
+          name: DJ88-BID-10022-TEST-GENERAL
           path: DJ88-BID-10022-PROIECT-INTEGRAT/dist/
           if-no-files-found: error
