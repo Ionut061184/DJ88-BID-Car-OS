@@ -21,6 +21,7 @@ import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private lateinit var systemWallpaper: BidSystemWallpaper
     private lateinit var osmTiles: BidOsmTiles
     private lateinit var themeWidgets: BidThemeWidgets
     private lateinit var themeFiles: BidThemeFiles
@@ -97,6 +98,7 @@ class MainActivity : Activity() {
         super.onResume()
         if (::mapWidget.isInitialized) mapWidget.start()
         if (::osmTiles.isInitialized) osmTiles.start()
+        if (::systemWallpaper.isInitialized) systemWallpaper.start()
         if (::themeWidgets.isInitialized) themeWidgets.start()
         speedForeground = true
         if (pageReady && ::bidGpsSpeed.isInitialized) bidGpsSpeed.start()
@@ -107,6 +109,7 @@ class MainActivity : Activity() {
     override fun onPause() {
         if (::mapWidget.isInitialized) mapWidget.stop()
         if (::osmTiles.isInitialized) osmTiles.stop()
+        if (::systemWallpaper.isInitialized) systemWallpaper.stop()
         if (::themeWidgets.isInitialized) themeWidgets.stop()
         speedForeground = false
         if (::bidGpsSpeed.isInitialized) bidGpsSpeed.stop()
@@ -190,6 +193,8 @@ class MainActivity : Activity() {
         val root = android.widget.FrameLayout(this)
         root.addView(webView, android.widget.FrameLayout.LayoutParams(-1,-1))
         setContentView(root)
+        systemWallpaper=BidSystemWallpaper(this,webView)
+        webView.addJavascriptInterface(systemWallpaper,"BIDSystemWallpaper")
         mapWidget = BidMapWidget(this,root,webView)
         webView.addJavascriptInterface(mapWidget,"BIDWidget")
         themeWidgets=BidThemeWidgets(this,root,webView)
