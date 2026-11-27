@@ -14,8 +14,8 @@ import android.os.Looper
 import android.os.SystemClock
 import android.webkit.WebView
 
-/** Foreground GPS speed only. No storage, coordinates in JS, CANBUS, or network. */
-class BidGpsSpeed(private val activity: Activity, private val web: WebView) : LocationListener {
+/** Foreground GPS speed and optional Smart Drive context; no stored route. */
+class BidGpsSpeed(private val activity: Activity, private val web: WebView, private val drive: BidDriveContext) : LocationListener {
     private val manager = activity.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
     private val handler = Handler(Looper.getMainLooper())
     private var running = false
@@ -40,11 +40,13 @@ class BidGpsSpeed(private val activity: Activity, private val web: WebView) : Lo
             val m = manager ?: return
             m.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500L, 0f, this, Looper.getMainLooper())
             running = true
+            drive.start()
             handler.post(expiry)
         } catch (_: Exception) { unavailable() }
     }
     fun stop() {
         running = false
+        drive.stop()
         handler.removeCallbacks(expiry)
         try { manager?.removeUpdates(this) } catch (_: Exception) {}
         unavailable()
@@ -58,6 +60,7 @@ class BidGpsSpeed(private val activity: Activity, private val web: WebView) : Lo
         val speed = location.speed
         if (!speed.isFinite() || speed < 0f || speed > 100f) { unavailable(); return }
         lastFix = SystemClock.elapsedRealtime()
+        drive.onFix(location)
         emit("if(window.bidGpsSpeedUpdate)window.bidGpsSpeedUpdate(${speed.toDouble()});")
     }
     override fun onProviderDisabled(provider: String) { unavailable() }
