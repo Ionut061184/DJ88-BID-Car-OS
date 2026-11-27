@@ -1,0 +1,58 @@
+name: BID 10022 verified build
+on:
+  push:
+    branches: [feature/bid-10022-integration]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify cumulative assets before compilation
+        run: |
+          cd app/src/main/assets
+          sha256sum -c <<'EOF'
+          17afdcd419307951af50666dfad6666139cdaedb34007318cdc931731f662f5f  bid_approved.png
+          17afdcd419307951af50666dfad6666139cdaedb34007318cdc931731f662f5f  bid_fullbleed.png
+          67f3193d4f3d433ccef7904184f6c41bac99c3b2a521097797de9e99664cfb5d  bid_theme_builder.js
+          7f331c005671d253f165667983d1da7f6a27f2d89a2e2a5efb7769700eafc643  index.html
+          EOF
+          for f in *.js; do node --check "$f"; done
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Build signed update
+        env:
+          BID_KEYSTORE_BASE64: ${{ secrets.BID_KEYSTORE_BASE64 }}
+          BID_KEY_ALIAS: ${{ secrets.BID_KEY_ALIAS }}
+          BID_KEYSTORE_PASSWORD: ${{ secrets.BID_KEYSTORE_PASSWORD }}
+          BID_KEY_PASSWORD: ${{ secrets.BID_KEY_PASSWORD }}
+          BID_GOOGLE_MAPS_KEY: ${{ secrets.BID_GOOGLE_MAPS_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$BID_KEYSTORE_BASE64" || { echo "Original signing key not configured"; exit 1; }
+          export BID_KEYSTORE_PATH="$RUNNER_TEMP/bid-signing.jks"
+          trap 'rm -f "$BID_KEYSTORE_PATH"' EXIT
+          printf '%s' "$BID_KEYSTORE_BASE64" | base64 -d > "$BID_KEYSTORE_PATH"
+          gradle --no-daemon assembleLabSafeRelease
+          mkdir -p dist
+          cp app/build/outputs/apk/labSafe/release/app-labSafe-release.apk dist/DJ88-BID-10022.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/DJ88-BID-10022.apk > dist/signature.txt
+          grep -i 'SHA-1 digest: 72d82bd57920918cae7d3a7e8fe84d6c3142c5ea' dist/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/DJ88-BID-10022.apk | head -1 > dist/package.txt
+          grep -q "name='ro.dj88bid.car.widgetlab'" dist/package.txt
+          python -c "import re; assert int(re.search(r\"versionCode='(\\d+)'\",open('dist/package.txt').read()).group(1))>=10022"
+          sha256sum dist/*.apk > dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DJ88-BID-10022
+          path: dist/
+          if-no-files-found: error
