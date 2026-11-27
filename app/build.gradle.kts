@@ -10,7 +10,7 @@ android {
         // GitHub Actions gives each build a monotonically increasing versionCode.
         // This does not solve Android's signing-certificate compatibility requirement.
         val ciBuild = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
-        versionCode = ciBuild?.let { 10000 + it } ?: 15
+        versionCode = maxOf(10021, ciBuild?.let { 10000 + it } ?: 15)
         versionName = "1.6-oem-bridge-beta" + (ciBuild?.let { ".$it" } ?: "")
     }
 
