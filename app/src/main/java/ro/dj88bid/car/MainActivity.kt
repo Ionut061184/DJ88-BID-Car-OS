@@ -21,6 +21,7 @@ import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private lateinit var googleMap: BidGoogleMap
     private lateinit var systemWallpaper: BidSystemWallpaper
     private lateinit var osmTiles: BidOsmTiles
     private lateinit var themeWidgets: BidThemeWidgets
@@ -98,6 +99,7 @@ class MainActivity : Activity() {
         super.onResume()
         if (::mapWidget.isInitialized) mapWidget.start()
         if (::osmTiles.isInitialized) osmTiles.start()
+        if (::googleMap.isInitialized) googleMap.start()
         if (::systemWallpaper.isInitialized) systemWallpaper.start()
         if (::themeWidgets.isInitialized) themeWidgets.start()
         speedForeground = true
@@ -109,6 +111,7 @@ class MainActivity : Activity() {
     override fun onPause() {
         if (::mapWidget.isInitialized) mapWidget.stop()
         if (::osmTiles.isInitialized) osmTiles.stop()
+        if (::googleMap.isInitialized) googleMap.stop()
         if (::systemWallpaper.isInitialized) systemWallpaper.stop()
         if (::themeWidgets.isInitialized) themeWidgets.stop()
         speedForeground = false
@@ -118,7 +121,13 @@ class MainActivity : Activity() {
         super.onPause()
     }
 
+    override fun onLowMemory() {
+        super.onLowMemory()
+        if (::googleMap.isInitialized) googleMap.lowMemory()
+    }
+
     override fun onDestroy() {
+        if (::googleMap.isInitialized) googleMap.close()
         if (::themeFiles.isInitialized) themeFiles.close()
         if (::themeWidgets.isInitialized) themeWidgets.close()
         if (::bidThemeImage.isInitialized) bidThemeImage.close()
@@ -197,6 +206,8 @@ class MainActivity : Activity() {
         webView.addJavascriptInterface(systemWallpaper,"BIDSystemWallpaper")
         mapWidget = BidMapWidget(this,root,webView)
         webView.addJavascriptInterface(mapWidget,"BIDWidget")
+        googleMap=BidGoogleMap(this,root,webView)
+        webView.addJavascriptInterface(googleMap,"BIDGoogleMap")
         themeWidgets=BidThemeWidgets(this,root,webView)
         webView.addJavascriptInterface(themeWidgets,"BIDThemeWidgets")
         themeFiles=BidThemeFiles(this,webView)
