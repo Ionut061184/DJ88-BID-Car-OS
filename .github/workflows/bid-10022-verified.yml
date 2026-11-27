@@ -34,8 +34,39 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Locate or install Android SDK command line tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$RUNNER_TEMP/android-sdk}}"
+          mkdir -p "$SDK_ROOT"
+          SDKMANAGER="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMANAGER" ] && [ -d "$SDK_ROOT/cmdline-tools" ]; then
+            SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          fi
+          if [ -z "$SDKMANAGER" ]; then
+            TMP="$(mktemp -d)"
+            curl --fail --location --retry 3 https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o "$TMP/tools.zip"
+            unzip -q "$TMP/tools.zip" -d "$TMP"
+            mkdir -p "$SDK_ROOT/cmdline-tools"
+            mv "$TMP/cmdline-tools" "$SDK_ROOT/cmdline-tools/bid-11076708"
+            SDKMANAGER="$SDK_ROOT/cmdline-tools/bid-11076708/bin/sdkmanager"
+            rm -rf "$TMP"
+          fi
+          test -x "$SDKMANAGER"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          if [ ! -f "$SDK_ROOT/platforms/android-35/android.jar" ] || [ ! -x "$SDK_ROOT/build-tools/35.0.0/apksigner" ]; then
+            set +o pipefail
+            yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses > /dev/null
+            LICENSE_STATUS=${PIPESTATUS[1]}
+            set -o pipefail
+            test "$LICENSE_STATUS" = 0
+            "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platforms;android-35" "build-tools;35.0.0"
+          fi
+          test -f "$SDK_ROOT/platforms/android-35/android.jar"
+          test -x "$SDK_ROOT/build-tools/35.0.0/apksigner"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
@@ -49,7 +80,16 @@ jobs:
           BID_GOOGLE_MAPS_KEY: ${{ secrets.BID_GOOGLE_MAPS_KEY }}
         run: |
           set -euo pipefail
-          test -n "$BID_KEYSTORE_BASE64" || { echo "Original signing key not configured"; exit 1; }
+          missing=0
+          for name in BID_KEYSTORE_BASE64 BID_KEY_ALIAS BID_KEYSTORE_PASSWORD BID_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "::error::Missing signing secret: $name"; missing=1; fi
+          done
+          if [ "$missing" != 0 ]; then
+            echo "Validating Android source with an unsigned release build only."
+            gradle --no-daemon assembleLabSafeRelease
+            echo "::error::Original signing credentials unavailable; no update APK published."
+            exit 1
+          fi
           export BID_KEYSTORE_PATH="$RUNNER_TEMP/bid-signing.jks"
           trap 'rm -f "$BID_KEYSTORE_PATH"' EXIT
           printf '%s' "$BID_KEYSTORE_BASE64" | base64 -d > "$BID_KEYSTORE_PATH"
@@ -58,7 +98,7 @@ jobs:
           cp app/build/outputs/apk/labSafe/release/app-labSafe-release.apk dist/DJ88-BID-10022.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/DJ88-BID-10022.apk > dist/signature.txt
           grep -i 'SHA-1 digest: 72d82bd57920918cae7d3a7e8fe84d6c3142c5ea' dist/signature.txt
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/DJ88-BID-10022.apk | head -1 > dist/package.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/DJ88-BID-10022.apk > dist/package.txt
           grep -q "name='ro.dj88bid.car.widgetlab'" dist/package.txt
           python -c "import re; assert int(re.search(r\"versionCode='(\\d+)'\",open('dist/package.txt').read()).group(1))>=10022"
           sha256sum dist/*.apk > dist/SHA256SUMS.txt
