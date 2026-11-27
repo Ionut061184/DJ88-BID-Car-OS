@@ -125,3 +125,44 @@ function diagnostic(){
  document.getElementById('diagnosticModal').classList.add('on');
 }
 try{if(localStorage.getItem('bid_mode')==='driving')driving()}catch(e){}
+
+
+/* Native Maps preview: separate from the immutable Luxury screen. */
+(function(){
+ const drive=document.getElementById('drive'), panel=document.querySelector('#overlay .row');
+ if(!drive||!panel)return;
+ const key='bid_native_maps_driving_v1';
+ const defaults={mode:'normal',zoom:16,traffic:false,heading:false};
+ let prefs={...defaults},fix=null,fixAt=0,active=false;
+ try{prefs={...defaults,...JSON.parse(localStorage.getItem(key)||'{}')}}catch(e){}
+ const modes=['normal','satellite','hybrid','terrain','night'];
+ if(!modes.includes(prefs.mode))prefs.mode='normal';
+ prefs.zoom=Math.min(20,Math.max(3,Number(prefs.zoom)||16));
+ const entry=document.createElement('button');entry.textContent='Google Maps nativ · Test';panel.appendChild(entry);
+ const box=document.createElement('section');
+ box.style.cssText='display:none;position:absolute;inset:70px 20px 20px;background:#211b20;color:#e6d2bc;padding:12px;z-index:5;box-sizing:border-box';
+ box.innerHTML='<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button data-close>Înapoi</button><label>Hartă <select data-mode><option value="normal">Normală</option><option value="satellite">Satelit</option><option value="hybrid">Hibrid</option><option value="terrain">Relief</option><option value="night">Noapte</option></select></label><label>Zoom <input data-zoom type="range" min="3" max="20" step="1"></label><label><input data-traffic type="checkbox"> Trafic</label><label><input data-heading type="checkbox"> Direcție GPS</label></div><p data-status role="status">Aștept GPS.</p><div data-map style="position:absolute;top:125px;left:12px;right:12px;bottom:12px;background:#151515;display:grid;place-items:center">Hartă nativă · necesită GPS și cheia BID</div>';
+ drive.appendChild(box);
+ const q=s=>box.querySelector(s),mode=q('[data-mode]'),zoom=q('[data-zoom]'),traffic=q('[data-traffic]'),heading=q('[data-heading]'),slot=q('[data-map]'),status=q('[data-status]');
+ mode.value=prefs.mode;zoom.value=prefs.zoom;traffic.checked=!!prefs.traffic;heading.checked=!!prefs.heading;
+ function hide(){if(window.BIDGoogleMap)try{BIDGoogleMap.sync('{"show":false}')}catch(e){}}
+ function sync(){
+  if(!active||!drive.classList.contains('on')||document.hidden){hide();return}
+  if(!window.BIDGoogleMap){status.textContent='SDK disponibil numai în APK compatibil.';return}
+  let st;try{st=JSON.parse(BIDGoogleMap.status())}catch(e){hide();return}
+  if(!st.keyConfigured||st.playServices!==0){hide();status.textContent=!st.keyConfigured?'Cheia Google Maps BID lipsește.':'Google Play Services indisponibil: '+st.playServices;return}
+  if(!fix||Date.now()-fixAt>15000){hide();status.textContent='Aștept poziție GPS actuală.';return}
+  const r=slot.getBoundingClientRect();
+  if(r.width<100||r.height<80||r.left<0||r.top<0||r.right>innerWidth+1||r.bottom>innerHeight+1){hide();return}
+  BIDGoogleMap.sync(JSON.stringify({show:true,vw:innerWidth,vh:innerHeight,x:r.left,y:r.top,w:r.width,h:r.height,lat:fix.lat,lon:fix.lon,bearing:prefs.heading?Number(fix.bearing)||0:0,zoom:prefs.zoom,mode:prefs.mode,traffic:prefs.traffic,stationary:false,alpha:1}));
+  status.textContent=st.detail||'Inițializare hartă.';
+ }
+ function save(){prefs={mode:mode.value,zoom:Number(zoom.value),traffic:traffic.checked,heading:heading.checked};try{localStorage.setItem(key,JSON.stringify(prefs))}catch(e){status.textContent='Salvarea locală a eșuat.'}sync()}
+ [mode,zoom,traffic,heading].forEach(el=>el.addEventListener('change',save));
+ const oldFix=window.bidDriveFix;window.bidDriveFix=function(d){if(typeof oldFix==='function')oldFix(d);if(d&&Number.isFinite(d.lat)&&Number.isFinite(d.lon)&&d.lat>=-85&&d.lat<=85&&Math.abs(d.lon)<=180){fix=d;fixAt=Date.now();sync()}};
+ const oldState=window.bidGoogleMapState;window.bidGoogleMapState=function(d){if(typeof oldState==='function')oldState(d);if(active&&d&&d.detail)status.textContent=d.detail};
+ entry.onclick=()=>{driving();active=true;box.style.display='block';requestAnimationFrame(sync)};
+ q('[data-close]').onclick=()=>{active=false;box.style.display='none';hide();closeAll();theme(true)};
+ new MutationObserver(()=>{if(!drive.classList.contains('on')){active=false;box.style.display='none';hide()}}).observe(drive,{attributes:true,attributeFilter:['class']});
+ addEventListener('resize',sync);document.addEventListener('visibilitychange',sync);setInterval(()=>{if(active)sync()},1500);
+})();
