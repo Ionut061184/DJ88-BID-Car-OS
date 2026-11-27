@@ -21,6 +21,7 @@ import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private lateinit var mapWidget: BidMapWidget
     private lateinit var gpsWeather: BidGpsWeather
     private lateinit var bidGpsSpeed: BidGpsSpeed
     private lateinit var bidDriveContext: BidDriveContext
@@ -90,6 +91,7 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (::mapWidget.isInitialized) mapWidget.start()
         speedForeground = true
         if (pageReady && ::bidGpsSpeed.isInitialized) bidGpsSpeed.start()
         if (::adaptiveDisplay.isInitialized) adaptiveDisplay.start()
@@ -97,6 +99,7 @@ class MainActivity : Activity() {
     }
 
     override fun onPause() {
+        if (::mapWidget.isInitialized) mapWidget.stop()
         speedForeground = false
         if (::bidGpsSpeed.isInitialized) bidGpsSpeed.stop()
         if (::gpsWeather.isInitialized) gpsWeather.stop()
@@ -112,6 +115,12 @@ class MainActivity : Activity() {
         if (::bidGpsSpeed.isInitialized) bidGpsSpeed.stop()
         if (::gpsWeather.isInitialized) gpsWeather.close()
         super.onDestroy()
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode,resultCode,data)
+        if (::mapWidget.isInitialized) mapWidget.result(requestCode,resultCode)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -161,7 +170,11 @@ class MainActivity : Activity() {
             }
         }
         webView.addJavascriptInterface(Bridge(), "BID")
-        setContentView(webView)
+        val root = android.widget.FrameLayout(this)
+        root.addView(webView, android.widget.FrameLayout.LayoutParams(-1,-1))
+        setContentView(root)
+        mapWidget = BidMapWidget(this,root,webView)
+        webView.addJavascriptInterface(mapWidget,"BIDWidget")
         gpsWeather = BidGpsWeather(this, ::emitJs)
         bidDriveContext = BidDriveContext(this, webView)
         webView.addJavascriptInterface(bidDriveContext, "BIDDrive")
