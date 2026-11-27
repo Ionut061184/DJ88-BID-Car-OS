@@ -117,6 +117,10 @@ jobs:
         run: |
           python integration10022/apply_freeform.py DJ88-BID-10022-PROIECT-INTEGRAT
           node --check DJ88-BID-10022-PROIECT-INTEGRAT/app/src/main/assets/bid_general.js
+      - name: Integrate named Tasker commands
+        run: |
+          python integration10022/apply_tasker_commands.py DJ88-BID-10022-PROIECT-INTEGRAT
+          node --check DJ88-BID-10022-PROIECT-INTEGRAT/app/src/main/assets/bid_general.js
       - name: Configure separate test application
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
@@ -145,6 +149,6 @@ jobs:
           printf '%s\n' 'Separate debug-signed test application. Does not update the existing BID package. Test only while parked. Google Maps authorization may require the new package and certificate. Device behavior not validated.' > dist/README.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: DJ88-BID-10022-TEST-FREEFORM
+          name: DJ88-BID-10022-TEST-TASKER
           path: DJ88-BID-10022-PROIECT-INTEGRAT/dist/
           if-no-files-found: error
