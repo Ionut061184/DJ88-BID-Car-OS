@@ -12,8 +12,17 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
 import java.util.Locale
+import android.content.Context
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import android.util.Base64
+import java.security.KeyStore
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 
-/** Session-only map configuration. No location history or API key is stored. */
+/** Provider configuration encrypted with Android Keystore. No location history stored. */
 class BidDriveContext(private val activity: Activity, private val web: WebView) {
     private val worker = Executors.newSingleThreadExecutor()
     private var generation = 0
@@ -26,6 +35,54 @@ class BidDriveContext(private val activity: Activity, private val web: WebView) 
     private var lastLon: Double? = null
     private var metadataReady = false
     private var metadataBusy = false
+    private val prefs = activity.getSharedPreferences("bid_drive_secure", Context.MODE_PRIVATE)
+    private val alias = "bid_drive_provider_aes_v1"
+    private var persisted = false
+    private var storageError = false
+    private var restored = false
+    private fun secret(create: Boolean): SecretKey {
+        val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        val existing = ks.getKey(alias, null) as? SecretKey
+        if (existing != null) return existing
+        check(create) { "Missing provider key" }
+        return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore").apply {
+            init(KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).setKeySize(256).build())
+        }.generateKey()
+    }
+    private fun saveConfig(): Boolean = try {
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, secret(true))
+        val data = JSONObject().put("key", mapKey).put("endpoint", endpoint).toString().toByteArray(Charsets.UTF_8)
+        val encrypted = cipher.doFinal(data)
+        prefs.edit().putString("iv", Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
+            .putString("cipher", Base64.encodeToString(encrypted, Base64.NO_WRAP)).commit()
+    } catch (_: Exception) { false }
+    private fun notifyConfig() {
+        val state = JSONObject().put("key", mapKey).put("endpoint", endpoint)
+            .put("saved", persisted).put("storageError", storageError)
+        emit("if(window.bidDriveConfigState)window.bidDriveConfigState($state);")
+    }
+    @JavascriptInterface fun restore() {
+        activity.runOnUiThread {
+            if (!restored) {
+                restored = true
+                try {
+                    val iv = prefs.getString("iv", null)
+                    val enc = prefs.getString("cipher", null)
+                    if (iv != null && enc != null) {
+                        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                        cipher.init(Cipher.DECRYPT_MODE, secret(false), GCMParameterSpec(128, Base64.decode(iv, Base64.NO_WRAP)))
+                        val data = JSONObject(String(cipher.doFinal(Base64.decode(enc, Base64.NO_WRAP)), Charsets.UTF_8))
+                        mapKey = data.optString("key"); endpoint = data.optString("endpoint"); persisted = true
+                    }
+                } catch (_: Exception) { storageError = true; mapKey = ""; endpoint = "" }
+            }
+            notifyConfig()
+            if (active) metadata()
+        }
+    }
     private fun emit(js: String) { web.evaluateJavascript(js, null) }
     private fun request(url: URL, body: String? = null): String {
         val conn = url.openConnection() as HttpURLConnection
@@ -49,11 +106,15 @@ class BidDriveContext(private val activity: Activity, private val web: WebView) 
     }
     @JavascriptInterface fun configure(key: String, osmEndpoint: String) {
         activity.runOnUiThread {
-            generation++; mapKey = key.trim().take(200); metadataReady = false; metadataBusy = false
+            generation++; restored = true; if (key.isNotBlank()) mapKey = key.trim().take(200); metadataReady = false; metadataBusy = false
             endpoint = try {
                 val u = Uri.parse(osmEndpoint.trim()); if (u.scheme == "https" && !u.host.isNullOrBlank() && u.userInfo == null && u.fragment == null && osmEndpoint.length <= 500) osmEndpoint.trim() else ""
             } catch (_: Exception) { "" }
             lastQueryAt = -120000L; lastLat = null; lastLon = null; queryBusy = false
+            persisted = if (mapKey.isBlank() && endpoint.isBlank()) prefs.edit().clear().commit() else saveConfig()
+            storageError = !persisted
+            if (mapKey.isBlank() && endpoint.isBlank()) persisted = false
+            notifyConfig()
             if (active) metadata()
         }
     }
@@ -71,13 +132,13 @@ class BidDriveContext(private val activity: Activity, private val web: WebView) 
             activity.runOnUiThread {
                 if (generation != token || !active) return@runOnUiThread
                 metadataBusy = false; metadataReady = result != null
-                if (result == null) mapKey = ""
+                // Keep saved configuration after transient network failure.
                 emit("if(window.bidDriveMapMetadata)window.bidDriveMapMetadata(" + (result?.toString() ?: "null") + ");")
             }
         }
     }
     @JavascriptInterface fun disable() {
-        activity.runOnUiThread { generation++; endpoint = ""; mapKey = ""; metadataReady = false; metadataBusy = false; queryBusy = false; lastLat = null; lastLon = null; lastQueryAt = -120000L }
+        activity.runOnUiThread { generation++; restored = true; endpoint = ""; mapKey = ""; metadataReady = false; metadataBusy = false; queryBusy = false; lastLat = null; lastLon = null; lastQueryAt = -120000L; persisted = false; storageError = !prefs.edit().clear().commit(); notifyConfig() }
     }
     fun start() { active = true; metadata() }
     fun stop() { active = false; generation++; queryBusy = false; metadataBusy = false; lastLat = null; lastLon = null }
