@@ -1,0 +1,11 @@
+const fs=require('fs'),vm=require('vm'),a=require('assert');
+const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8');
+const start=s.indexOf('function persist(next)'),end=s.indexOf('\n',start);
+a.ok(start>=0&&end>start);
+const data=new Map([['main','original']]);let fail=false;
+const c={KEY:'main',BACKUP:'backup',state:{original:true},backupWarning:'',window:{},message(){},snapshot(v){if(v.bad)throw Error('invalid');return {themes:v.themes,active:v.active,applied:v.applied};},localStorage:{getItem:k=>data.get(k)||null,setItem(k,v){if(fail&&k==='main')throw Error('quota');data.set(k,v);}}};
+vm.createContext(c);vm.runInContext(s.slice(start,end),c);
+a.equal(c.persist({bad:true}),false);a.equal(data.get('main'),'original');a.equal(c.state.original,true);
+fail=true;a.equal(c.persist({themes:[],active:null,applied:null}),false);a.equal(data.get('main'),'original');a.equal(c.state.original,true);
+fail=false;a.equal(c.persist({themes:[],active:null,applied:null}),true);a.equal(data.get('backup'),'original');a.equal(JSON.parse(data.get('main')).version,1);a.equal(c.state.active,null);
+console.log('10 persistence assertions passed');
