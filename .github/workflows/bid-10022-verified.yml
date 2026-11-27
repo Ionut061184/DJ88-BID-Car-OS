@@ -96,6 +96,8 @@ jobs:
           17afdcd419307951af50666dfad6666139cdaedb34007318cdc931731f662f5f  bid_approved.png
           17afdcd419307951af50666dfad6666139cdaedb34007318cdc931731f662f5f  bid_fullbleed.png
           EOF
+      - name: Validate and connect online catalog
+        run: python integration10022/apply_catalog.py DJ88-BID-10022-PROIECT-INTEGRAT
       - name: Configure separate test application
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
@@ -124,6 +126,6 @@ jobs:
           printf '%s\n' 'Separate debug-signed test application. Does not update the existing BID package. Test only while parked. Google Maps authorization may require the new package and certificate. Device behavior not validated.' > dist/README.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: DJ88-BID-10022-TEST-GENERAL
+          name: DJ88-BID-10022-TEST-CATALOG
           path: DJ88-BID-10022-PROIECT-INTEGRAT/dist/
           if-no-files-found: error
