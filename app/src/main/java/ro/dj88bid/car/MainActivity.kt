@@ -199,6 +199,9 @@ class MainActivity : Activity() {
             }
         }
         webView.addJavascriptInterface(Bridge(), "BID")
+        webView.addJavascriptInterface(BidVolume(this, webView), "BIDVolume")
+        webView.addJavascriptInterface(BidStore(this, webView), "BIDStore")
+        webView.addJavascriptInterface(BidOnlineCatalog(this, webView), "BIDOnlineCatalog")
         val root = android.widget.FrameLayout(this)
         root.addView(webView, android.widget.FrameLayout.LayoutParams(-1,-1))
         setContentView(root)
