@@ -22,6 +22,7 @@ import org.json.JSONObject
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var themeWidgets: BidThemeWidgets
+    private lateinit var themeFiles: BidThemeFiles
     private lateinit var bidThemeImage: BidThemeImage
     private lateinit var mapWidget: BidMapWidget
     private lateinit var gpsWeather: BidGpsWeather
@@ -112,6 +113,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (::themeFiles.isInitialized) themeFiles.close()
         if (::themeWidgets.isInitialized) themeWidgets.close()
         if (::bidThemeImage.isInitialized) bidThemeImage.close()
         if (::bidDriveContext.isInitialized) {
@@ -126,6 +128,7 @@ class MainActivity : Activity() {
     @Suppress("DEPRECATION")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
+        if (::themeFiles.isInitialized && themeFiles.result(requestCode,resultCode,data)) return
         if (::themeWidgets.isInitialized && themeWidgets.result(requestCode,resultCode)) return
         if (::bidThemeImage.isInitialized && bidThemeImage.result(requestCode,resultCode,data)) return
         if (::mapWidget.isInitialized) mapWidget.result(requestCode,resultCode)
@@ -185,6 +188,8 @@ class MainActivity : Activity() {
         webView.addJavascriptInterface(mapWidget,"BIDWidget")
         themeWidgets=BidThemeWidgets(this,root,webView)
         webView.addJavascriptInterface(themeWidgets,"BIDThemeWidgets")
+        themeFiles=BidThemeFiles(this,webView)
+        webView.addJavascriptInterface(themeFiles,"BIDThemeFiles")
         bidThemeImage = BidThemeImage(this,webView)
         webView.addJavascriptInterface(bidThemeImage,"BIDThemeImage")
         gpsWeather = BidGpsWeather(this, ::emitJs)
