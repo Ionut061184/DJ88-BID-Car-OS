@@ -16,3 +16,11 @@ a="geometry(n,e,editing);"
 assert s.count(a)==1
 s=s.replace(a,a+"if(e.border)n.style.borderColor=e.borderColor+Math.round(e.borderAlpha*2.55).toString(16).padStart(2,'0');")
 p.write_text(s)
+
+# Extend existing schema assertions without removing any previous checks.
+t=Path(sys.argv[1])/"tests/editor10022/test_advanced.js"
+test=t.read_text()
+import re
+test,count=re.subn(r'(refreshSeconds\s*:\s*\d+)(\s*,\s*actionLocked\s*:)',r'\1,borderAlpha:100\2',test)
+assert count>=1,"Expected advanced schema test not found"
+t.write_text(test)
