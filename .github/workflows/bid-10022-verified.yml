@@ -260,6 +260,13 @@ jobs:
           node --check app/src/main/assets/bid_theme_builder.js
           cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
           node tests/editor10022/test_native_action_target.js
+      - name: Validate app folder action targets
+        run: |
+          python integration10022/apply_folder_action_guard.py DJ88-BID-10022-PROIECT-INTEGRAT
+          cd DJ88-BID-10022-PROIECT-INTEGRAT
+          node --check app/src/main/assets/bid_theme_builder.js
+          cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
+          node tests/editor10022/test_folder_target.js
       - name: Configure separate test application
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
