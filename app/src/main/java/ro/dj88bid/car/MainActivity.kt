@@ -444,7 +444,56 @@ class MainActivity : Activity() {
     /** Nullable states: do not claim Wi-Fi/Bluetooth is on when access is denied. */
     private fun connectivitySnapshot(): JSONObject = BidConnectivity.snapshot(this)
 
+    private fun themeApps(): List<android.content.pm.ResolveInfo> =
+        packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER),0)
+            .filter { it.activityInfo.exported && it.activityInfo.enabled && it.activityInfo.packageName != packageName }
+            .distinctBy { it.activityInfo.packageName + "/" + it.activityInfo.name }
+            .sortedBy { it.loadLabel(packageManager).toString().lowercase(java.util.Locale.ROOT) }
+
+    private fun themeAppEntry(key:String): android.content.pm.ResolveInfo? =
+        if(key.length > 512) null else themeApps().firstOrNull {
+            it.activityInfo.packageName + "/" + it.activityInfo.name == key
+        }
+
     inner class Bridge {
+        @JavascriptInterface
+        fun listThemeApps(): String {
+            val result=org.json.JSONArray()
+            try { for (app in themeApps()) {
+                result.put(JSONObject().put("key",app.activityInfo.packageName+"/"+app.activityInfo.name)
+                    .put("label",app.loadLabel(packageManager).toString().take(100)))
+            }} catch (_:Exception) {}
+            return result.toString()
+        }
+
+        @JavascriptInterface
+        fun themeAppIcon(key:String): String {
+            return try {
+                val entry=themeAppEntry(key) ?: return ""
+                val icon=entry.loadIcon(packageManager)
+                val bmp=android.graphics.Bitmap.createBitmap(96,96,android.graphics.Bitmap.Config.ARGB_8888)
+                try {
+                    icon.setBounds(0,0,96,96);icon.draw(android.graphics.Canvas(bmp))
+                    val bytes=java.io.ByteArrayOutputStream()
+                    bmp.compress(android.graphics.Bitmap.CompressFormat.PNG,100,bytes)
+                    "data:image/png;base64,"+android.util.Base64.encodeToString(bytes.toByteArray(),android.util.Base64.NO_WRAP)
+                } finally { bmp.recycle() }
+            } catch (_:Exception) { "" }
+        }
+
+        @JavascriptInterface
+        fun launchThemeApp(key:String) = runOnUiThread {
+            if(webView.url != "file:///android_asset/index.html") return@runOnUiThread
+            val app=try { themeAppEntry(key) } catch (_:Exception) { null }
+            if(app==null) {
+                Toast.makeText(this@MainActivity,"Aplicația nu mai este disponibilă.",Toast.LENGTH_SHORT).show()
+            } else {
+                startSafely(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                    .setClassName(app.activityInfo.packageName,app.activityInfo.name)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+        }
+
         @JavascriptInterface
         fun displaySnapshot(): String = adaptiveDisplay.snapshot().toString()
 
