@@ -1,0 +1,12 @@
+const fs=require('fs'),vm=require('vm'),a=require('assert');
+const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8');
+const c={};vm.createContext(c);
+vm.runInContext(s.slice(s.indexOf('function groupCanChange('),s.indexOf('function groupMembers(')),c);
+a.equal(c.groupCanChange([]),false);
+a.equal(c.groupCanChange(null),false);
+a.equal(c.groupCanChange([{locked:false},{locked:false}]),true);
+a.equal(c.groupCanChange([{locked:false},{locked:true}]),false);
+a.equal(c.groupCanChange([null]),false);
+a.ok(s.includes("if(!groupCanChange(members))return;checkpoint();"));
+a.ok(s.includes("clip:e.clip===true,shape:e.shape,radius:e.radius"));
+console.log("7 group protection and native clip contract assertions passed");
