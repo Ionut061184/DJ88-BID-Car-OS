@@ -479,6 +479,12 @@ class MainActivity : Activity() {
         }
 
     inner class Bridge {
+        @JavascriptInterface
+        fun openCanProbe() = runOnUiThread {
+            if(webView.url == "file:///android_asset/index.html")
+                startActivity(Intent(this@MainActivity,BidCanProbeActivity::class.java))
+        }
+
         private fun iconPackPackages(): Set<String> {
             val result=linkedSetOf<String>()
             for(action in listOf("org.adw.launcher.THEMES","com.novalauncher.THEME","com.anddoes.launcher.THEME","com.teslacoilsw.launcher.THEME")){
