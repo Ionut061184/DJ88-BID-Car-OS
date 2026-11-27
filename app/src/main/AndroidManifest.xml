@@ -37,6 +37,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <activity android:name=".BidCanProbeActivity" android:exported="false" android:screenOrientation="landscape" />
         <!-- LabSafe: alias disabled; ThemesCandidate: alias enabled. No replacement of QF launchers. -->
         <activity-alias android:name="com.android.launcher3.Launcher"
             android:targetActivity=".MainActivity"
