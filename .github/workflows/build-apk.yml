@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, 'feature/bid-black-statusbar']
+    branches: [main, 'feature/bid-black-statusbar', 'feature/bid-native-google-maps']
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -53,6 +53,8 @@ jobs:
         with:
           gradle-version: '8.10.2'
       - name: Build debug APK
+        env:
+          BID_GOOGLE_MAPS_KEY: ${{ secrets.BID_GOOGLE_MAPS_KEY }}
         run: gradle --no-daemon --stacktrace assembleLabSafeDebug assembleThemesCandidateDebug
       - name: Verify both APKs and record checksums
         env:
