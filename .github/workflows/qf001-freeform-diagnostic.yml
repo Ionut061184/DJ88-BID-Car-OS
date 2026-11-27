@@ -60,11 +60,11 @@ jobs:
       - name: Verify and package
         run: |
           mkdir -p dist
-          cp freeform-probe/app/build/outputs/apk/debug/app-debug.apk dist/DJ88-BID-QF001-ACC-STANDBY-V4-TEST.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/DJ88-BID-QF001-ACC-STANDBY-V4-TEST.apk
+          cp freeform-probe/app/build/outputs/apk/debug/app-debug.apk dist/DJ88-BID-QF001-ACC-STANDBY-V5-TEST.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/DJ88-BID-QF001-ACC-STANDBY-V5-TEST.apk
           sha256sum dist/*.apk > dist/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: DJ88-BID-QF001-ACC-STANDBY-V4-TEST
+          name: DJ88-BID-QF001-ACC-STANDBY-V5-TEST
           path: dist/
           if-no-files-found: error
