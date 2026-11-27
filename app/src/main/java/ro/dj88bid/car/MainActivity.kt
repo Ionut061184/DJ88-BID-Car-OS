@@ -456,6 +456,66 @@ class MainActivity : Activity() {
         }
 
     inner class Bridge {
+        private fun iconPackPackages(): Set<String> {
+            val result=linkedSetOf<String>()
+            for(action in listOf("org.adw.launcher.THEMES","com.novalauncher.THEME","com.anddoes.launcher.THEME","com.teslacoilsw.launcher.THEME")){
+                for(info in packageManager.queryIntentActivities(Intent(action),0))result.add(info.activityInfo.packageName)
+            }
+            return result
+        }
+        @JavascriptInterface
+        fun listThemeIconPacks(): String {
+            val result=org.json.JSONArray()
+            try { for(pkg in iconPackPackages()){
+                val info=packageManager.getApplicationInfo(pkg,0)
+                result.put(JSONObject().put("key",pkg).put("label",info.loadLabel(packageManager).toString().take(100)))
+            }}catch(_:Exception){}
+            return result.toString()
+        }
+        private fun packNames(pkg:String): Set<String> {
+            if(pkg !in iconPackPackages())return emptySet()
+            val res=packageManager.getResourcesForApplication(pkg)
+            val names=linkedSetOf<String>()
+            fun parse(parser:org.xmlpull.v1.XmlPullParser){
+                var event=parser.eventType
+                while(event!=org.xmlpull.v1.XmlPullParser.END_DOCUMENT && names.size<5000){
+                    if(event==org.xmlpull.v1.XmlPullParser.START_TAG && parser.name=="item"){
+                        val name=parser.getAttributeValue(null,"drawable")
+                        if(name!=null && name.matches(Regex("[a-zA-Z0-9_]{1,120}")) && res.getIdentifier(name,"drawable",pkg)!=0)names.add(name)
+                    }
+                    event=parser.next()
+                }
+            }
+            for(name in listOf("drawable","appfilter")){
+                val id=res.getIdentifier(name,"xml",pkg)
+                if(id!=0)try{res.getXml(id).use{parse(it)}}catch(_:Exception){}
+                else try{res.assets.open(name+".xml").use{input->
+                    val p=android.util.Xml.newPullParser();p.setInput(input,"UTF-8");parse(p)
+                }}catch(_:Exception){}
+            }
+            return names
+        }
+        @JavascriptInterface
+        fun listThemePackIcons(pkg:String): String {
+            return try { org.json.JSONArray(packNames(pkg).toList()).toString() } catch(_:Exception){"[]"}
+        }
+        @JavascriptInterface
+        fun themePackIcon(pkg:String,name:String): String {
+            return try{
+                if(pkg !in iconPackPackages() || !name.matches(Regex("[a-zA-Z0-9_]{1,120}")))return ""
+                val res=packageManager.getResourcesForApplication(pkg)
+                val id=res.getIdentifier(name,"drawable",pkg)
+                if(id==0)return ""
+                val icon=res.getDrawable(id,null)
+                val bmp=android.graphics.Bitmap.createBitmap(96,96,android.graphics.Bitmap.Config.ARGB_8888)
+                try{
+                    icon.setBounds(0,0,96,96);icon.draw(android.graphics.Canvas(bmp))
+                    val bytes=java.io.ByteArrayOutputStream();bmp.compress(android.graphics.Bitmap.CompressFormat.PNG,100,bytes)
+                    "data:image/png;base64,"+android.util.Base64.encodeToString(bytes.toByteArray(),android.util.Base64.NO_WRAP)
+                }finally{bmp.recycle()}
+            }catch(_:Exception){""}
+        }
+
         @JavascriptInterface
         fun listThemeApps(): String {
             val result=org.json.JSONArray()
