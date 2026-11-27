@@ -35,6 +35,7 @@ class BidMapWidget(private val activity: Activity, private val root: FrameLayout
     private var pending = prefs.getInt("pending", -1)
     private var enabled = prefs.getBoolean("enabled", false)
     private var opacity = prefs.getInt("opacity", 100).coerceIn(0,100)
+    private var foreground = false
     private var visible = false
     private var moving = true
     private var radius = 0f
@@ -74,7 +75,7 @@ class BidMapWidget(private val activity: Activity, private val root: FrameLayout
         manager.installedProviders.filter { it.provider.packageName == MAPS }
             .sortedBy { it.loadLabel(activity.packageManager) }
     private fun showIfReady() {
-        slot.visibility = if (enabled && child != null && visible && lastBounds != null) View.VISIBLE else View.GONE
+        slot.visibility = if (foreground && enabled && child != null && visible && lastBounds != null) View.VISIBLE else View.GONE
         child?.alpha = opacity / 100f
     }
     private fun attach() {
@@ -107,8 +108,8 @@ class BidMapWidget(private val activity: Activity, private val root: FrameLayout
     private fun save() {
         prefs.edit().putInt("id",widgetId).putInt("pending",pending).putBoolean("enabled",enabled).putInt("opacity",opacity).apply()
     }
-    fun start() { try { host.startListening() } catch (_:Exception) {}; showIfReady() }
-    fun stop() { slot.visibility=View.GONE; try { host.stopListening() } catch (_:Exception) {} }
+    fun start() { foreground=true; try { host.startListening() } catch (_:Exception) {}; showIfReady() }
+    fun stop() { foreground=false; slot.visibility=View.GONE; try { host.stopListening() } catch (_:Exception) {} }
     @JavascriptInterface fun sync(x: Double,y: Double,w: Double,h: Double,viewW: Double,viewH: Double,show: Boolean,stationary: Boolean) {
         activity.runOnUiThread {
             moving = !stationary
@@ -142,7 +143,7 @@ class BidMapWidget(private val activity: Activity, private val root: FrameLayout
             } }.setNegativeButton("Închide",null).show()
     }
     private fun choose() {
-        if (pending>=0) { toast("Finalizează autorizarea widgetului.");return }
+        if (pending>=0) { cancelPending() }
         val entries = try { providers() } catch (_:Exception) { emptyList() }
         if(entries.isEmpty()) {
             AlertDialog.Builder(activity).setTitle("Google Maps · widget indisponibil")
