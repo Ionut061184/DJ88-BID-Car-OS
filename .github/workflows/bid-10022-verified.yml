@@ -272,8 +272,19 @@ jobs:
           grep -q "name='ro.dj88bid.car.widgetlab.test10022'" dist/package.txt
           sha256sum dist/*.apk > dist/SHA256SUMS.txt
           printf '%s\n' 'Separate debug-signed test application. Does not update the existing BID package. Test only while parked. Google Maps authorization may require the new package and certificate. Device behavior not validated.' > dist/README.txt
+      - name: Record final cumulative source and test evidence
+        working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
+        run: |
+          set -euo pipefail
+          for f in tests/editor10022/test_*.js; do
+            echo "=== $f ==="
+            node "$f"
+          done | tee dist/editor-tests.txt
+          find app/src/main -type f -print0 | sort -z | xargs -0 sha256sum > dist/source-manifest.sha256
+          printf '%s\n' "$GITHUB_SHA" > dist/commit.txt
+          printf '%s\n' 'Compilation and automated tests are not physical QF001 validation.' 'Pending: full portrait runtime; mixed HTML/native layering; individual native actions; native Yandex/Baidu SDK; complete criterion-by-criterion verification.' 'ACC deferred.' > dist/validation-limits.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: DJ88-BID-10022-TEST-CONVERSION
+          name: DJ88-BID-10022-CUMULATIVE-EVIDENCE
           path: DJ88-BID-10022-PROIECT-INTEGRAT/dist/
           if-no-files-found: error
