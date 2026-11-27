@@ -19,14 +19,20 @@ jobs:
           gradle-version: '8.10.2'
       - name: Install Android SDK
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
-      - name: Compile GPS native candidate
-        run: gradle --no-daemon --stacktrace :app:compileLabSafeDebugKotlin
-      - name: Document build scope
+      - name: Assemble isolated native donor LAB
+        run: gradle --no-daemon --stacktrace :app:assembleLabSafeDebug
+      - name: Export internal build
         run: |
+          set -euo pipefail
           mkdir -p dist
-          printf '%s\n' 'Native Kotlin compilation only. MASTER assets and TOUCH23 integration not yet validated. Not an installable release.' > dist/README.txt
+          file="app/build/outputs/apk/labSafe/debug/app-labSafe-debug.apk"
+          test -f "$file"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$file" > dist/signature.txt
+          cp "$file" dist/INTERNAL-NATIVE-DONOR-NOT-FOR-INSTALLATION.apk
+          sha256sum dist/*.apk > dist/SHA256SUMS.txt
+          printf '%s\n' 'INTERNAL ONLY: Native GPS candidate compiled with repository assets. Exact TOUCH23 MASTER assets and device behavior not yet validated. Do not install or treat as a release.' > dist/README.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: BID-GPS-native-compile-only
-          path: dist/README.txt
+          name: BID-GPS-INTERNAL-NATIVE-DONOR
+          path: dist/*
           if-no-files-found: error
