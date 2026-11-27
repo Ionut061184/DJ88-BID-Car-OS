@@ -1345,7 +1345,27 @@ class MainActivity : Activity() {
                     val diagnostic = "com.qf.vehicle"
                     val app = packageManager.getLaunchIntentForPackage(diagnostic)
                     if (app != null) {
-                        startSafely(app)
+                        android.app.AlertDialog.Builder(this@MainActivity)
+                            .setTitle("CANBUS OEM · test fereastră")
+                            .setItems(arrayOf("Deschidere normală", "Test fereastră redimensionată")) { _, choice ->
+                                if (choice == 0) startSafely(app)
+                                else {
+                                    val freeform = packageManager.hasSystemFeature("android.software.freeform_window_management")
+                                    if (android.os.Build.VERSION.SDK_INT >= 24 && freeform) {
+                                        val dm = resources.displayMetrics
+                                        val bounds = android.graphics.Rect(dm.widthPixels / 2, dm.heightPixels / 8,
+                                            dm.widthPixels, dm.heightPixels * 7 / 8)
+                                        try {
+                                            val options = android.app.ActivityOptions.makeBasic().setLaunchBounds(bounds)
+                                            startActivity(app, options.toBundle())
+                                        } catch (_: Exception) {
+                                            Toast.makeText(this@MainActivity, "Fereastra OEM nu a putut fi lansată.", Toast.LENGTH_LONG).show()
+                                        }
+                                    } else {
+                                        Toast.makeText(this@MainActivity, "Firmware-ul nu declară suport pentru ferestre libere.", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            }.setNegativeButton("Închide", null).show()
                     } else {
                         android.app.AlertDialog.Builder(this@MainActivity)
                             .setTitle("BID · CANBUS QF001")
