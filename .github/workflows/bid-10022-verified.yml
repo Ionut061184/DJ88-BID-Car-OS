@@ -274,6 +274,13 @@ jobs:
           node --check app/src/main/assets/bid_theme_builder.js
           cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
           for f in tests/editor10022/test_*.js; do node "$f" || exit 1; done
+      - name: Validate interactive overlay lifecycle
+        run: |
+          python integration10022/apply_modal_lifecycle.py DJ88-BID-10022-PROIECT-INTEGRAT
+          cd DJ88-BID-10022-PROIECT-INTEGRAT
+          node --check app/src/main/assets/bid_theme_builder.js
+          cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
+          node tests/editor10022/test_modal_lifecycle.js
       - name: Configure separate test application
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
