@@ -1,0 +1,39 @@
+name: QF001 Freeform Diagnostic
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/qf001-freeform-diagnostic]
+permissions:
+  contents: read
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Test coordinate bounds
+        run: |
+          mkdir -p /tmp/bid-test
+          javac -d /tmp/bid-test freeform-probe/app/src/main/java/ro/dj88bid/freeform/Bounds.java freeform-probe/tests/BoundsTest.java
+          java -cp /tmp/bid-test ro.dj88bid.freeform.BoundsTest
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Build diagnostic APK
+        run: gradle -p freeform-probe --no-daemon assembleDebug
+      - name: Verify and package
+        run: |
+          mkdir -p dist
+          cp freeform-probe/app/build/outputs/apk/debug/app-debug.apk dist/DJ88-BID-QF001-FREEFORM-TEST.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/DJ88-BID-QF001-FREEFORM-TEST.apk
+          sha256sum dist/*.apk > dist/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DJ88-BID-QF001-FREEFORM-TEST
+          path: dist/
+          if-no-files-found: error
