@@ -1,7 +1,7 @@
 name: BID Full Theme native donor
 on:
   push:
-    branches: [feature/bid-theme-can-probe]
+    branches: [feature/bid-native-google-maps]
   workflow_dispatch:
 permissions:
   contents: read
@@ -33,10 +33,12 @@ jobs:
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
           "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install "platforms;android-35" "build-tools;35.0.0" "platform-tools"
       - name: Compile isolated Android 10 compatible donor
+        env:
+          BID_GOOGLE_MAPS_KEY: ${{ secrets.BID_GOOGLE_MAPS_KEY }}
         run: gradle --no-daemon --stacktrace :app:assembleLabSafeDebug
       - name: Upload native donor (not final launcher)
         uses: actions/upload-artifact@v4
         with:
-          name: BID-THEME-CAN-PROBE-DONOR
+          name: BID-NATIVE-GOOGLE-MAPS-DONOR
           path: app/build/outputs/apk/labSafe/debug/*.apk
           if-no-files-found: error
