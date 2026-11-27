@@ -131,10 +131,12 @@ try{if(localStorage.getItem('bid_mode')==='driving')driving()}catch(e){}
 (function(){
  const drive=document.getElementById('drive'), panel=document.querySelector('#overlay .row');
  if(!drive||!panel)return;
- const key='bid_native_maps_driving_v1';
+ const key='bid_native_maps_driving_v1', libraryKey='bid_native_maps_profiles_v2';
  const defaults={mode:'normal',zoom:16,traffic:false,heading:false,x:0,y:0,w:100,h:100,alpha:1,border:'#b49a7e',borderWidth:3};
  let prefs={...defaults},fix=null,fixAt=0,active=false,editing=false;
  try{prefs={...defaults,...JSON.parse(localStorage.getItem(key)||'{}')}}catch(e){}
+ let profiles=[{id:'default',name:'Driving',prefs:{...prefs}}],selected='default';
+ try{const data=JSON.parse(localStorage.getItem(libraryKey)||'null');if(data&&Array.isArray(data.profiles)){const valid=data.profiles.filter(p=>p&&typeof p.id==='string'&&typeof p.name==='string'&&p.prefs&&typeof p.prefs==='object').slice(0,50);if(valid.length){profiles=valid;selected=valid.some(p=>p.id===data.selected)?data.selected:valid[0].id;prefs={...defaults,...profiles.find(p=>p.id===selected).prefs}}}}catch(e){}
  const modes=['normal','satellite','hybrid','terrain','night'];
  if(!modes.includes(prefs.mode))prefs.mode='normal';
  prefs.zoom=Math.min(20,Math.max(3,Number(prefs.zoom)||16));
@@ -146,7 +148,7 @@ try{if(localStorage.getItem('bid_mode')==='driving')driving()}catch(e){}
  const q=s=>box.querySelector(s),mode=q('[data-mode]'),zoom=q('[data-zoom]'),traffic=q('[data-traffic]'),heading=q('[data-heading]'),slot=q('[data-map]'),status=q('[data-status]');
  mode.value=prefs.mode;zoom.value=prefs.zoom;traffic.checked=!!prefs.traffic;heading.checked=!!prefs.heading;
  const area=document.createElement('div');
- area.style.cssText='position:absolute;top:190px;left:12px;right:12px;bottom:12px;overflow:hidden;border:1px solid #62564d;box-sizing:border-box';
+ area.style.cssText='position:absolute;top:240px;left:12px;right:12px;bottom:12px;overflow:hidden;border:1px solid #62564d;box-sizing:border-box';
  box.insertBefore(area,slot);area.appendChild(slot);
  const controls=document.createElement('div');
  controls.style.cssText='display:flex;gap:8px;align-items:center;flex-wrap:wrap';
@@ -165,9 +167,9 @@ try{if(localStorage.getItem('bid_mode')==='driving')driving()}catch(e){}
  }
  prefs.alpha=clamp(prefs.alpha,.35,1,1);prefs.borderWidth=clamp(prefs.borderWidth,0,12,3);
  if(!/^#[0-9a-f]{6}$/i.test(prefs.border))prefs.border=defaults.border;
- styleField('Opacitate','range',.35,1,.05,prefs.alpha,v=>{prefs.alpha=clamp(v,.35,1,1);save()});
- styleField('Contur','color',null,null,null,prefs.border,v=>{prefs.border=v;applyLayout();save()});
- styleField('Grosime','range',0,12,1,prefs.borderWidth,v=>{prefs.borderWidth=clamp(v,0,12,3);applyLayout();save()});
+ const alphaInput=styleField('Opacitate','range',.35,1,.05,prefs.alpha,v=>{prefs.alpha=clamp(v,.35,1,1);save()});
+ const borderInput=styleField('Contur','color',null,null,null,prefs.border,v=>{prefs.border=v;applyLayout();save()});
+ const widthInput=styleField('Grosime','range',0,12,1,prefs.borderWidth,v=>{prefs.borderWidth=clamp(v,0,12,3);applyLayout();save()});
  const grip=document.createElement('button');grip.textContent='↘';grip.style.cssText='position:absolute;right:0;bottom:0;width:44px;height:44px;touch-action:none;display:none';slot.appendChild(grip);
  slot.style.touchAction='none';
  function setEdit(on){editing=on;edit.textContent=on?'Finalizează editarea':'Editează tactil';grip.style.display=on?'block':'none';slot.style.cursor=on?'move':'default';if(on)hide();else save()}
@@ -189,6 +191,20 @@ try{if(localStorage.getItem('bid_mode')==='driving')driving()}catch(e){}
   Object.assign(slot.style,{left:prefs.x+'%',top:prefs.y+'%',width:prefs.w+'%',height:prefs.h+'%',right:'auto',bottom:'auto',border:prefs.borderWidth+'px solid '+prefs.border,boxSizing:'border-box'});
  }
  applyLayout();
+ const profileRow=document.createElement('div');profileRow.style.cssText='display:flex;gap:8px;align-items:center;flex-wrap:wrap';controls.before(profileRow);
+ const selector=document.createElement('select');selector.setAttribute('aria-label','Configurație hartă');profileRow.appendChild(selector);
+ const message=document.createElement('span');message.setAttribute('role','status');
+ function button(label,fn){const b=document.createElement('button');b.textContent=label;b.onclick=fn;profileRow.appendChild(b)}
+ function refreshProfiles(){selector.replaceChildren();for(const p of profiles){const o=document.createElement('option');o.value=p.id;o.textContent=p.name;selector.appendChild(o)}selector.value=selected}
+ function persistProfiles(){try{localStorage.setItem(libraryKey,JSON.stringify({selected,profiles}));message.textContent='Salvat local';return true}catch(e){message.textContent='Eroare salvare';return false}}
+ function loadProfile(id){const p=profiles.find(p=>p.id===id);if(!p)return;drag=null;editing=false;grip.style.display='none';edit.textContent='Editează tactil';slot.style.cursor='default';selected=id;prefs={...defaults,...p.prefs};if(!modes.includes(prefs.mode))prefs.mode='normal';prefs.zoom=clamp(prefs.zoom,3,20,16);prefs.alpha=clamp(prefs.alpha,.35,1,1);prefs.borderWidth=clamp(prefs.borderWidth,0,12,3);if(!/^#[0-9a-f]{6}$/i.test(prefs.border))prefs.border=defaults.border;mode.value=prefs.mode;zoom.value=prefs.zoom;traffic.checked=!!prefs.traffic;heading.checked=!!prefs.heading;alphaInput.value=prefs.alpha;borderInput.value=prefs.border;widthInput.value=prefs.borderWidth;applyLayout();refreshProfiles();save()}
+ function askName(initial){const s=prompt('Denumirea configurației hărții',initial);return s===null?'':s.trim().slice(0,64)}
+ function addProfile(copy){if(profiles.length>=50){message.textContent='Limită: 50 configurații';return}const name=askName(copy?profiles.find(p=>p.id===selected).name+' copie':'Configurație nouă');if(!name)return;const id='p_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,10);profiles.push({id,name,prefs:{...(copy?prefs:defaults)}});loadProfile(id)}
+ selector.onchange=()=>loadProfile(selector.value);
+ button('Nouă',()=>addProfile(false));button('Duplică',()=>addProfile(true));
+ button('Redenumește',()=>{const p=profiles.find(p=>p.id===selected),name=askName(p.name);if(name){p.name=name;refreshProfiles();persistProfiles()}});
+ button('Șterge',()=>{if(profiles.length<=1){message.textContent='Păstrează cel puțin o configurație';return}if(!confirm('Ștergi configurația selectată?'))return;profiles=profiles.filter(p=>p.id!==selected);loadProfile(profiles[0].id)});
+ profileRow.appendChild(message);refreshProfiles();
  function hide(){if(window.BIDGoogleMap)try{BIDGoogleMap.sync('{"show":false}')}catch(e){}}
  function sync(){
   if(!active||editing||!drive.classList.contains('on')||document.hidden){hide();return}
@@ -202,7 +218,7 @@ try{if(localStorage.getItem('bid_mode')==='driving')driving()}catch(e){}
   BIDGoogleMap.sync(JSON.stringify({show:true,vw:innerWidth,vh:innerHeight,x:r.left,y:r.top,w:r.width,h:r.height,lat:fix.lat,lon:fix.lon,bearing:prefs.heading?Number(fix.bearing)||0:0,zoom:prefs.zoom,mode:prefs.mode,traffic:prefs.traffic,stationary:false,alpha:prefs.alpha}));
   status.textContent=st.detail||'Inițializare hartă.';
  }
- function save(){prefs={...prefs,mode:mode.value,zoom:Number(zoom.value),traffic:traffic.checked,heading:heading.checked};try{localStorage.setItem(key,JSON.stringify(prefs))}catch(e){status.textContent='Salvarea locală a eșuat.'}sync()}
+ function save(){prefs={...prefs,mode:mode.value,zoom:Number(zoom.value),traffic:traffic.checked,heading:heading.checked};const p=profiles.find(p=>p.id===selected);if(p)p.prefs={...prefs};persistProfiles();sync()}
  [mode,zoom,traffic,heading].forEach(el=>el.addEventListener('change',save));
  const oldFix=window.bidDriveFix;window.bidDriveFix=function(d){if(typeof oldFix==='function')oldFix(d);if(d&&Number.isFinite(d.lat)&&Number.isFinite(d.lon)&&d.lat>=-85&&d.lat<=85&&Math.abs(d.lon)<=180){fix=d;fixAt=Date.now();sync()}};
  const oldState=window.bidGoogleMapState;window.bidGoogleMapState=function(d){if(typeof oldState==='function')oldState(d);if(active&&d&&d.detail)status.textContent=d.detail};
