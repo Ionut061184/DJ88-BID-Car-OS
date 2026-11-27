@@ -1,0 +1,29 @@
+name: BID Smart Drive native donor
+on:
+  push:
+    branches: [feature/bid-smartdrive-native-lab]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Install Android SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+      - name: Compile isolated Android 10 compatible donor
+        run: gradle --no-daemon --stacktrace :app:assembleLabSafeDebug
+      - name: Upload native donor (not final launcher)
+        uses: actions/upload-artifact@v4
+        with:
+          name: BID-SMARTDRIVE-NATIVE-DONOR
+          path: app/build/outputs/apk/labSafe/debug/*.apk
+          if-no-files-found: error
