@@ -200,6 +200,8 @@ jobs:
           node --check app/src/main/assets/bid_theme_builder.js
           cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
           for f in tests/editor10022/test_*.js; do node "$f" || exit 1; done
+      - name: Integrate QF001 OEM HOME categories
+        run: python integration10022/apply_qf_home.py DJ88-BID-10022-PROIECT-INTEGRAT
       - name: Configure separate test application
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
