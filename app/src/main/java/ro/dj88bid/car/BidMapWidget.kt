@@ -41,6 +41,8 @@ class BidMapWidget(private val activity: Activity, private val root: FrameLayout
     private var radius = 0f
     private var lastBounds: IntArray? = null
     private var child: View? = null
+    private var diagnostic = "Widget neconfigurat"
+    private var providerInfo: AppWidgetProviderInfo? = null
     private val slot = object : FrameLayout(activity) {
         override fun onInterceptTouchEvent(ev: MotionEvent): Boolean = true
         override fun onTouchEvent(ev: MotionEvent): Boolean {
@@ -69,6 +71,7 @@ class BidMapWidget(private val activity: Activity, private val root: FrameLayout
     private fun emit() {
         val installed = try { providers().size } catch (_:Exception) { 0 }
         val state = org.json.JSONObject().put("available", installed).put("enabled", enabled && child != null)
+            .put("detail", diagnostic).put("id",widgetId).put("shown",slot.visibility == View.VISIBLE)
         web.evaluateJavascript("if(window.bidWidgetState)window.bidWidgetState($state);",null)
     }
     private fun providers(): List<AppWidgetProviderInfo> =
@@ -79,36 +82,50 @@ class BidMapWidget(private val activity: Activity, private val root: FrameLayout
         child?.alpha = opacity / 100f
     }
     private fun attach() {
-        slot.removeAllViews(); child = null
+        slot.removeAllViews(); child = null; providerInfo = null
         if (widgetId >= 0) {
             val info = try { manager.getAppWidgetInfo(widgetId) } catch (_:Exception) { null }
             if (info == null || info.provider.packageName != MAPS) {
                 try { host.deleteAppWidgetId(widgetId) } catch (_:Exception) {}
-                widgetId = -1; enabled = false; save()
+                widgetId = -1; enabled = false; diagnostic = "Widgetul nu este autorizat sau nu mai există"; save()
             } else try {
                 val v = host.createView(activity,widgetId,info)
                 v.setPadding(0,0,0,0)
-                slot.addView(v,FrameLayout.LayoutParams(-1,-1)); child = v
+                slot.addView(v,FrameLayout.LayoutParams(-1,-1)); child = v; providerInfo = info
+                diagnostic = "Widget autorizat; conținutul depinde de Google Maps"
                 lastBounds?.let { sizeWidget(it[2],it[3]) }
-            } catch (_:Exception) { enabled = false; save() }
+            } catch (_:Exception) { enabled = false; diagnostic = "Android nu a putut crea vizualizarea widgetului"; save() }
         }
         showIfReady(); emit()
     }
     private fun sizeWidget(w: Int,h: Int) {
         val density=activity.resources.displayMetrics.density
-        val width=(w/density).roundToInt().coerceAtLeast(1)
-        val height=(h/density).roundToInt().coerceAtLeast(1)
+        val info=providerInfo ?: return
+        val v=child ?: return
+        if(w<=0||h<=0)return
+        // Preserve the provider's layout and scale the whole RemoteViews surface.
+        // Never clip attribution by cropping the content or force a tiny provider layout.
+        val requestedW=maxOf(w,(info.minWidth*density).roundToInt()).coerceAtMost(4096)
+        val requestedH=maxOf(h,(info.minHeight*density).roundToInt()).coerceAtMost(4096)
+        val scale=minOf(w.toFloat()/requestedW,h.toFloat()/requestedH,1f)
+        v.layoutParams=FrameLayout.LayoutParams(requestedW,requestedH)
+        v.pivotX=0f;v.pivotY=0f
+        v.scaleX=scale;v.scaleY=scale
+        v.translationX=(w-requestedW*scale)/2f
+        v.translationY=(h-requestedH*scale)/2f
+        val width=(requestedW/density).roundToInt().coerceAtLeast(1)
+        val height=(requestedH/density).roundToInt().coerceAtLeast(1)
         try { manager.updateAppWidgetOptions(widgetId, Bundle().apply {
             putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH,width)
             putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,width)
             putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,height)
             putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT,height)
-        }) } catch (_:Exception) {}
+        }) } catch (_:Exception) { diagnostic="Widget autorizat; dimensiunile nu au fost acceptate" }
     }
     private fun save() {
         prefs.edit().putInt("id",widgetId).putInt("pending",pending).putBoolean("enabled",enabled).putInt("opacity",opacity).apply()
     }
-    fun start() { foreground=true; try { host.startListening() } catch (_:Exception) {}; showIfReady() }
+    fun start() { foreground=true; try { host.startListening() } catch (_:Exception) { diagnostic="Android nu a pornit actualizarea widgetului" }; showIfReady(); web.post { web.evaluateJavascript("if(window.bidWidgetResync)window.bidWidgetResync();",null); emit() } }
     fun stop() { foreground=false; slot.visibility=View.GONE; try { host.stopListening() } catch (_:Exception) {} }
     @JavascriptInterface fun sync(x: Double,y: Double,w: Double,h: Double,viewW: Double,viewH: Double,show: Boolean,stationary: Boolean) {
         activity.runOnUiThread {
@@ -132,14 +149,15 @@ class BidMapWidget(private val activity: Activity, private val root: FrameLayout
     @JavascriptInterface fun photo() { activity.runOnUiThread { enabled=false;save();showIfReady();emit() } }
     private fun menu() {
         if (moving) { toast("Setează widgetul când mașina staționează și GPS-ul este valid.");return }
-        val list = arrayOf("Alege widget Google Maps", "Afișează widgetul salvat", "Transparență", "Revino la Smart Drive Foto", "Elimină widgetul")
+        val list = arrayOf("Alege widget Google Maps", "Afișează widgetul salvat", "Transparență", "Revino la Smart Drive Foto", "Elimină widgetul", "Diagnostic widget")
         AlertDialog.Builder(activity).setTitle("BID · Widget Google Maps")
             .setItems(list) { _, i -> when(i) {
                 0 -> choose()
-                1 -> { enabled = child != null;save();showIfReady();emit();if(!enabled)choose() }
+                1 -> { enabled = child != null;save();showIfReady();emit();if(!enabled)choose() else web.evaluateJavascript("if(window.bidWidgetActivated)window.bidWidgetActivated();",null) }
                 2 -> transparency()
                 3 -> { enabled=false;save();showIfReady();emit() }
                 4 -> remove()
+                5 -> AlertDialog.Builder(activity).setTitle("Diagnostic widget").setMessage("$diagnostic\nID: $widgetId\nVizibil: ${slot.visibility == View.VISIBLE}\nOpacitate: $opacity%\nFurnizor: ${providerInfo?.provider?.className ?: "—"}\nDacă nu apare harta, verifică permisiunea de localizare și internetul în Google Maps.").setPositiveButton("OK",null).show()
             } }.setNegativeButton("Închide",null).show()
     }
     private fun choose() {
@@ -180,14 +198,16 @@ class BidMapWidget(private val activity: Activity, private val root: FrameLayout
     fun result(request:Int,result:Int):Boolean {
         if(request!=BIND && request!=CONFIGURE)return false
         if(pending<0)return true
-        if(result!=Activity.RESULT_OK){cancelPending();return true}
+        if(result!=Activity.RESULT_OK){cancelPending();diagnostic="Autorizarea sau configurarea widgetului a fost anulată";emit();toast(diagnostic);return true}
         if(request==BIND)configure() else finishBinding()
         return true
     }
     private fun finishBinding(){
         if(manager.getAppWidgetInfo(pending)?.provider?.packageName!=MAPS){cancelPending();return}
         if(widgetId>=0)try{host.deleteAppWidgetId(widgetId)}catch(_:Exception){}
-        widgetId=pending;pending=-1;enabled=true;save();attach()
+        widgetId=pending;pending=-1;enabled=true;opacity=if(opacity==0)100 else opacity;save();attach()
+        web.evaluateJavascript("if(window.bidWidgetActivated)window.bidWidgetActivated();",null)
+        toast(if(child!=null) "Widget autorizat. Se așteaptă conținutul Google Maps." else diagnostic)
     }
     private fun cancelPending(){if(pending>=0)try{host.deleteAppWidgetId(pending)}catch(_:Exception){};pending=-1;save()}
     private fun remove(){if(widgetId>=0)try{host.deleteAppWidgetId(widgetId)}catch(_:Exception){};widgetId=-1;enabled=false;save();attach()}
