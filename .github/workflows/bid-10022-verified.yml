@@ -10,7 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify and extract integrated source
+        run: |
+          echo '48ef2954464a88ffc0fc83ba8932469f66df689928dc10ab816d45c0a12acf69  DJ88-BID-10022-PROIECT-INTEGRAT.zip' | sha256sum -c
+          unzip -q DJ88-BID-10022-PROIECT-INTEGRAT.zip
       - name: Verify cumulative assets before compilation
+        working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
           cd app/src/main/assets
           sha256sum -c <<'EOF'
@@ -20,6 +25,11 @@ jobs:
           7f331c005671d253f165667983d1da7f6a27f2d89a2e2a5efb7769700eafc643  index.html
           EOF
           for f in *.js; do node --check "$f"; done
+      - name: Run editor unit tests
+        working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
+        run: |
+          cmp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
+          for f in tests/editor10022/test_*.js; do node "$f" || exit 1; done
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -30,6 +40,7 @@ jobs:
         with:
           gradle-version: '8.10.2'
       - name: Build signed update
+        working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         env:
           BID_KEYSTORE_BASE64: ${{ secrets.BID_KEYSTORE_BASE64 }}
           BID_KEY_ALIAS: ${{ secrets.BID_KEY_ALIAS }}
@@ -54,5 +65,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: DJ88-BID-10022
-          path: dist/
+          path: DJ88-BID-10022-PROIECT-INTEGRAT/dist/
           if-no-files-found: error
