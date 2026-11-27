@@ -21,6 +21,7 @@ import org.json.JSONObject
 
 class MainActivity : Activity() {
     private lateinit var webView: WebView
+    private lateinit var bidThemeImage: BidThemeImage
     private lateinit var mapWidget: BidMapWidget
     private lateinit var gpsWeather: BidGpsWeather
     private lateinit var bidGpsSpeed: BidGpsSpeed
@@ -108,6 +109,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (::bidThemeImage.isInitialized) bidThemeImage.close()
         if (::bidDriveContext.isInitialized) {
             if (::webView.isInitialized) webView.removeJavascriptInterface("BIDDrive")
             bidDriveContext.close()
@@ -120,6 +122,7 @@ class MainActivity : Activity() {
     @Suppress("DEPRECATION")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
+        if (::bidThemeImage.isInitialized && bidThemeImage.result(requestCode,resultCode,data)) return
         if (::mapWidget.isInitialized) mapWidget.result(requestCode,resultCode)
     }
 
@@ -175,6 +178,8 @@ class MainActivity : Activity() {
         setContentView(root)
         mapWidget = BidMapWidget(this,root,webView)
         webView.addJavascriptInterface(mapWidget,"BIDWidget")
+        bidThemeImage = BidThemeImage(this,webView)
+        webView.addJavascriptInterface(bidThemeImage,"BIDThemeImage")
         gpsWeather = BidGpsWeather(this, ::emitJs)
         bidDriveContext = BidDriveContext(this, webView)
         webView.addJavascriptInterface(bidDriveContext, "BIDDrive")
