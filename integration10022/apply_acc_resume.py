@@ -689,3 +689,74 @@ p=root/'app/src/main/assets/bid_general.js'
 s=p.read_text()
 rep("button('Închide',","button('Statistici GPS locale',()=>{try{native().openBidTripSummary();}catch(_){}});\\nbutton('Închide',")
 p.write_text(s)
+
+# Restore aggregate GPS session after process recreation, never interpolate across it.
+p=root/'app/src/main/java/ro/dj88bid/car/BidGpsSpeed.kt'
+s=p.read_text()
+rep('    private var tripMax = 0.0', '''    private var tripMax = 0.0
+    private var tripRestored = false
+    private fun tripRestore() {
+        if(tripRestored)return
+        tripRestored=true
+        if(tripPrefs.getBoolean("reset",false))return
+        val old=try{org.json.JSONObject(tripPrefs.getString("session","{}")?:"{}")}catch(_:Exception){return}
+        tripMeters=old.optDouble("distanceKm",0.0).takeIf{it.isFinite()&&it>=0.0}?.times(1000.0)?:0.0
+        tripMovingMs=old.optLong("movingMs",old.optLong("movingSeconds",0)*1000).coerceAtLeast(0)
+        tripStoppedMs=old.optLong("stoppedMs",old.optLong("stoppedSeconds",0)*1000).coerceAtLeast(0)
+        tripMax=old.optDouble("maxKmh",0.0).takeIf{it.isFinite()&&it in 0.0..360.0}?.div(3.6)?:0.0
+    }''')
+rep('        val dt = now-tripLast', '''        tripRestore()
+        val dt = now-tripLast
+        val day=java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.US).format(java.util.Date())
+        val days=try{org.json.JSONObject(tripPrefs.getString("days","{}")?:"{}")}catch(_:Exception){org.json.JSONObject()}
+        val today=days.optJSONObject(day)?:org.json.JSONObject()
+        var dayMeters=today.optDouble("meters",0.0)
+        var dayMoving=today.optLong("movingMs",0)
+        var dayStopped=today.optLong("stoppedMs",0)''')
+rep('''            tripMeters += (tripSpeed+speed)*0.5*dt/1000.0
+            if (tripSpeed>=0.5 || speed>=0.5) tripMovingMs+=dt else tripStoppedMs+=dt''','''            val distance=(tripSpeed+speed)*0.5*dt/1000.0
+            tripMeters+=distance;dayMeters+=distance
+            if(tripSpeed>=0.5||speed>=0.5){tripMovingMs+=dt;dayMoving+=dt}
+            else {tripStoppedMs+=dt;dayStopped+=dt}''')
+rep('        tripPrefs.edit().putString("session",state.toString()).apply()', '''        state.put("movingMs",tripMovingMs).put("stoppedMs",tripStoppedMs)
+        days.put(day,org.json.JSONObject().put("meters",dayMeters).put("movingMs",dayMoving).put("stoppedMs",dayStopped)
+            .put("maxKmh",maxOf(today.optDouble("maxKmh",0.0),speed*3.6)))
+        val keys=days.keys().asSequence().toList().sorted()
+        for(key in keys.dropLast(90))days.remove(key)
+        tripPrefs.edit().putString("session",state.toString()).putString("days",days.toString()).apply()''')
+rep('        tripLast=0L;tripSpeed=0.0;tripMeters=0.0;', '        tripRestored=true;tripLast=0L;tripSpeed=0.0;tripMeters=0.0;')
+p.write_text(s)
+# Historical aggregates are read only, with explicit separate deletion.
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('    inner class Bridge {', '''    inner class Bridge {
+        @JavascriptInterface
+        fun openBidTripHistory() = runOnUiThread {
+            if(webView.url!="file:///android_asset/index.html"||!hasWindowFocus()||isFinishing)return@runOnUiThread
+            val prefs=getSharedPreferences("bid_trip",MODE_PRIVATE)
+            val days=try{JSONObject(prefs.getString("days","{}")?:"{}")}catch(_:Exception){JSONObject()}
+            val lines=mutableListOf<String>()
+            for(n in listOf(1,7,30)){
+                var meters=0.0;var moving=0L;var stopped=0L;var max=0.0
+                val cal=java.util.Calendar.getInstance()
+                val fmt=java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.US)
+                repeat(n){
+                    val d=days.optJSONObject(fmt.format(cal.time))
+                    if(d!=null){meters+=d.optDouble("meters",0.0);moving+=d.optLong("movingMs");stopped+=d.optLong("stoppedMs");max=maxOf(max,d.optDouble("maxKmh",0.0))}
+                    cal.add(java.util.Calendar.DAY_OF_YEAR,-1)
+                }
+                lines.add(String.format(java.util.Locale.US,"%d zile: %.2f km | mers %d min | staționare %d min | max %.1f km/h",n,meters/1000,moving/60000,stopped/60000,max))
+            }
+            android.app.AlertDialog.Builder(this@MainActivity).setTitle("Istoric GPS local · ultimele 90 zile")
+                .setMessage(lines.joinToString("\\n\\n")+"\\n\\nEstimări din fixuri GPS valide, fără coordonate.")
+                .setNeutralButton("Șterge istoricul"){_,_->android.app.AlertDialog.Builder(this@MainActivity)
+                    .setMessage("Ștergi definitiv statisticile istorice locale?").setPositiveButton("Șterge"){_,_->prefs.edit().remove("days").apply()}
+                    .setNegativeButton("Anulează",null).show()}
+                .setPositiveButton("Închide",null).show()
+        }
+''')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_general.js'
+s=p.read_text()
+rep("button('Închide',","button('Istoric GPS — 1, 7, 30 zile',()=>{try{native().openBidTripHistory();}catch(_){}});\\nbutton('Închide',")
+p.write_text(s)
