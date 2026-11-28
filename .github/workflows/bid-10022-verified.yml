@@ -319,6 +319,10 @@ jobs:
           node --check app/src/main/assets/bid_theme_builder.js
           cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
           node tests/editor10022/test_portrait_live.js
+      - name: Integrate QF001 standby and selectable HOME
+        run: |
+          python integration10022/apply_acc_resume.py DJ88-BID-10022-PROIECT-INTEGRAT
+          cp integration10022/BidAccResume.kt DJ88-BID-10022-PROIECT-INTEGRAT/app/src/main/java/ro/dj88bid/car/
       - name: Configure separate test application
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
