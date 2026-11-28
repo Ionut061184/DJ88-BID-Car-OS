@@ -1910,3 +1910,37 @@ u=t.read_text()
 t.write_text(u.replace("j=s.indexOf('let gpsCatalog156=',i)","j=s.indexOf('let gnssSample157=',i)",1))
 p.write_text(s)
 (root/'tests/editor10022/test_gnss157.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function gnssValue157('),j=s.indexOf('window.bidGnss157=',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.gnssValue157;a.equal(f(7,12,0,false),'7 / 12');a.equal(f(0,0,0,false),'0 / 0');a.equal(f(12,7,0,false),'—');a.equal(f(7,12,5001,false),'—');a.equal(f(7,12,0,true),'—');a.equal(f(null,null,0,false),'—');console.log('6 GNSS widget checks passed');""")
+
+# Isolate CAN formatter tests from browser-dependent widget setup.
+t=root/'tests/editor10022/test_final_batch150.js'
+u=t.read_text()
+a="['function canWidgetValue150(','function value(e)']"
+assert u.count(a)==1
+t.write_text(u.replace(a,"['function canWidgetValue150(','const catalogSessionStart154=']",1))
+# Reuse actual Android connectivity snapshots; no new permissions.
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('        fun catalogDeviceState154(): String {\n            val result=JSONObject()', '''        fun catalogDeviceState154(): String {
+            val result=JSONObject()
+            try {result.put("connectivity",BidConnectivity.snapshot(this@MainActivity))}catch(_:Exception){}''')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const types={gpsSatellites:", "const types={androidWifi:'Wi-Fi Android',androidBluetooth:'Bluetooth Android',androidNetwork:'Rețea mobilă Android',gpsSatellites:")
+rep("function value(e){", """function connectivityValue158(type,d){
+ if(!d)return '—';
+ if(type==='androidNetwork')return d.simPresent===false?'Fără SIM':typeof d.networkGeneration==='string'&&/^(2G|3G|4G|4G\\\\+|5G)$/.test(d.networkGeneration)?d.networkGeneration:'—';
+ const wifi=type==='androidWifi',enabled=d[wifi?'wifi':'bluetooth'],connected=d[wifi?'wifiConnected':'bluetoothConnected'];
+ if(enabled===false)return 'Oprit';
+ if(enabled!==true)return '—';
+ if(connected===false)return 'Neconectat';
+ if(connected!==true)return 'Pornit · stare necunoscută';
+ return wifi&&Number.isInteger(d.wifiLevel)&&d.wifiLevel>=0&&d.wifiLevel<=4?'Conectat · '+d.wifiLevel+'/4':'Conectat';
+}
+function value(e){""")
+rep("switch(e.type){case 'gpsSatellites':", "switch(e.type){case 'androidWifi':case 'androidBluetooth':case 'androidNetwork':return connectivityValue158(e.type,catalogDeviceReading154(performance.now()).connectivity);case 'gpsSatellites':")
+p.write_text(s)
+t=root/'tests/editor10022/test_gps_widgets156.js'
+u=t.read_text()
+t.write_text(u.replace("j=s.indexOf('function value(e)',i)","j=s.indexOf('function connectivityValue158(',i)",1))
+(root/'tests/editor10022/test_connectivity158.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function connectivityValue158('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.connectivityValue158;a.equal(f('androidWifi',{wifi:true,wifiConnected:true,wifiLevel:3}),'Conectat · 3/4');a.equal(f('androidWifi',{wifi:false}),'Oprit');a.equal(f('androidBluetooth',{bluetooth:true,bluetoothConnected:null}),'Pornit · stare necunoscută');a.equal(f('androidBluetooth',{bluetooth:true,bluetoothConnected:false}),'Neconectat');a.equal(f('androidNetwork',{networkGeneration:'4G+'}),'4G+');a.equal(f('androidNetwork',{simPresent:false}),'Fără SIM');a.equal(f('androidWifi',null),'—');console.log('7 connectivity widget checks passed');""")
