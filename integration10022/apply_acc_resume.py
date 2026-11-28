@@ -1386,3 +1386,37 @@ s=p.read_text()
 rep("badgePick53={theme:draft.id,page:draft.pageId,id:e.id};","badgePick53={theme:draft.id,page:draft.pageId,id:e.id,element:e};")
 rep("if(!e||e.locked||e.group)return;\n const image=bidBadgeImage53(result?.image);","if(!e||e!==target.element||e.locked||e.group)return;\n const image=bidBadgeImage53(result?.image);")
 p.write_text(s)
+
+# Verify exported backup bytes by reading the selected document back. Report
+# successful writing separately from verified readback (some providers deny read).
+p=root/'app/src/main/java/ro/dj88bid/car/BidThemeFiles.kt'
+s=p.read_text()
+rep('                    reply(kind,true,"Fișier JSON exportat.")', '''                    val expected=text.toByteArray(Charsets.UTF_8)
+                    val verified=try {
+                        activity.contentResolver.openInputStream(uri)?.use { input ->
+                            val digest=java.security.MessageDigest.getInstance("SHA-256")
+                            val buffer=ByteArray(8192);var total=0L
+                            while(true){val n=input.read(buffer);if(n<0)break;if(n==0)continue;total+=n;if(total>MAX)error("Document prea mare.");digest.update(buffer,0,n)}
+                            total==expected.size.toLong()&&digest.digest().contentEquals(java.security.MessageDigest.getInstance("SHA-256").digest(expected))
+                        }==true
+                    }catch(_:Exception){false}
+                    reply(kind,true,if(verified)"Fișier JSON exportat și verificat SHA-256 prin recitire." else "Fișier JSON scris; verificarea prin recitire nu a reușit. Verifică documentul înainte de ștergerea temei.")''')
+p.write_text(s)
+# Export the last validated recovery point as a separate user-selected document.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("storagePanel55.append(storageCheck55);", """const recoveryExport56=document.createElement('button');recoveryExport56.type='button';recoveryExport56.textContent='Exportă copia de recuperare';
+recoveryExport56.onclick=()=>{
+ if(!allowed())return;
+ try{
+  const raw=localStorage.getItem(BACKUP);
+  if(!raw){message('Nu există o copie de recuperare.');return;}
+  const doc=JSON.parse(raw),validated=snapshot(doc);
+  if(doc.active!==validated.active)throw Error('Copie invalidă.');
+  if(!confirm('Salvezi separat copia de recuperare? Tema curentă nu se schimbă.'))return;
+  if(typeof window.BIDThemeFiles?.exportDocument!=='function'){message('Selector de fișiere indisponibil.');return;}
+  window.BIDThemeFiles.exportDocument('BID-recovery-'+new Date().toISOString().slice(0,10),JSON.stringify({version:1,...validated}));
+ }catch(_){message('Copia de recuperare nu poate fi validată sau exportată.');}
+};
+storagePanel55.append(storageCheck55,recoveryExport56);""")
+p.write_text(s)
