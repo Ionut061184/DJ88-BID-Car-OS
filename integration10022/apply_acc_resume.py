@@ -387,3 +387,63 @@ rep('            if (active && now-entry.first in 0L..ttl) o.put(key,entry.secon
             status.put(key,JSONObject().put("fresh",fresh).put("ageMs",age))
             if (fresh) o.put(key,entry.second)''')
 p.write_text(s)
+
+# Publish candidates to the existing CANBUS status surface, not certified instruments.
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('    private val passiveCan by lazy { BidPassiveCan(this) }', '''    private val passiveCan by lazy { BidPassiveCan(this) }
+    private val canUiHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val canUiRefresh = object : Runnable {
+        override fun run() {
+            if (isFinishing || isDestroyed) return
+            if (webView.url == "file:///android_asset/index.html") {
+                webView.evaluateJavascript("if(window.bidCanStatus)window.bidCanStatus(" + passiveCan.snapshot() + ")",null)
+            }
+            canUiHandler.postDelayed(this,1000L)
+        }
+    }''')
+rep('        passiveCan.start()', '''        passiveCan.start()
+        canUiHandler.removeCallbacks(canUiRefresh)
+        canUiHandler.post(canUiRefresh)''')
+rep('        passiveCan.stop()\n        if (::bidAcc.isInitialized) bidAcc.paused()', '''        canUiHandler.removeCallbacks(canUiRefresh)
+        passiveCan.stop()
+        if (::bidAcc.isInitialized) bidAcc.paused()''')
+rep('        passiveCan.stop()\n        if (::bidAcc.isInitialized) bidAcc.close()', '''        canUiHandler.removeCallbacks(canUiRefresh)
+        passiveCan.stop()
+        if (::bidAcc.isInitialized) bidAcc.close()''')
+p.write_text(s)
+p=root/'app/src/main/assets/index.html'
+s=p.read_text()
+rep('</body>', '''<script>
+window.bidCanStatus=function(v){
+ const el=document.getElementById('climateWarning');
+ if(!el)return;
+ const recent=v&&v.active&&Object.values(v.channels||{}).some(c=>c.fresh===true);
+ el.textContent=recent?'CANBUS: date experimentale':'CANBUS: fără date recente';
+ el.title=recent?'Date nevalidate; vezi raportul CANBUS pasiv':'Recepție neconfirmată';
+};
+</script></body>''')
+p.write_text(s)
+
+# Harden native Google Maps input and lifecycle without replacing the existing SDK.
+p=root/'app/src/main/java/ro/dj88bid/car/BidGoogleMap.kt'
+s=p.read_text()
+rep('slot.alpha=j.optDouble("alpha",1.0).coerceIn(0.35,1.0).toFloat()', '''val rawAlpha=j.optDouble("alpha",1.0)
+            slot.alpha=if(rawAlpha.isFinite())rawAlpha.coerceIn(0.35,1.0).toFloat() else 1f''')
+rep('val zoom=j.optDouble("zoom",16.0).coerceIn(3.0,20.0).toFloat()', '''val rawZoom=j.optDouble("zoom",16.0)
+            val zoom=if(rawZoom.isFinite())rawZoom.coerceIn(3.0,20.0).toFloat() else 16f''')
+rep('if(sig!=previous){slot.layoutParams', '''if(rect[2]<1||rect[3]<1){hide();return@runOnUiThread}
+            if(sig!=previous){slot.layoutParams''')
+rep('if(settings!=config){', '''if(settings!=config){
+                loaded=false''')
+p.write_text(s)
+
+# Prevent group visibility controls from modifying locked group members indirectly.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("return !!e&&!e.locked&&supported===true&&['hideInnerLabel','hideInnerGraphic'].includes(k);",
+    "return !!e&&!e.locked&&!e.group&&supported===true&&['hideInnerLabel','hideInnerGraphic'].includes(k);")
+p.write_text(s)
+t=root/'tests/editor10022/test_inner_visibility.js'
+with t.open('a') as f:
+ f.write("\na.equal(f({group:'g'},'hideInnerLabel',true),false);\n")
