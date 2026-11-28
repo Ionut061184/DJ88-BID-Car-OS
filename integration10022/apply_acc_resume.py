@@ -2208,3 +2208,47 @@ rep("switch(e.type){case 'mediaArtwork':", "switch(e.type){case 'mediaRemaining'
 # Avoid applying invalid negative/NaN sensor data and keep artwork local.
 p.write_text(s)
 (root/'tests/editor10022/test_media_extra165.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function mediaExtra165('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.mediaExtra165,d={authorized:true,title:'Song',artist:'Artist',position:60000,duration:180000};a.equal(f('mediaTrack',d),'Song · Artist');a.equal(f('mediaElapsed',d),'1:00');a.equal(f('mediaRemaining',d),'−2:00');a.equal(f('mediaPercent',d),'33%');a.equal(f('mediaPercent',{...d,duration:0}),'—');a.equal(f('mediaRemaining',{...d,position:190000}),'—');a.equal(f('mediaTrack',{...d,authorized:false}),'—');console.log('7 additional media checks passed');""")
+
+# Read-only Android resource monitor. CPU thermal data is optional and explicitly
+# labelled as Android's thermal estimate, never as engine temperature.
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('            try {result.put("media",BidMediaAccess162.snapshot(this@MainActivity))}catch(_:Exception){}','''            try {result.put("media",BidMediaAccess162.snapshot(this@MainActivity))}catch(_:Exception){}
+            try {
+                val device=JSONObject()
+                val memory=android.app.ActivityManager.MemoryInfo()
+                (getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager).getMemoryInfo(memory)
+                if(memory.totalMem>0&&memory.availMem in 0..memory.totalMem)
+                    device.put("ramUsed",100.0*(memory.totalMem-memory.availMem)/memory.totalMem)
+                val disk=android.os.StatFs(filesDir.absolutePath)
+                if(disk.totalBytes>0&&disk.availableBytes in 0..disk.totalBytes)
+                    device.put("diskFree",disk.availableBytes/1073741824.0)
+                device.put("uptimeSeconds",android.os.SystemClock.elapsedRealtime()/1000)
+                if(android.os.Build.VERSION.SDK_INT>=29){
+                    val thermal=(getSystemService(POWER_SERVICE) as android.os.PowerManager).currentThermalStatus
+                    if(thermal in 0..6)device.put("thermal",thermal)
+                }
+                result.put("device",device)
+            }catch(_:Exception){}''')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const types={mediaRemaining:", "const types={androidRam:'RAM Android utilizată',androidStorage:'Spațiu Android liber',androidUptime:'Timp funcționare Android',androidThermal:'Stare termică Android',mediaRemaining:")
+rep("function value(e){", """function deviceWidget166(type,d){
+ if(!d)return '—';
+ if(type==='androidRam')return Number.isFinite(d.ramUsed)&&d.ramUsed>=0&&d.ramUsed<=100?Math.round(d.ramUsed)+'%':'—';
+ if(type==='androidStorage')return Number.isFinite(d.diskFree)&&d.diskFree>=0?d.diskFree.toFixed(1)+' GiB':'—';
+ if(type==='androidUptime'){
+ const n=d.uptimeSeconds;if(!Number.isFinite(n)||n<0)return '—';
+ const s=Math.floor(n);return [Math.floor(s/3600),Math.floor(s/60)%60,s%60].map(v=>String(v).padStart(2,'0')).join(':');
+ }
+ if(type==='androidThermal')return Number.isInteger(d.thermal)&&d.thermal>=0&&d.thermal<=6?['Normală','Ușoară','Moderată','Severă','Critică','Urgență','Oprire'][d.thermal]:'—';
+ return '—';
+}
+function value(e){""")
+rep("switch(e.type){case 'mediaRemaining':", "switch(e.type){case 'androidRam':case 'androidStorage':case 'androidUptime':case 'androidThermal':return deviceWidget166(e.type,catalogDeviceReading154(performance.now()).device);case 'mediaRemaining':")
+p.write_text(s)
+t=root/'tests/editor10022/test_media_extra165.js'
+u=t.read_text()
+t.write_text(u.replace("j=s.indexOf('function value(e)',i)","j=s.indexOf('function deviceWidget166(',i)",1))
+(root/'tests/editor10022/test_device166.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function deviceWidget166('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.deviceWidget166,d={ramUsed:64.5,diskFree:12.34,uptimeSeconds:90061,thermal:2};a.equal(f('androidRam',d),'65%');a.equal(f('androidStorage',d),'12.3 GiB');a.equal(f('androidUptime',d),'25:01:01');a.equal(f('androidThermal',d),'Moderată');a.equal(f('androidRam',{ramUsed:101}),'—');a.equal(f('androidThermal',{thermal:7}),'—');a.equal(f('androidStorage',null),'—');console.log('7 device resource checks passed');""")
