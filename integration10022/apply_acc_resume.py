@@ -1491,3 +1491,21 @@ rep("favoriteChosen51.clear();favoriteContext51=key;favoriteIndex54=0;cancelFavo
 rep("if(e.type!=='button'||!e.appKey||e.locked||e.group)continue;","if(!favoriteMatches57(e,favoriteSearch57.value))continue;")
 p.write_text(s)
 (root/'tests/editor10022/test_favorite_search57.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function favoriteMatches57(');a.ok(i>=0);const c={};vm.createContext(c);vm.runInContext(s.slice(i,s.indexOf('\\n',i)),c);const f=c.favoriteMatches57,e={type:'button',appKey:'com.waze',label:'Navigație'};a.equal(f(e,'WAZE'),true);a.equal(f(e,' navigație '),true);a.equal(f(e,'radio'),false);a.equal(f({...e,locked:true},''),false);a.equal(f({...e,group:'x'},''),false);a.equal(f(null,''),false);console.log('6 favorite search checks passed');""")
+
+# Consolidated-source audit (build 148): preserve automotive mirroring when
+# content-scale is applied and guard real runtime favorites against stale actions.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("if(artStyle37.bidArtMirror)art.style.scale='-1 1';", "if(artStyle37.bidArtMirror)art.style.transform=e.flip?'none':'scaleX(-1)';")
+rep("n.querySelectorAll('.bfGlyph,.bfAutoArt,[data-bid-gauge]'))child.hidden=true;", "n.querySelectorAll('.bfGlyph,.bfAutoArt,.bidPersonalAutoBadge,[data-bid-gauge]'))child.hidden=true;")
+rep("function mountFavorites(t){", """function favoriteRuntimeAllowed148(current,original,group,movingNow,available,hidden,editing,locked){
+ return !!current&&!!original&&current.id===original.id&&current.pageId===original.pageId&&current.elements.some(e=>e.group===group&&e.groupMode==='favorites')&&!movingNow&&available===true&&!hidden&&!editing&&!locked;
+}
+function mountFavorites(t){""")
+rep("const shift=d=>{page=cfg.cycle?(page+d+total)%total:clamp(page+d,0,total-1);show();};", """const ready=()=>favoriteRuntimeAllowed148(active(),t,anchor.group,moving(),panel.dataset.available==='true',document.hidden,edit,globalLock66);
+const shift=d=>{if(!ready())return;page=cfg.cycle?(page+d+total)%total:clamp(page+d,0,total-1);show();};""")
+rep("if(start&&!moving()){blockUntil=Date.now()+700;openFrom('');if(draft){selected=anchor.id;render();}}", "if(start&&ready()&&!members.some(e=>e.locked)){blockUntil=Date.now()+700;openFrom('');if(draft&&draft.id===t.id&&draft.pageId===t.pageId){selected=anchor.id;render();}}")
+rep("n.addEventListener('pointerdown',ev=>{clear();start={x:ev.clientX,y:ev.clientY};", "n.addEventListener('pointerdown',ev=>{clear();if(!ready()||ev.button!==0)return;start={x:ev.clientX,y:ev.clientY};")
+rep("if(Date.now()<blockUntil){ev.preventDefault();ev.stopImmediatePropagation();}", "if(Date.now()<blockUntil||!ready()){ev.preventDefault();ev.stopImmediatePropagation();}")
+p.write_text(s)
+(root/'tests/editor10022/test_favorites_runtime148.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function favoriteRuntimeAllowed148('),j=s.indexOf('function mountFavorites(t)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.favoriteRuntimeAllowed148,t={id:'t',pageId:'p',elements:[{group:'g',groupMode:'favorites'}]};a.equal(f(t,t,'g',false,true,false,false,false),true);a.equal(f({...t,pageId:'q'},t,'g',false,true,false,false,false),false);a.equal(f(t,t,'g',true,true,false,false,false),false);a.equal(f(t,t,'g',false,false,false,false,false),false);a.equal(f(t,t,'g',false,true,true,false,false),false);a.equal(f(t,t,'g',false,true,false,true,false),false);a.equal(f(t,t,'g',false,true,false,false,true),false);a.equal(f(t,t,'missing',false,true,false,false,false),false);console.log('8 runtime favorites guard checks passed');""")
