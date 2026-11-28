@@ -1007,3 +1007,40 @@ p=root/'app/src/main/assets/bid_general.js'
 s=p.read_text()
 rep("button('Închide',","button('Timp și luminozitate ceas',()=>{try{native().configureBidClockTiming();}catch(_){}});\nbutton('Închide',")
 p.write_text(s)
+
+# Add a searchable, non-destructive list of installed icon packs to general settings.
+# Existing editor handles icon application; this inventory does not change any theme.
+p=root/'app/src/main/assets/bid_general.js'
+s=p.read_text()
+rep("button('Caută pachete iconițe în Google Play',", """button('Pachete iconițe instalate',()=>{
+ const old=document.getElementById('bidPackInventory');if(old){old.remove();return;}
+ const box=document.createElement('section');box.id='bidPackInventory';
+ const search=document.createElement('input');search.placeholder='Caută pachet';search.setAttribute('aria-label','Caută pachet de iconițe');
+ const rows=document.createElement('div');let packs=[];
+ try{const parsed=JSON.parse(native().listThemeIconPacks());if(Array.isArray(parsed))packs=parsed;}catch(_){}
+ const draw=()=>{rows.replaceChildren();const q=search.value.toLocaleLowerCase();const found=packs.filter(p=>String(p.label).toLocaleLowerCase().includes(q));
+ for(const p of found){const row=document.createElement('p');row.textContent=String(p.label);rows.append(row);}
+ if(!found.length)rows.textContent='Niciun pachet compatibil găsit.';};
+ search.oninput=draw;box.append(search,rows);modal.append(box);draw();
+});
+button('Caută pachete iconițe în Google Play',""")
+p.write_text(s)
+# Preserve PNG alpha while allowing larger still images only via the already
+# bounded bitmap decoder; do not broaden GIF or memory limits.
+p=root/'app/src/main/java/ro/dj88bid/car/BidThemeImage.kt'
+s=p.read_text()
+rep('Format neacceptat. Alege JPG, PNG sau WebP.', 'Format neacceptat. Alege JPG, PNG, WebP sau GIF.')
+p.write_text(s)
+# Add explicit controls for editing the installed personal theme accent without
+# changing the current page or any protected native/group item.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("paletteColor30.value='#b59b80';", """paletteColor30.value='#b59b80';
+const palettePresets30=document.createElement('select');
+for(const [label,color] of [['Champagne','#e5d4bd'],['Bronz satin','#b59b80'],['Bordeaux','#572433'],['Grafit','#343438'],['Crem','#eee3ce'],['Negru','#101014']])palettePresets30.append(new Option(label,color));
+palettePresets30.onchange=()=>{paletteColor30.value=palettePresets30.value;};palette30.append(palettePresets30);""")
+# Reset only the input color, without silently changing existing elements.
+rep("palette30.append(paletteApply30,paletteAll30);", """const paletteReset30=document.createElement('button');paletteReset30.type='button';paletteReset30.textContent='Reset selector culoare';paletteReset30.onclick=()=>{paletteColor30.value='#b59b80';palettePresets30.value='#b59b80';};
+palette30.append(paletteApply30,paletteAll30,paletteReset30);""")
+p.write_text(s)
+# Keep automated tests operating on the final cumulative editor.
