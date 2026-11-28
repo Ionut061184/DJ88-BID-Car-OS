@@ -28,6 +28,26 @@ rep('    override fun onLowMemory() {','''    override fun onNewIntent(intent: I
     override fun onLowMemory() {''')
 rep('    inner class Bridge {', '''    inner class Bridge {
         @JavascriptInterface
+        fun openHomeSettings() = runOnUiThread {
+            if (webView.url != "file:///android_asset/index.html" || !hasWindowFocus()) return@runOnUiThread
+            try {
+                startActivity(Intent(android.provider.Settings.ACTION_HOME_SETTINGS))
+            } catch (_: Exception) {
+                android.widget.Toast.makeText(this@MainActivity, "Selector HOME indisponibil pe acest firmware", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+
+        @JavascriptInterface
+        fun openQfReceptionTest() = runOnUiThread {
+            if (webView.url != "file:///android_asset/index.html" || !hasWindowFocus()) return@runOnUiThread
+            try {
+                startActivity(Intent(this@MainActivity, BidCanProbeActivity::class.java))
+            } catch (_: Exception) {
+                android.widget.Toast.makeText(this@MainActivity, "Diagnostic CANBUS indisponibil", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+
+        @JavascriptInterface
         fun standbyHistory(): String = if (::bidAcc.isInitialized) bidAcc.snapshot() else "[]"
 
         @JavascriptInterface
@@ -48,7 +68,7 @@ p=root/'app/src/main/assets/index.html'
 s=p.read_text()
 a='<button onclick="bidGeneralOpen()">Setări generale BID</button>'
 assert s.count(a)==1
-p.write_text(s.replace(a,a+'''<button onclick="if(window.BID)BID.showStandbyHistory()">Diagnostic standby</button>''',1))
+p.write_text(s.replace(a,a+'''<button onclick="if(window.BID)BID.showStandbyHistory()">Diagnostic standby</button><button onclick="if(window.BID)BID.openHomeSettings()">Alege launcher HOME</button><button onclick="if(window.BID)BID.openQfReceptionTest()">Test recepție CANBUS QF001</button>''',1))
 p=root/'app/src/main/AndroidManifest.xml'
 s=p.read_text()
 a='android:name=".MainActivity" android:exported="true"'
