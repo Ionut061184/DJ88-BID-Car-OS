@@ -366,6 +366,23 @@ jobs:
           grep -q "name='ro.dj88bid.car.widgetlab.test10022'" dist/package.txt
           sha256sum dist/*.apk > dist/SHA256SUMS.txt
           printf '%s\n' 'Separate test application. See signing-mode.txt for signing identity. Does not update the original BID package. Test only while parked. Google Maps authorization may require the new package and certificate. Device behavior not validated.' > dist/README.txt
+      - name: Verify packaged MASTER and cumulative APK integrity
+        working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
+        run: |
+          python - <<'PY'
+          import hashlib, zipfile
+          from pathlib import Path
+          apk=Path("dist/DJ88-BID-10022-TEST.apk")
+          expected="17afdcd419307951af50666dfad6666139cdaedb34007318cdc931731f662f5f"
+          with zipfile.ZipFile(apk) as z:
+              assert z.testzip() is None, "APK CRC failure"
+              assert len(z.namelist()) == len(set(z.namelist())), "Duplicate APK entries"
+              for name in ("bid_approved.png","bid_fullbleed.png"):
+                  assert hashlib.sha256(z.read("assets/"+name)).hexdigest()==expected, name
+              for name in ("index.html","bid_theme_builder.js","bid_general.js","bid_runtime.js"):
+                  assert z.read("assets/"+name)==(Path("app/src/main/assets")/name).read_bytes(), name
+          Path("dist/packaged-integrity.txt").write_text("APK CRC, MASTER SHA-256 and cumulative asset parity: PASS\n")
+          PY
       - name: Record final cumulative source and test evidence
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
@@ -376,7 +393,7 @@ jobs:
           done | tee dist/editor-tests.txt
           find app/src/main -type f -print0 | sort -z | xargs -0 sha256sum > dist/source-manifest.sha256
           printf '%s\n' "$GITHUB_SHA" > dist/commit.txt
-          printf '%s\n' 'Compilation and automated tests are not physical QF001 validation.' 'Pending: full portrait runtime; mixed HTML/native layering; individual native actions; native Yandex/Baidu SDK; complete criterion-by-criterion verification.' 'ACC deferred.' > dist/validation-limits.txt
+          printf '%s\n' 'Compilation and automated tests are not physical QF001 validation.' 'Pending: full portrait runtime; mixed HTML/native layering; individual native actions; native Yandex/Baidu SDK; complete criterion-by-criterion verification.' 'ACC/HOME return requires physical QF001 validation; screen and power events are not proof of ACC.' > dist/validation-limits.txt
       - uses: actions/upload-artifact@v4
         with:
           name: DJ88-BID-10022-CUMULATIVE-EVIDENCE
