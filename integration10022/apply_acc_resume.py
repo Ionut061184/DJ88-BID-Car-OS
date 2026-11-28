@@ -1082,3 +1082,30 @@ const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);
 const f=c.bidArtworkStyle37;
 a.equal(f({}).bidFont,'default');a.equal(f({bidFont:'serif'}).bidFont,'serif');a.equal(f({bidFont:'constructor'}).bidFont,'default');a.equal(f({bidArtHue:999}).bidArtHue,180);a.equal(f({bidArtHue:-999}).bidArtHue,-180);a.equal(f({bidArtHue:NaN}).bidArtHue,0);a.equal(f({bidArtMirror:true}).bidArtMirror,true);a.equal(f({bidArtMirror:'true'}).bidArtMirror,false);console.log('8 artwork and font normalization checks passed');
 """)
+
+# Extend personal automotive artwork with independent saturation and brightness.
+# No source image is rewritten; only the editable artwork node is styled.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("return {bidFont:font,bidArtHue:hue,bidArtMirror:v.bidArtMirror===true};", """const bound=(n,d,a,b)=>typeof n==='number'&&Number.isFinite(n)?Math.max(a,Math.min(b,Math.round(n))):d;
+ return {bidFont:font,bidArtHue:hue,bidArtMirror:v.bidArtMirror===true,bidArtSaturation:bound(v.bidArtSaturation,100,0,200),bidArtBrightness:bound(v.bidArtBrightness,100,40,160)};""")
+rep("if(artStyle37.bidArtHue!==0)art.style.filter='hue-rotate('+artStyle37.bidArtHue+'deg)';", """if(artStyle37.bidArtHue!==0||artStyle37.bidArtSaturation!==100||artStyle37.bidArtBrightness!==100)
+ art.style.filter='hue-rotate('+artStyle37.bidArtHue+'deg) saturate('+artStyle37.bidArtSaturation+'%) brightness('+artStyle37.bidArtBrightness+'%)';""")
+rep("const mirror37=document.createElement('input');mirror37.type='checkbox';", """const mirror37=document.createElement('input');mirror37.type='checkbox';
+const sat37=document.createElement('input');sat37.type='range';sat37.min=0;sat37.max=200;sat37.step=5;
+const bright37=document.createElement('input');bright37.type='range';bright37.min=40;bright37.max=160;bright37.step=5;""")
+rep("['Oglindire grafică auto',mirror37]", "['Oglindire grafică auto',mirror37],['Saturație grafică auto',sat37],['Luminozitate grafică auto',bright37]")
+rep("bidArtMirror:mirror37.checked}", "bidArtMirror:mirror37.checked,bidArtSaturation:sat37.valueAsNumber,bidArtBrightness:bright37.valueAsNumber}")
+rep("mirror37.checked=style.bidArtMirror;for(const c of [font37,hue37,mirror37,artApply37])", "mirror37.checked=style.bidArtMirror;sat37.value=String(style.bidArtSaturation);bright37.value=String(style.bidArtBrightness);for(const c of [font37,hue37,mirror37,sat37,bright37,artApply37])")
+p.write_text(s)
+t=root/'tests/editor10022/test_artwork_style37.js'
+with t.open('a') as f:
+ f.write("\na.equal(f({}).bidArtSaturation,100);a.equal(f({bidArtSaturation:250}).bidArtSaturation,200);a.equal(f({bidArtSaturation:-1}).bidArtSaturation,0);a.equal(f({bidArtBrightness:1}).bidArtBrightness,40);a.equal(f({bidArtBrightness:NaN}).bidArtBrightness,100);a.equal(f({bidArtBrightness:200}).bidArtBrightness,160);\n")
+# Reset all artwork/typography settings using the existing apply/undo path.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("artPanel37.append(artApply37);", """const artReset37=document.createElement('button');artReset37.type='button';artReset37.textContent='Restabilește stilul original';
+artReset37.onclick=()=>{if(!allowed()||!draft)return;const e=draft.elements.find(v=>v.id===selected);if(!e||e.locked||e.group)return;const style=bidArtworkStyle37({});if(Object.entries(style).every(([k,v])=>e[k]===v))return;checkpoint();Object.assign(e,style);render();};
+artPanel37.append(artApply37,artReset37);""")
+rep("sat37,bright37,artApply37])", "sat37,bright37,artApply37,artReset37])")
+p.write_text(s)
