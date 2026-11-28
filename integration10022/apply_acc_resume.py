@@ -1355,3 +1355,34 @@ rep("favoriteChosen51.clear();favoriteContext51=key;","favoriteChosen51.clear();
 rep("favoriteList51.replaceChildren();document.getElementById('bidFavoritePreview52')?.remove();","favoriteList51.replaceChildren();document.getElementById('bidFavoritePreview52')?.remove();favoriteItems54=(draft?.elements||[]).filter(e=>e.type==='button'&&e.appKey&&!e.locked&&!e.group);drawFavorite54();")
 p.write_text(s)
 (root/'tests/editor10022/test_favorite_wrap54.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function favoriteWrap54(');a.ok(i>=0);const c={};vm.createContext(c);vm.runInContext(s.slice(i,s.indexOf('\\n',i)),c);const f=c.favoriteWrap54;a.equal(f(-1,4),3);a.equal(f(4,4),0);a.equal(f(-9,4),3);a.equal(f(8,0),0);a.equal(f(NaN,4),0);a.equal(f(0,1),0);console.log('6 cyclic editor navigation checks passed');""")
+
+# Prevent excessive inline artwork from exhausting WebView local storage.
+# Retain the last valid theme and recovery point when the limit is exceeded.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("function persist(next){","""function bidStorageBudget55(serialized){return typeof serialized==='string'&&serialized.length<=1800000;}
+function persist(next){""")
+rep("const serialized=JSON.stringify({version:1,...candidate});const before=localStorage.getItem(KEY);","const serialized=JSON.stringify({version:1,...candidate});if(!bidStorageBudget55(serialized))throw Error('Temele depășesc limita locală. Exportă și elimină imaginile nefolosite înainte de salvare.');const before=localStorage.getItem(KEY);")
+# Provide a local estimate, not an operating-system quota claim.
+rep("function refreshPrecision(){", """const storagePanel55=document.createElement('fieldset');
+const storageLegend55=document.createElement('legend');storageLegend55.textContent='Memorie teme locale';storagePanel55.append(storageLegend55);
+const storageInfo55=document.createElement('p');storagePanel55.append(storageInfo55);
+const storageCheck55=document.createElement('button');storageCheck55.type='button';storageCheck55.textContent='Verifică spațiul temei';
+storageCheck55.onclick=()=>{
+ try{
+  const saved=localStorage.getItem(KEY)||'';
+  const recovery=localStorage.getItem(BACKUP)||'';
+  const draftSize=draft?JSON.stringify(draft).length:0;
+  storageInfo55.textContent='Teme salvate: '+Math.round(saved.length/1024)+' Ki caractere; copie recuperare: '+Math.round(recovery.length/1024)+'; ciornă: '+Math.round(draftSize/1024)+'. Limita preventivă pentru temele salvate: 1800000 caractere.';
+ }catch(_){storageInfo55.textContent='Dimensiunea locală nu este disponibilă.';}
+};
+storagePanel55.append(storageCheck55);$('bfControls').append(storagePanel55);
+function refreshPrecision(){""")
+p.write_text(s)
+(root/'tests/editor10022/test_storage_budget55.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function bidStorageBudget55(');a.ok(i>=0);const c={};vm.createContext(c);vm.runInContext(s.slice(i,s.indexOf('\\n',i)),c);const f=c.bidStorageBudget55;a.equal(f('{}'),true);a.equal(f('x'.repeat(1800000)),true);a.equal(f('x'.repeat(1800001)),false);a.equal(f(null),false);console.log('4 storage budget checks passed');""")
+# Guard asynchronous graphic picker against stale draft replacement.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("badgePick53={theme:draft.id,page:draft.pageId,id:e.id};","badgePick53={theme:draft.id,page:draft.pageId,id:e.id,element:e};")
+rep("if(!e||e.locked||e.group)return;\n const image=bidBadgeImage53(result?.image);","if(!e||e!==target.element||e.locked||e.group)return;\n const image=bidBadgeImage53(result?.image);")
+p.write_text(s)
