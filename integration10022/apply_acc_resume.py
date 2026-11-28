@@ -585,3 +585,40 @@ rep('                .setPositiveButton("Închide",null).create()', '''         
                 }
                 .setPositiveButton("Închide",null).create()''')
 p.write_text(s)
+
+# Reuse installed icon-pack implementation already present in the cumulative base.
+# Isolate failing packages and expose only declared icon resources.
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('''                for(info in packageManager.queryIntentActivities(Intent(action),0))result.add(info.activityInfo.packageName)''', '''                try {
+                    for(info in packageManager.queryIntentActivities(Intent(action),0))
+                        result.add(info.activityInfo.packageName)
+                } catch (_: Exception) {}''')
+rep('''            try { for(pkg in iconPackPackages()){
+                val info=packageManager.getApplicationInfo(pkg,0)
+                result.put(JSONObject().put("key",pkg).put("label",info.loadLabel(packageManager).toString().take(100)))
+            }}catch(_:Exception){}''', '''            for(pkg in iconPackPackages().sorted().take(200)) {
+                try {
+                    val info=packageManager.getApplicationInfo(pkg,0)
+                    result.put(JSONObject().put("key",pkg).put("label",info.loadLabel(packageManager).toString().take(100)))
+                } catch (_: Exception) {}
+            }''')
+rep('org.json.JSONArray(packNames(pkg).toList()).toString()', 'org.json.JSONArray(packNames(pkg).sorted()).toString()')
+rep('if(pkg !in iconPackPackages() || !name.matches(Regex("[a-zA-Z0-9_]{1,120}")))return ""', 'if(!name.matches(Regex("[a-zA-Z0-9_]{1,120}")) || name !in packNames(pkg))return ""')
+p.write_text(s)
+# Avoid a stale CAN label between Activity pause and the next foreground update.
+rep('''        canUiHandler.removeCallbacks(canUiRefresh)
+        passiveCan.stop()
+        if (::bidAcc.isInitialized) bidAcc.paused()''', '''        canUiHandler.removeCallbacks(canUiRefresh)
+        passiveCan.stop()
+        if (webView.url == "file:///android_asset/index.html")
+            webView.evaluateJavascript("if(window.bidCanStatus)window.bidCanStatus({active:false})",null)
+        if (::bidAcc.isInitialized) bidAcc.paused()''')
+p.write_text(s)
+# Offer a real additional palette channel only for personal drafts; no MASTER edits.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("paletteChannel30.append(new Option('Contur','borderColor'),new Option('Text','color'));", "paletteChannel30.append(new Option('Contur','borderColor'),new Option('Text','color'));")
+# Keep the current schema unchanged; reject invalid or empty palette channel selections.
+rep("if(!['borderColor','color'].includes(channel))return elements;","if(!['borderColor','color'].includes(channel)||!Array.isArray(elements))return elements;")
+p.write_text(s)
