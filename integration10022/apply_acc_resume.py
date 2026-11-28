@@ -687,7 +687,7 @@ rep('    inner class Bridge {', '''    inner class Bridge {
 p.write_text(s)
 p=root/'app/src/main/assets/bid_general.js'
 s=p.read_text()
-rep("button('Închide',","button('Statistici GPS locale',()=>{try{native().openBidTripSummary();}catch(_){}});\\nbutton('Închide',")
+rep("button('Închide',","button('Statistici GPS locale',()=>{try{native().openBidTripSummary();}catch(_){}});\nbutton('Închide',")
 p.write_text(s)
 
 # Restore aggregate GPS session after process recreation, never interpolate across it.
@@ -758,7 +758,7 @@ rep('    inner class Bridge {', '''    inner class Bridge {
 p.write_text(s)
 p=root/'app/src/main/assets/bid_general.js'
 s=p.read_text()
-rep("button('Închide',","button('Istoric GPS — 1, 7, 30 zile',()=>{try{native().openBidTripHistory();}catch(_){}});\\nbutton('Închide',")
+rep("button('Închide',","button('Istoric GPS — 1, 7, 30 zile',()=>{try{native().openBidTripHistory();}catch(_){}});\nbutton('Închide',")
 p.write_text(s)
 
 # Optional parked clock screen. A fresh GPS fix at rest is mandatory; unknown
