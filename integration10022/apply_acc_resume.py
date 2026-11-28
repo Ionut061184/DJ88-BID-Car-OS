@@ -1224,3 +1224,37 @@ t=root/'tests/editor10022/test_favorite_layout50.js'
 u=t.read_text().replace("i=s.indexOf('function favoriteLayout50(')","i=s.indexOf('function favoriteOverlap51(')")
 u += "\nconst sel=f(items,2,'horizontal',false,1280,720,['b'],20);a.equal(sel[0],items[0]);a.ok(sel[1]!==items[1]);a.equal(f(items,2,'horizontal',false,1280,720,[]),null);a.equal(c.favoriteOverlap51({x:0,y:0,w:10,h:10},{x:9,y:9,w:10,h:10}),true);a.equal(c.favoriteOverlap51({x:0,y:0,w:10,h:10},{x:10,y:0,w:10,h:10}),false);\n"
 t.write_text(u)
+
+# Add reversible favorite ordering and preview before editing the personal page.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const favoriteChosen51=new Set();let favoriteContext51='';","""const favoriteChosen51=new Set();let favoriteContext51='';let favoriteReverse52=false;
+const favoriteReverseControl52=document.createElement('input');favoriteReverseControl52.type='checkbox';
+const favoriteReverseLabel52=document.createElement('label');favoriteReverseLabel52.textContent='Ordine inversă';favoriteReverseLabel52.append(favoriteReverseControl52);favoritePanel50.append(favoriteReverseLabel52);
+favoriteReverseControl52.onchange=()=>{favoriteReverse52=favoriteReverseControl52.checked;};
+const favoritePreview52=document.createElement('button');favoritePreview52.type='button';favoritePreview52.textContent='Previzualizează aranjarea';
+favoritePanel50.append(favoritePreview52);""")
+rep("ids=null,spacing=8){","ids=null,spacing=8,reverse=false){")
+rep("if(!eligible.length)return null;","if(!eligible.length)return null;if(reverse===true)eligible.reverse();")
+rep("favoriteSpacing51.valueAsNumber);","favoriteSpacing51.valueAsNumber,favoriteReverse52);")
+rep("const favoriteApply50=document.createElement('button');","""favoritePreview52.onclick=()=>{
+ if(!allowed()||!draft)return;
+ const next=favoriteLayout50(draft.elements,Number(favoriteCols50.value),favoriteOrient50.value,favoriteCurve50.checked,W,H,favoriteOnly51.checked?[...favoriteChosen51]:null,favoriteSpacing51.valueAsNumber,favoriteReverse52);
+ if(!next){message('Nu sunt scurtături eligibile sau spațiu suficient.');return;}
+ const old=document.getElementById('bidFavoritePreview52');if(old)old.remove();
+ const preview=document.createElement('div');preview.id='bidFavoritePreview52';preview.style.cssText='position:relative;width:100%;aspect-ratio:'+W+'/'+H+';background:#171318;border:1px solid #b59b80;overflow:hidden';
+ next.forEach((e,i)=>{
+  if(![e.x,e.y,e.w,e.h].every(Number.isFinite))return;
+  const item=document.createElement('div');item.textContent=String(e.label||e.appKey||e.type||'');
+  item.style.cssText='position:absolute;box-sizing:border-box;overflow:hidden;font-size:10px;border:1px solid #8a8078;pointer-events:none';
+  item.style.left=(100*e.x/W)+'%';item.style.top=(100*e.y/H)+'%';item.style.width=(100*e.w/W)+'%';item.style.height=(100*e.h/H)+'%';
+  item.style.background=e!==draft.elements[i]?'#572433':'#343438';preview.append(item);
+ });
+ favoritePanel50.append(preview);
+};
+const favoriteApply50=document.createElement('button');""")
+rep("favoriteList51.replaceChildren();","favoriteList51.replaceChildren();document.getElementById('bidFavoritePreview52')?.remove();")
+p.write_text(s)
+t=root/'tests/editor10022/test_favorite_layout50.js'
+with t.open('a') as f:
+ f.write("\nconst rev=f(items,2,'horizontal',false,1280,720,null,8,true);a.ok(rev[0].x>rev[1].x);a.equal(rev[2],items[2]);a.equal(items[0].x,10);\n")
