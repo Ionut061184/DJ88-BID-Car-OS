@@ -1929,7 +1929,7 @@ s=p.read_text()
 rep("const types={gpsSatellites:", "const types={androidWifi:'Wi-Fi Android',androidBluetooth:'Bluetooth Android',androidNetwork:'Rețea mobilă Android',gpsSatellites:")
 rep("function value(e){", """function connectivityValue158(type,d){
  if(!d)return '—';
- if(type==='androidNetwork')return d.simPresent===false?'Fără SIM':typeof d.networkGeneration==='string'&&/^(2G|3G|4G|4G\\\\+|5G)$/.test(d.networkGeneration)?d.networkGeneration:'—';
+ if(type==='androidNetwork')return d.simPresent===false?'Fără SIM':typeof d.networkGeneration==='string'&&['2G','3G','4G','4G+','5G'].includes(d.networkGeneration)?d.networkGeneration:'—';
  const wifi=type==='androidWifi',enabled=d[wifi?'wifi':'bluetooth'],connected=d[wifi?'wifiConnected':'bluetoothConnected'];
  if(enabled===false)return 'Oprit';
  if(enabled!==true)return '—';
