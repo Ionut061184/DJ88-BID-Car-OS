@@ -1258,3 +1258,60 @@ p.write_text(s)
 t=root/'tests/editor10022/test_favorite_layout50.js'
 with t.open('a') as f:
  f.write("\nconst rev=f(items,2,'horizontal',false,1280,720,null,8,true);a.ok(rev[0].x>rev[1].x);a.equal(rev[2],items[2]);a.equal(items[0].x,10);\n")
+
+# Import graphic badges through the existing bounded Android image picker.
+# Route its response separately so an emblem cannot replace a theme background.
+p=root/'app/src/main/java/ro/dj88bid/car/BidThemeImage.kt'
+s=p.read_text()
+rep('    private var pending = false','    private var pending = false\n    private var badgeRequest = false')
+rep('            pending = false\n            if (closed', '            pending = false\n            val badge=badgeRequest;badgeRequest=false\n            if (closed')
+rep('            web.evaluateJavascript("if(window.bidThemeImageResult)window.bidThemeImageResult($json);",null)', '''            val callback=if(badge)"bidThemeBadgeResult" else "bidThemeImageResult"
+            web.evaluateJavascript("if(window.$callback)window.$callback($json);",null)''')
+rep('    @JavascriptInterface fun pick() {','''    @JavascriptInterface fun pick() { openPicker(false) }
+    @JavascriptInterface fun pickBadge() { openPicker(true) }
+    private fun openPicker(badge:Boolean) {''')
+rep('            pending = true','            pending = true\n            badgeRequest=badge')
+rep('putExtra(Intent.EXTRA_MIME_TYPES,arrayOf("image/jpeg","image/png","image/webp","image/gif"))','putExtra(Intent.EXTRA_MIME_TYPES,if(badge)arrayOf("image/jpeg","image/png","image/webp") else arrayOf("image/jpeg","image/png","image/webp","image/gif"))')
+rep('                if(type=="image/gif"){','                if(type=="image/gif" && badgeRequest)error("Alege o emblemă statică PNG, JPG sau WebP.")\n                if(type=="image/gif"){')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("function bidArtworkStyle37(v){", """function bidBadgeImage53(v){return typeof v==='string'&&v.length<=534000&&/^data:image\\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(v)?v:'';}
+function bidArtworkStyle37(v){""")
+rep("bidArtBadgeY:bound(v.bidArtBadgeY,80,10,90)};", "bidArtBadgeY:bound(v.bidArtBadgeY,80,10,90),bidArtBadgeImage:bidBadgeImage53(v.bidArtBadgeImage),bidArtBadgeSize:bound(v.bidArtBadgeSize,20,5,50)};")
+rep("if(artStyle37.bidArtBadge){","if(artStyle37.bidArtBadge||artStyle37.bidArtBadgeImage){")
+rep("badge.textContent=artStyle37.bidArtBadge;", "badge.textContent=artStyle37.bidArtBadgeImage?'':artStyle37.bidArtBadge;")
+rep("  n.append(badge);", """  if(artStyle37.bidArtBadgeImage){
+   const img=document.createElement('img');img.src=artStyle37.bidArtBadgeImage;img.alt='Emblemă personală';
+   img.style.cssText='display:block;width:100%;height:100%;object-fit:contain;pointer-events:none';
+   badge.style.width=artStyle37.bidArtBadgeSize+'%';badge.style.height=artStyle37.bidArtBadgeSize+'%';badge.append(img);
+  }
+  n.append(badge);""")
+rep("const artApply37=document.createElement('button');", """const badgeSize53=document.createElement('input');badgeSize53.type='range';badgeSize53.min=5;badgeSize53.max=50;
+const badgeSizeLabel53=document.createElement('label');badgeSizeLabel53.textContent='Dimensiune emblemă grafică (%)';badgeSizeLabel53.append(badgeSize53);artPanel37.append(badgeSizeLabel53);
+let badgePick53=null;
+const badgeImport53=document.createElement('button');badgeImport53.type='button';badgeImport53.textContent='Importă emblemă PNG/JPG/WebP';
+const badgeClear53=document.createElement('button');badgeClear53.type='button';badgeClear53.textContent='Elimină emblema grafică';
+badgeImport53.onclick=()=>{
+ if(!allowed()||!draft||badgePick53)return;
+ const e=draft.elements.find(v=>v.id===selected);if(!e||e.locked||e.group)return;
+ if(typeof window.BIDThemeImage?.pickBadge!=='function'){message('Selector emblemă indisponibil.');return;}
+ badgePick53={theme:draft.id,page:draft.pageId,id:e.id};try{window.BIDThemeImage.pickBadge();}catch(_){badgePick53=null;}
+};
+window.bidThemeBadgeResult=result=>{
+ const target=badgePick53;badgePick53=null;
+ if(!target||!allowed()||!draft||draft.id!==target.theme||draft.pageId!==target.page)return;
+ const e=draft.elements.find(v=>v.id===target.id);if(!e||e.locked||e.group)return;
+ const image=bidBadgeImage53(result?.image);if(!image){message(result?.message||'Emblemă invalidă.');return;}
+ if(e.bidArtBadgeImage===image)return;checkpoint();e.bidArtBadgeImage=image;render();
+};
+badgeClear53.onclick=()=>{if(!allowed()||!draft)return;const e=draft.elements.find(v=>v.id===selected);if(!e||e.locked||e.group||!e.bidArtBadgeImage)return;checkpoint();e.bidArtBadgeImage='';render();};
+artPanel37.append(badgeImport53,badgeClear53);
+const artApply37=document.createElement('button');""")
+rep("bidArtBadgeY:badgeY37.valueAsNumber}", "bidArtBadgeY:badgeY37.valueAsNumber,bidArtBadgeImage:e.bidArtBadgeImage,bidArtBadgeSize:badgeSize53.valueAsNumber}")
+rep("badgeY37.value=String(style.bidArtBadgeY);for(const c of", "badgeY37.value=String(style.bidArtBadgeY);badgeSize53.value=String(style.bidArtBadgeSize);for(const c of")
+rep("badgeX37,badgeY37,artApply37,artReset37])","badgeX37,badgeY37,badgeSize53,badgeImport53,badgeClear53,artApply37,artReset37])")
+p.write_text(s)
+t=root/'tests/editor10022/test_artwork_style37.js'
+with t.open('a') as f:
+ f.write("\na.equal(f({bidArtBadgeImage:'https://example.com/a.png'}).bidArtBadgeImage,'');a.equal(f({bidArtBadgeImage:'data:image/svg+xml;base64,AAAA'}).bidArtBadgeImage,'');a.equal(f({bidArtBadgeImage:'data:image/png;base64,AAAA'}).bidArtBadgeImage,'data:image/png;base64,AAAA');a.equal(f({bidArtBadgeSize:100}).bidArtBadgeSize,50);a.equal(f({bidArtBadgeSize:-1}).bidArtBadgeSize,5);\n")
