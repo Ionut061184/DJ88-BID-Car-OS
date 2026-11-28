@@ -477,3 +477,39 @@ p.write_text(s)
 
 # Retain a diagnostic distinction between activity recreation and process recreation.
 # This source is copied into the archive by CI after this script.
+
+# Add a user-controlled global palette operation for personal theme drafts only.
+# All changes use the existing undo checkpoint and exclude protected elements.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("function refreshPrecision(){", """function bidPalette30(elements,color){
+ if(!/^#[0-9a-f]{6}$/i.test(color))return elements;
+ return elements.map(e=>e.locked||e.group?e:{...e,borderColor:color});
+}
+const palette30=document.createElement('label');palette30.textContent='Accent global contur — ecran personal';
+const paletteColor30=document.createElement('input');paletteColor30.type='color';paletteColor30.value='#b59b80';palette30.append(paletteColor30);
+const paletteApply30=document.createElement('button');paletteApply30.type='button';paletteApply30.textContent='Aplică accentul pe ecran';
+paletteApply30.onclick=()=>{if(!allowed()||!draft)return;const next=bidPalette30(draft.elements,paletteColor30.value);if(!next.some((e,i)=>e.borderColor!==draft.elements[i].borderColor))return;if(!confirm('Aplici accentul tuturor elementelor neblocate și negrupate?'))return;checkpoint();draft.elements=next;render();};
+palette30.append(paletteApply30);$('bfControls').append(palette30);
+function refreshPrecision(){""")
+p.write_text(s)
+t=root/'tests/editor10022/test_palette30.js'
+t.write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');
+const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8');
+const i=s.indexOf('function bidPalette30('),j=s.indexOf('const palette30=',i);a.ok(i>=0&&j>i);
+const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);
+const input=[{id:'a',borderColor:'#000000'},{id:'b',locked:true,borderColor:'#000000'},{id:'c',group:'g',borderColor:'#000000'}];
+const out=c.bidPalette30(input,'#abcdef');a.equal(out[0].borderColor,'#abcdef');a.equal(input[0].borderColor,'#000000');a.equal(out[1],input[1]);a.equal(out[2],input[2]);a.equal(c.bidPalette30(input,'bad'),input);console.log('5 personal palette checks passed');
+""")
+# Broaden the explicitly experimental existing status display, without safety alerts.
+p=root/'app/src/main/assets/index.html'
+s=p.read_text()
+rep("if(Number.isFinite(v.body.rpm))parts.push(v.body.rpm+' rpm');",
+    """if(Number.isFinite(v.body.rpm))parts.push(v.body.rpm+' rpm');
+   if(Number.isFinite(v.body.speed))parts.push('viteză candidat '+v.body.speed+' km/h');""")
+p.write_text(s)
+# Native map loaded state must not survive hiding a previous visible session.
+p=root/'app/src/main/java/ro/dj88bid/car/BidGoogleMap.kt'
+s=p.read_text()
+rep('previous="";lastCamera="";settings=""', 'previous="";lastCamera="";settings="";loaded=false')
+p.write_text(s)
