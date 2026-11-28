@@ -1737,3 +1737,62 @@ s=s.replace(a,a+"tint152,tintAmount152,",1)
 p.write_text(s)
 with (root/'tests/editor10022/test_artwork_style37.js').open('a') as f:
  f.write("\na.equal(f({}).bidArtTintAmount,0);a.equal(f({bidArtTint:'#123456'}).bidArtTint,'#123456');a.equal(f({bidArtTint:'invalid'}).bidArtTint,'#70232e');a.equal(f({bidArtTintAmount:200}).bidArtTintAmount,100);a.equal(f({bidArtTintAmount:-1}).bidArtTintAmount,0);a.equal(f({bidArtTintAmount:NaN}).bidArtTintAmount,0);\n")
+
+# Reuse existing native/media and GPS functionality for missing reference widgets.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const types={canSpeed:", "const types={analogClock:'Ceas analogic',sessionStart:'Ora deschiderii sesiunii BID',mediaPrevious:'Piesa precedentă',mediaPlay:'Redare / pauză',mediaNext:'Piesa următoare',volumeUp:'Volum +',volumeDown:'Volum −',volumeLevel:'Volum multimedia Android',displayLight:'Luminozitate fereastră Android',canSpeed:")
+rep("const actions={apps:", "const actions={mediaPrevious:'Piesa precedentă',mediaPlay:'Redare / pauză',mediaNext:'Piesa următoare',volumeUp:'Volum +',volumeDown:'Volum −',apps:")
+rep("function value(e){", """const catalogSessionStart154=new Date();
+let catalogDevice154={},catalogDeviceAt154=-Infinity;
+function catalogDeviceReading154(now){
+ if(document.hidden)return {};
+ if(now-catalogDeviceAt154>=2000){
+  catalogDeviceAt154=now;
+  try{catalogDevice154=JSON.parse(window.BID?.catalogDeviceState154()||'{}');}catch(_){catalogDevice154={};}
+ }
+ return catalogDevice154;
+}
+function clockHands154(h,m,s){return [30*((h%12)+m/60+s/3600),6*(m+s/60),6*s];}
+function analogClock154(){
+ const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+ svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('data-bid-clock','1');
+ svg.style.cssText='position:absolute;inset:5%;width:90%;height:90%;pointer-events:none;color:inherit';
+ const el=(tag,attrs)=>{const a=document.createElementNS(svg.namespaceURI,tag);for(const [k,v] of Object.entries(attrs))a.setAttribute(k,String(v));svg.append(a);return a;};
+ el('circle',{cx:50,cy:50,r:46,fill:'none',stroke:'currentColor','stroke-width':2});
+ for(let i=0;i<12;i++)el('line',{x1:50,y1:7,x2:50,y2:i%3===0?15:11,stroke:'currentColor','stroke-width':i%3===0?2:1,transform:'rotate('+(i*30)+' 50 50)'});
+ for(const [i,y,w] of [[0,27,4],[1,15,2],[2,11,1]])el('line',{x1:50,y1:50,x2:50,y2:y,stroke:'currentColor','stroke-width':w,'stroke-linecap':'round','data-hand':i});
+ el('circle',{cx:50,cy:50,r:3,fill:'currentColor'});
+ return svg;
+}
+function paintClock154(n,d){const a=clockHands154(d.getHours(),d.getMinutes(),d.getSeconds());for(const hand of n.querySelectorAll('[data-hand]'))hand.setAttribute('transform','rotate('+a[Number(hand.getAttribute('data-hand'))]+' 50 50)');}
+function value(e){""")
+rep("switch(e.type){case 'canSpeed':", """switch(e.type){case 'analogClock':return '';case 'sessionStart':return catalogSessionStart154.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit'});case 'mediaPrevious':return '⏮';case 'mediaPlay':return '⏯';case 'mediaNext':return '⏭';case 'volumeUp':return 'Vol +';case 'volumeDown':return 'Vol −';case 'volumeLevel':case 'displayLight':{const d=catalogDeviceReading154(performance.now()),v=e.type==='volumeLevel'?d.volume:d.brightness;return Number.isFinite(v)&&v>=0&&v<=100?Math.round(v)+'%':'—';}case 'canSpeed':""")
+rep("function widgetGesture64(e){if(e.actionLocked===true)return 'none';", "function widgetGesture64(e){if(e.actionLocked===true)return 'none';if(['mediaPrevious','mediaPlay','mediaNext','volumeUp','volumeDown'].includes(e.type))return e.gesture==='double'?'double':'tap';")
+rep("function perform(e){if(e.actionLocked===true)return;", """function perform(e){if(e.actionLocked===true)return;
+ const media154={mediaPrevious:'previous',mediaPlay:'playpause',mediaNext:'next'},a154=['mediaPrevious','mediaPlay','mediaNext','volumeUp','volumeDown'].includes(e.type)?e.type:e.action;
+ if(Object.prototype.hasOwnProperty.call(media154,a154)){try{window.BID?.mediaKey(media154[a154]);}catch(_){}return;}
+ if(a154==='volumeUp'||a154==='volumeDown'){try{window.BIDVolume?.adjust(a154==='volumeUp'?1:-1);}catch(_){}return;}""")
+rep("if(gaugeKinds.includes(e.type)){n.append(gaugeNode(e));", "if(e.type==='analogClock'){n.append(analogClock154());paintClock154(n,new Date());}else if(gaugeKinds.includes(e.type)){n.append(gaugeNode(e));")
+rep("if(gaugeKinds.includes(e.type))paintGauge(n,currentInstruments().speed);", "if(e.type==='analogClock')paintClock154(n,new Date());if(gaugeKinds.includes(e.type))paintGauge(n,currentInstruments().speed);")
+p.write_text(s)
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('    inner class Bridge {','''    inner class Bridge {
+        @JavascriptInterface
+        fun catalogDeviceState154(): String {
+            val result=JSONObject()
+            try {
+                val audio=getSystemService(AUDIO_SERVICE) as AudioManager
+                val max=audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                if(max>0)result.put("volume",100.0*audio.getStreamVolume(AudioManager.STREAM_MUSIC)/max)
+            }catch(_:Exception){}
+            try {
+                val v=android.provider.Settings.System.getInt(contentResolver,android.provider.Settings.System.SCREEN_BRIGHTNESS)
+                if(v in 0..255)result.put("brightness",100.0*v/255)
+            }catch(_:Exception){}
+            return result.toString()
+        }
+''')
+p.write_text(s)
+(root/'tests/editor10022/test_clock154.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function clockHands154('),j=s.indexOf('function analogClock154(',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.clockHands154;a.equal(JSON.stringify(f(12,0,0)),'[0,0,0]');a.equal(JSON.stringify(f(3,30,0)),'[105,180,0]');a.equal(JSON.stringify(f(6,0,30)),'[180.25,3,180]');console.log('3 analog clock checks passed');""")
