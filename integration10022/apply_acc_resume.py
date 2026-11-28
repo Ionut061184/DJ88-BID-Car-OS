@@ -88,3 +88,29 @@ s=p.read_text()
 a='manifestPlaceholders["bidHomeEnabled"] = "false"'
 assert s.count(a)==1
 p.write_text(s.replace(a,'manifestPlaceholders["bidHomeEnabled"] = "true"',1))
+
+# Preserve the existing CANBUS probe and its authorization checks.
+p=root/'app/src/main/java/ro/dj88bid/car/BidCanProbeActivity.kt'
+s=p.read_text()
+rep('    private val samples = ArrayDeque<String>()', '''    private val samples = ArrayDeque<String>()
+    private val savedReport by lazy { getSharedPreferences("bid_can_report", Context.MODE_PRIVATE) }
+    private var lastSavedAt = 0L
+    private fun persistReport(force: Boolean = false) {
+        val now = SystemClock.elapsedRealtime()
+        if (!force && now - lastSavedAt < 5000L) return
+        lastSavedAt = now
+        savedReport.edit().putString("last_report", summary())
+            .putLong("saved_wall_ms", System.currentTimeMillis()).apply()
+    }''')
+rep('        setContentView(root); render()', '''        setContentView(root); render()
+        val previous = savedReport.getString("last_report", null)
+        if (!previous.isNullOrEmpty()) {
+            report.text = "Raport anterior salvat local; nu reprezintă date live.\\n" + previous
+        }''')
+rep('        running=true; deadline=SystemClock.elapsedRealtime()+120000', '''        running=true; deadline=SystemClock.elapsedRealtime()+120000
+        lastSavedAt = 0L''')
+rep('        running=false;++epoch;stage=reason;note(reason);ui.removeCallbacks(tick)', '''        running=false;++epoch;stage=reason;note(reason);ui.removeCallbacks(tick)
+        persistReport(true)''')
+rep('            render();ui.postDelayed(this,1000)', '''            render();persistReport();ui.postDelayed(this,1000)''')
+rep('clipboard.setPrimaryClip(ClipData.newPlainText("BID CAN diagnostic",summary()))', '''clipboard.setPrimaryClip(ClipData.newPlainText("BID CAN diagnostic",report.text.toString()))''')
+p.write_text(s)
