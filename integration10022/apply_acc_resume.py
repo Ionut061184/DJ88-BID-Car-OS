@@ -152,3 +152,26 @@ rep('            appendLine("Decodare experimentală ultim mesaj (mapare OEM mai
             appendLine("Ultimul candidat caroserie (istoric): " + bodyCandidate)
             appendLine("Ultimul candidat uși (istoric): " + doorCandidate)''')
 p.write_text(s)
+
+# Include read-only OEM sharing configuration in the existing reception report.
+s=p.read_text()
+rep('    private fun summary():String{', '''    private fun shareFlag(suffix: String): String {
+        return try {
+            when(android.provider.Settings.Global.getString(contentResolver, packageName + suffix)) {
+                "1" -> "activ"
+                "0" -> "inactiv"
+                null -> "absent"
+                else -> "necunoscut"
+            }
+        } catch (_: Exception) { "inaccesibil" }
+    }
+    private fun summary():String{''')
+rep('            appendLine("Etapă: $phase")', '''            appendLine("Etapă: $phase")
+            appendLine("Partajare OEM (citire, nu dovadă de recepție): caroserie=" +
+                shareFlag("KeyShareCarbodyState") + "; uși=" + shareFlag("KeyShareDoorWindow") +
+                "; climatizare=" + shareFlag("KeyShareAcState") + "; radar=" + shareFlag("KeyShareRadarState"))''')
+rep('"; kilometraj=" + (value.odometer ?: "—") + "; consum=" + (value.consumption ?: "—")', '''"; kilometraj=" + (value.odometer ?: "—") + "; consum=" + (value.consumption ?: "—") +
+                "; biți experimentali: frână=" + (value.parkingBrake ?: "—") +
+                "; centură=" + (value.driverBeltUnfastened ?: "—") +
+                "; lichid=" + (value.washerFlag ?: "—")''')
+p.write_text(s)
