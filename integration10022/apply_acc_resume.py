@@ -1832,3 +1832,33 @@ rep('''            val result=JSONObject()
                 val audio=getSystemService(AUDIO_SERVICE) as AudioManager''')
 p.write_text(s)
 (root/'tests/editor10022/test_trip_widget155.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function tripWidget155('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.tripWidget155,d={enabled:true,session:{distanceKm:12.345,averageMovingKmh:40,maxKmh:80,movingSeconds:3661,stoppedSeconds:59}};a.equal(f('tripDistance',d),'12.35 km');a.equal(f('tripAverage',d),'40.0 km/h');a.equal(f('tripMaximum',d),'80.0 km/h');a.equal(f('tripMoving',d),'01:01:01');a.equal(f('tripStopped',d),'00:00:59');a.equal(f('tripTotal',d),'01:02:00');a.equal(f('tripTotal',{...d,enabled:false}),'—');a.equal(f('tripDistance',{enabled:true,session:{distanceKm:-1}}),'—');a.equal(f('tripMaximum',null),'—');console.log('9 trip widget checks passed');""")
+
+# GPS altitude and course from the same validated foreground location fix.
+p=root/'app/src/main/java/ro/dj88bid/car/BidGpsSpeed.kt'
+s=p.read_text()
+rep('        emit("if(window.bidGpsSpeedUnavailable)window.bidGpsSpeedUnavailable();")','''        emit("if(window.bidGpsSpeedUnavailable)window.bidGpsSpeedUnavailable();")
+        emit("if(window.bidGpsCatalog156)window.bidGpsCatalog156(null);")''')
+rep('        drive.onFix(location)','''        drive.onFix(location)
+        val catalog=org.json.JSONObject()
+        if(location.hasAltitude()&&location.altitude.isFinite()&&location.altitude in -500.0..12000.0)
+            catalog.put("altitude",location.altitude)
+        if(location.hasBearing()&&location.bearing.isFinite()&&location.bearing>=0f&&location.bearing<360f&&speed>=1.0f)
+            catalog.put("course",location.bearing.toDouble())
+        emit("if(window.bidGpsCatalog156)window.bidGpsCatalog156("+catalog.toString()+");")''')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const types={tripDistance:", "const types={gpsAltitude:'Altitudine GPS',gpsCourse:'Direcție deplasare GPS',tripDistance:")
+rep("function value(e){", """let gpsCatalog156=null;
+window.bidGpsCatalog156=data=>{gpsCatalog156=data&&typeof data==='object'&&!document.hidden?{data,at:performance.now()}:null;};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)gpsCatalog156=null;});
+function gpsWidget156(type,sample,age,hidden){
+ if(hidden||!sample||!Number.isFinite(age)||age<0||age>4000)return '—';
+ if(type==='gpsAltitude'){const n=sample.altitude;return Number.isFinite(n)&&n>=-500&&n<=12000?Math.round(n)+' m':'—';}
+ if(type==='gpsCourse'){const n=sample.course;if(!Number.isFinite(n)||n<0||n>=360)return '—';const dirs=['N','NE','E','SE','S','SV','V','NV'];return dirs[Math.round(n/45)%8]+' '+(Math.round(n)%360)+'°';}
+ return '—';
+}
+function value(e){""")
+rep("switch(e.type){case 'tripDistance':", "switch(e.type){case 'gpsAltitude':case 'gpsCourse':return gpsWidget156(e.type,gpsCatalog156?.data,performance.now()-(gpsCatalog156?.at??-Infinity),document.hidden);case 'tripDistance':")
+p.write_text(s)
+(root/'tests/editor10022/test_gps_widgets156.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function gpsWidget156('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.gpsWidget156;a.equal(f('gpsAltitude',{altitude:123.6},0,false),'124 m');a.equal(f('gpsAltitude',{altitude:-25},4000,false),'-25 m');a.equal(f('gpsAltitude',{altitude:12},4001,false),'—');a.equal(f('gpsCourse',{course:90},0,false),'E 90°');a.equal(f('gpsCourse',{course:359.9},0,false),'N 0°');a.equal(f('gpsCourse',{course:360},0,false),'—');a.equal(f('gpsCourse',{course:90},0,true),'—');a.equal(f('gpsCourse',null,0,false),'—');console.log('8 GPS widget checks passed');""")
