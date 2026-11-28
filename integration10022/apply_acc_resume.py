@@ -1944,3 +1944,44 @@ t=root/'tests/editor10022/test_gps_widgets156.js'
 u=t.read_text()
 t.write_text(u.replace("j=s.indexOf('function value(e)',i)","j=s.indexOf('function connectivityValue158(',i)",1))
 (root/'tests/editor10022/test_connectivity158.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function connectivityValue158('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.connectivityValue158;a.equal(f('androidWifi',{wifi:true,wifiConnected:true,wifiLevel:3}),'Conectat · 3/4');a.equal(f('androidWifi',{wifi:false}),'Oprit');a.equal(f('androidBluetooth',{bluetooth:true,bluetoothConnected:null}),'Pornit · stare necunoscută');a.equal(f('androidBluetooth',{bluetooth:true,bluetoothConnected:false}),'Neconectat');a.equal(f('androidNetwork',{networkGeneration:'4G+'}),'4G+');a.equal(f('androidNetwork',{simPresent:false}),'Fără SIM');a.equal(f('androidWifi',null),'—');console.log('7 connectivity widget checks passed');""")
+
+# Read Android battery temperature and charge state, not vehicle battery voltage.
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('            try {result.put("connectivity",BidConnectivity.snapshot(this@MainActivity))}catch(_:Exception){}','''            try {result.put("connectivity",BidConnectivity.snapshot(this@MainActivity))}catch(_:Exception){}
+            try {
+                val battery=registerReceiver(null,android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+                if(battery!=null&&battery.getBooleanExtra(android.os.BatteryManager.EXTRA_PRESENT,false)){
+                    val info=JSONObject()
+                    val level=battery.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL,-1)
+                    val scale=battery.getIntExtra(android.os.BatteryManager.EXTRA_SCALE,-1)
+                    if(scale>0&&level in 0..scale)info.put("percent",100.0*level/scale)
+                    val status=battery.getIntExtra(android.os.BatteryManager.EXTRA_STATUS,-1)
+                    when(status){
+                        android.os.BatteryManager.BATTERY_STATUS_CHARGING->info.put("charging",true)
+                        android.os.BatteryManager.BATTERY_STATUS_FULL->info.put("charging",true)
+                        android.os.BatteryManager.BATTERY_STATUS_DISCHARGING,android.os.BatteryManager.BATTERY_STATUS_NOT_CHARGING->info.put("charging",false)
+                    }
+                    val temp=battery.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE,Int.MIN_VALUE)
+                    if(temp in -400..1000)info.put("temperature",temp/10.0)
+                    result.put("battery",info)
+                }
+            }catch(_:Exception){}''')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const types={androidWifi:", "const types={androidBatteryPercent:'Baterie dispozitiv Android',androidBatteryTemp:'Temperatură baterie Android',androidBatteryCharge:'Stare încărcare Android',androidWifi:")
+rep("function value(e){", """function batteryWidget159(type,b){
+ if(!b)return '—';
+ if(type==='androidBatteryPercent')return Number.isFinite(b.percent)&&b.percent>=0&&b.percent<=100?Math.round(b.percent)+'%':'—';
+ if(type==='androidBatteryTemp')return Number.isFinite(b.temperature)&&b.temperature>=-40&&b.temperature<=100?b.temperature.toFixed(1)+' °C':'—';
+ if(type==='androidBatteryCharge')return b.charging===true?'Alimentat / încărcare':b.charging===false?'Nu se încarcă':'—';
+ return '—';
+}
+function value(e){""")
+rep("switch(e.type){case 'androidWifi':", "switch(e.type){case 'androidBatteryPercent':case 'androidBatteryTemp':case 'androidBatteryCharge':return batteryWidget159(e.type,catalogDeviceReading154(performance.now()).battery);case 'androidWifi':")
+p.write_text(s)
+t=root/'tests/editor10022/test_connectivity158.js'
+u=t.read_text()
+t.write_text(u.replace("j=s.indexOf('function value(e)',i)","j=s.indexOf('function batteryWidget159(',i)",1))
+(root/'tests/editor10022/test_battery159.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function batteryWidget159('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.batteryWidget159;a.equal(f('androidBatteryPercent',{percent:75.5}),'76%');a.equal(f('androidBatteryPercent',{percent:101}),'—');a.equal(f('androidBatteryTemp',{temperature:32.5}),'32.5 °C');a.equal(f('androidBatteryTemp',{}),'—');a.equal(f('androidBatteryCharge',{charging:true}),'Alimentat / încărcare');a.equal(f('androidBatteryCharge',{charging:false}),'Nu se încarcă');a.equal(f('androidBatteryCharge',null),'—');console.log('7 Android battery widget checks passed');""")
