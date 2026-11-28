@@ -1044,3 +1044,41 @@ rep("palette30.append(paletteApply30,paletteAll30);", """const paletteReset30=do
 palette30.append(paletteApply30,paletteAll30,paletteReset30);""")
 p.write_text(s)
 # Keep automated tests operating on the final cumulative editor.
+
+# Independent personal-theme typography and automotive artwork controls.
+# These properties belong to individual elements, never to MASTER assets.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("function element(v){", """const bidFontFamilies33={default:'',sans:'sans-serif',serif:'serif',mono:'monospace',condensed:'sans-serif-condensed',light:'sans-serif-light',medium:'sans-serif-medium',cursive:'cursive'};
+function bidArtworkStyle37(v){
+ const font=Object.prototype.hasOwnProperty.call(bidFontFamilies33,v.bidFont)?v.bidFont:'default';
+ const hue=typeof v.bidArtHue==='number'&&Number.isFinite(v.bidArtHue)?Math.max(-180,Math.min(180,Math.round(v.bidArtHue))):0;
+ return {bidFont:font,bidArtHue:hue,bidArtMirror:v.bidArtMirror===true};
+}
+function element(v){""")
+rep("return {...advancedFields(v),", "return {...advancedFields(v),...bidArtworkStyle37(v),")
+rep("if(bidMaskSupported(e)){if(e.hideInnerLabel)", """const artStyle37=bidArtworkStyle37(e);
+if(artStyle37.bidFont!=='default')n.style.fontFamily=bidFontFamilies33[artStyle37.bidFont];
+for(const art of n.querySelectorAll('.bfAutoArt')){
+ if(artStyle37.bidArtHue!==0)art.style.filter='hue-rotate('+artStyle37.bidArtHue+'deg)';
+ if(artStyle37.bidArtMirror)art.style.scale='-1 1';
+}
+if(bidMaskSupported(e)){if(e.hideInnerLabel)""")
+rep("function refreshPrecision(){", """const artPanel37=document.createElement('div');
+const font37=document.createElement('select');for(const [id,title] of [['default','Original'],['sans','Sans'],['serif','Serif'],['mono','Monospace'],['condensed','Condensed'],['light','Light'],['medium','Medium'],['cursive','Cursiv']])font37.append(new Option(title,id));
+const hue37=document.createElement('input');hue37.type='range';hue37.min=-180;hue37.max=180;hue37.step=1;
+const mirror37=document.createElement('input');mirror37.type='checkbox';
+for(const [label,control] of [['Font element',font37],['Nuanță grafică auto (filtru)',hue37],['Oglindire grafică auto',mirror37]]){const row=document.createElement('label');row.textContent=label;row.append(control);artPanel37.append(row);}
+const artApply37=document.createElement('button');artApply37.type='button';artApply37.textContent='Aplică stilul elementului';
+artApply37.onclick=()=>{if(!allowed()||!draft)return;const e=draft.elements.find(v=>v.id===selected);if(!e||e.locked||e.group)return;const style=bidArtworkStyle37({bidFont:font37.value,bidArtHue:hue37.valueAsNumber,bidArtMirror:mirror37.checked});if(Object.entries(style).every(([k,v])=>e[k]===v))return;checkpoint();Object.assign(e,style);render();};
+artPanel37.append(artApply37);$('bfControls').append(artPanel37);
+function refreshArt37(){const e=draft?.elements.find(v=>v.id===selected);const style=bidArtworkStyle37(e||{});font37.value=style.bidFont;hue37.value=String(style.bidArtHue);mirror37.checked=style.bidArtMirror;for(const c of [font37,hue37,mirror37,artApply37])c.disabled=!e||!!e.locked||!!e.group;}
+function refreshPrecision(){refreshArt37();""")
+p.write_text(s)
+(root/'tests/editor10022/test_artwork_style37.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');
+const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8');
+const i=s.indexOf('const bidFontFamilies33='),j=s.indexOf('function element(v)',i);a.ok(i>=0&&j>i);
+const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);
+const f=c.bidArtworkStyle37;
+a.equal(f({}).bidFont,'default');a.equal(f({bidFont:'serif'}).bidFont,'serif');a.equal(f({bidFont:'constructor'}).bidFont,'default');a.equal(f({bidArtHue:999}).bidArtHue,180);a.equal(f({bidArtHue:-999}).bidArtHue,-180);a.equal(f({bidArtHue:NaN}).bidArtHue,0);a.equal(f({bidArtMirror:true}).bidArtMirror,true);a.equal(f({bidArtMirror:'true'}).bidArtMirror,false);console.log('8 artwork and font normalization checks passed');
+""")
