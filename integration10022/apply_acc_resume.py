@@ -1473,3 +1473,21 @@ assert u.count(a)==1,a
 u=u.replace(a,b,1)
 u += "\nconst beforeMain=data.get('main'),beforeBackup=data.get('backup'),beforeState=c.state; a.equal(c.persist({themes:[{image:'x'.repeat(1800001)}],active:null,applied:null}),false);a.equal(data.get('main'),beforeMain);a.equal(data.get('backup'),beforeBackup);a.equal(c.state,beforeState);console.log('4 additional persistence state-preservation checks passed');\n"
 t.write_text(u)
+
+# Add a searchable shortcut list with bulk selection in the existing editor.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const favoriteList51=document.createElement('div');favoritePanel50.append(favoriteList51);", """const favoriteSearch57=document.createElement('input');favoriteSearch57.type='search';favoriteSearch57.placeholder='Caută scurtături';favoriteSearch57.setAttribute('aria-label','Caută scurtături favorite');
+favoritePanel50.append(favoriteSearch57);
+const favoriteSelect57=document.createElement('button');favoriteSelect57.type='button';favoriteSelect57.textContent='Selectează rezultatele';
+const favoriteDeselect57=document.createElement('button');favoriteDeselect57.type='button';favoriteDeselect57.textContent='Deselectează toate';
+favoritePanel50.append(favoriteSelect57,favoriteDeselect57);
+const favoriteList51=document.createElement('div');favoritePanel50.append(favoriteList51);
+function favoriteMatches57(e,q){return !!e&&e.type==='button'&&!!e.appKey&&!e.locked&&!e.group&&[String(e.label||''),String(e.appKey)].some(v=>v.toLocaleLowerCase().includes(String(q||'').trim().toLocaleLowerCase()));}
+favoriteSearch57.oninput=()=>refreshFavorite51();
+favoriteSelect57.onclick=()=>{if(!allowed()||!draft)return;for(const e of draft.elements)if(favoriteMatches57(e,favoriteSearch57.value))favoriteChosen51.add(e.id);favoriteOnly51.checked=true;refreshFavorite51();};
+favoriteDeselect57.onclick=()=>{if(!allowed())return;favoriteChosen51.clear();favoriteOnly51.checked=true;refreshFavorite51();};""")
+rep("favoriteChosen51.clear();favoriteContext51=key;favoriteIndex54=0;cancelFavoritePress54();","favoriteChosen51.clear();favoriteContext51=key;favoriteIndex54=0;favoriteSearch57.value='';cancelFavoritePress54();")
+rep("if(e.type!=='button'||!e.appKey||e.locked||e.group)continue;","if(!favoriteMatches57(e,favoriteSearch57.value))continue;")
+p.write_text(s)
+(root/'tests/editor10022/test_favorite_search57.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function favoriteMatches57(');a.ok(i>=0);const c={};vm.createContext(c);vm.runInContext(s.slice(i,s.indexOf('\\n',i)),c);const f=c.favoriteMatches57,e={type:'button',appKey:'com.waze',label:'Navigație'};a.equal(f(e,'WAZE'),true);a.equal(f(e,' navigație '),true);a.equal(f(e,'radio'),false);a.equal(f({...e,locked:true},''),false);a.equal(f({...e,group:'x'},''),false);a.equal(f(null,''),false);console.log('6 favorite search checks passed');""")
