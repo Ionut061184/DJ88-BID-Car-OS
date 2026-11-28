@@ -955,3 +955,55 @@ a.ok(s.includes('result=="true"&&speedForeground&&hasWindowFocus()'));
 a.ok(gps.includes('age in 0L..3000L'));
 console.log('4 clock safety contract checks passed (static)');
 """)
+
+# Distinguish process identity from individual Activity instances in standby reports.
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('    private var bidClockIdleSince=android.os.SystemClock.elapsedRealtime()', '''    private var bidClockIdleSince=android.os.SystemClock.elapsedRealtime()
+    private var bidClockAutoGeneration=0L''')
+rep('        super.onUserInteraction()\n        bidClockIdleSince', '        super.onUserInteraction()\n        bidClockAutoGeneration++\n        bidClockIdleSince')
+rep('                // Ask the live page whether it is safe to obscure its contents.', '''                val generation=bidClockAutoGeneration
+                // Ask the live page whether it is safe to obscure its contents.''')
+rep('if(result=="true"&&speedForeground&&hasWindowFocus()&&bidClockDialog==null&&','if(result=="true"&&speedForeground&&hasWindowFocus()&&bidClockDialog==null&&generation==bidClockAutoGeneration&&')
+rep('        super.onResume()\n        bidClockIdleSince','        super.onResume()\n        bidClockAutoGeneration++\n        bidClockIdleSince')
+rep('    override fun onPause() {\n        bidClockAutoHandler','    override fun onPause() {\n        bidClockAutoGeneration++\n        bidClockAutoHandler')
+p.write_text(s)
+# Offer adjustable inactivity delay and brightness without changing system settings.
+rep('android.os.SystemClock.elapsedRealtime()-bidClockIdleSince>=60000L','android.os.SystemClock.elapsedRealtime()-bidClockIdleSince>=bidClockDelay(prefs)') if s.count('android.os.SystemClock.elapsedRealtime()-bidClockIdleSince>=60000L')==1 else None
+a='android.os.SystemClock.elapsedRealtime()-bidClockIdleSince>=60000L'
+assert s.count(a) in (0,2)
+s=s.replace(a,'android.os.SystemClock.elapsedRealtime()-bidClockIdleSince>=bidClockDelay(prefs)')
+rep('    private fun closeBidClock() {','''    private fun bidClockDelay(prefs: android.content.SharedPreferences): Long =
+        prefs.getInt("delay",60).coerceIn(30,300)*1000L
+    private fun closeBidClock() {''')
+rep('a.screenBrightness=0.15f','a.screenBrightness=prefs.getInt("brightness",15).coerceIn(5,60)/100f')
+rep('Automat după 60 secunde la staționare','Automat după timpul ales, la staționare')
+rep('    inner class Bridge {','''    inner class Bridge {
+        @JavascriptInterface
+        fun configureBidClockTiming() = runOnUiThread {
+            if(webView.url!="file:///android_asset/index.html"||!hasWindowFocus()||
+                !::bidGpsSpeed.isInitialized||!bidGpsSpeed.stationaryNow())return@runOnUiThread
+            val prefs=getSharedPreferences("bid_clock",MODE_PRIVATE)
+            val layout=android.widget.LinearLayout(this@MainActivity).apply{
+                orientation=android.widget.LinearLayout.VERTICAL;setPadding(24,16,24,16)
+            }
+            val labels=arrayOf("30 secunde","1 minut","2 minute","5 minute")
+            val times=intArrayOf(30,60,120,300)
+            val delay=android.widget.Spinner(this@MainActivity)
+            delay.adapter=android.widget.ArrayAdapter(this@MainActivity,android.R.layout.simple_spinner_dropdown_item,labels)
+            delay.setSelection(times.indexOf(prefs.getInt("delay",60)).coerceAtLeast(0))
+            val title=android.widget.TextView(this@MainActivity).apply{text="Luminozitate ceas: 5–60%"}
+            val brightness=android.widget.SeekBar(this@MainActivity).apply{max=55;progress=prefs.getInt("brightness",15).coerceIn(5,60)-5}
+            layout.addView(delay);layout.addView(title);layout.addView(brightness)
+            android.app.AlertDialog.Builder(this@MainActivity).setTitle("Timp și luminozitate ceas")
+                .setView(layout).setPositiveButton("Salvează"){_,_->
+                    if(bidGpsSpeed.stationaryNow())prefs.edit().putInt("delay",times[delay.selectedItemPosition])
+                        .putInt("brightness",brightness.progress+5).apply()
+                }.setNegativeButton("Anulează",null).show()
+        }
+''')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_general.js'
+s=p.read_text()
+rep("button('Închide',","button('Timp și luminozitate ceas',()=>{try{native().configureBidClockTiming();}catch(_){}});\nbutton('Închide',")
+p.write_text(s)
