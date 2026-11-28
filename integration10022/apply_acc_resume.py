@@ -298,3 +298,59 @@ p=root/'app/src/main/assets/index.html'
 s=p.read_text()
 rep('>Test recepție CANBUS QF001</button>', '>Test recepție CANBUS QF001</button><button onclick="if(window.BID)BID.passiveCanReport()">Date CANBUS pasive</button>')
 p.write_text(s)
+
+# Complete the passive candidate set and refresh the existing report in place.
+p=root/'app/src/main/java/ro/dj88bid/car/BidPassiveCan.kt'
+s=p.read_text()
+rep('                                o.put("odometer",v.odometer ?: JSONObject.NULL)', '''                                o.put("odometer",v.odometer ?: JSONObject.NULL)
+                                o.put("consumption",v.consumption ?: JSONObject.NULL)
+                                o.put("parkingBrakeCandidate",v.parkingBrake ?: JSONObject.NULL)
+                                o.put("driverBeltCandidate",v.driverBeltUnfastened ?: JSONObject.NULL)
+                                o.put("washerCandidate",v.washerFlag ?: JSONObject.NULL)''')
+rep('                                o.put("left",v.left ?: JSONObject.NULL).put("right",v.right ?: JSONObject.NULL)', '''                                o.put("left",v.left ?: JSONObject.NULL).put("right",v.right ?: JSONObject.NULL)
+                                o.put("power",v.power).put("ac",v.ac).put("auto",v.auto)
+                                o.put("recirculation",v.recirculation).put("dual",v.dual)
+                                o.put("numericUnitVerified",false)''')
+rep('                    "com.qf.vehicle.action.TEMP_STRING" -> {', '''                    "com.qf.vehicle.action.swa" -> {
+                        val angle = intent.getIntExtra("extra_angle",Int.MIN_VALUE)
+                        if (angle == Int.MIN_VALUE || kotlin.math.abs(angle.toLong()) > 1000000L) {
+                            values.remove("steering"); return
+                        }
+                        val rate = intent.getFloatExtra("extra_rate",Float.NaN)
+                        values["steering"] = Pair(now,JSONObject().put("rawAngle",angle)
+                            .put("rawRate",if(rate.isFinite()) rate else JSONObject.NULL))
+                    }
+                    "com.qf.action.BACKCAR_START", "com.qf.action.BACKCAR_STOP" -> {
+                        values["reverseEvent"] = Pair(now,JSONObject()
+                            .put("start",intent.action=="com.qf.action.BACKCAR_START"))
+                    }
+                    "com.qf.vehicle.action.TEMP_STRING" -> {''')
+rep('        f.addAction("com.qf.vehicle.action.TEMP_STRING")', '''        f.addAction("com.qf.vehicle.action.TEMP_STRING")
+        f.addAction("com.qf.vehicle.action.swa")
+        f.addAction("com.qf.action.BACKCAR_START")
+        f.addAction("com.qf.action.BACKCAR_STOP")''')
+p.write_text(s)
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('''            android.app.AlertDialog.Builder(this@MainActivity)
+                .setTitle("CANBUS pasiv · candidați nevalidați")
+                .setMessage(passiveCan.snapshot())
+                .setPositiveButton("Închide",null).show()''', '''            fun formatted(): String = try {
+                org.json.JSONObject(passiveCan.snapshot()).toString(2)
+            } catch (_: Exception) { "Date indisponibile" }
+            val dialog = android.app.AlertDialog.Builder(this@MainActivity)
+                .setTitle("CANBUS pasiv · candidați nevalidați")
+                .setMessage(formatted())
+                .setPositiveButton("Închide",null).create()
+            val handler = android.os.Handler(android.os.Looper.getMainLooper())
+            val refresh = object : Runnable {
+                override fun run() {
+                    if (!dialog.isShowing || isFinishing || isDestroyed) return
+                    dialog.setMessage(formatted())
+                    handler.postDelayed(this,1000L)
+                }
+            }
+            dialog.setOnDismissListener { handler.removeCallbacks(refresh) }
+            dialog.show()
+            handler.post(refresh)''')
+p.write_text(s)
