@@ -354,3 +354,36 @@ rep('''            android.app.AlertDialog.Builder(this@MainActivity)
             dialog.show()
             handler.post(refresh)''')
 p.write_text(s)
+
+# Provide explicit source, age and confidence for the existing live report.
+p=root/'app/src/main/java/ro/dj88bid/car/BidPassiveCan.kt'
+s=p.read_text()
+rep('    private var count = 0L', '''    private var count = 0L
+    private var registrationError = ""
+    private var oemVersion = "necunoscut"''')
+rep('        values.clear()\n        val f = IntentFilter', '''        values.clear()
+        registrationError = ""
+        oemVersion = try {
+            activity.packageManager.getPackageInfo("com.qf.vehicle",0).versionName ?: "necunoscut"
+        } catch (_: Exception) { "indisponibil" }
+        val f = IntentFilter''')
+rep('        } catch (_: RuntimeException) { active = false }', '''        } catch (e: RuntimeException) {
+            active = false
+            registrationError = e.javaClass.simpleName
+        }''')
+rep('        val o = JSONObject().put("verified",false).put("active",active).put("messages",count)', '''        val o = JSONObject().put("verified",false).put("active",active).put("messages",count)
+            .put("source","OEM broadcast; sender not authenticated")
+            .put("oemVersion",oemVersion).put("registrationError",registrationError)
+        val status = JSONObject()
+        o.put("channels",status)''')
+rep('        for ((key,entry) in values) {', '''        for (key in listOf("body","climate","doors","radar","temperature","steering","reverseEvent")) {
+            val entry = values[key]
+            if (entry == null) {
+                status.put(key,JSONObject().put("fresh",false).put("ageMs",JSONObject.NULL))
+                continue
+            }''')
+rep('            if (active && now-entry.first in 0L..ttl) o.put(key,entry.second)', '''            val age = now-entry.first
+            val fresh = active && age in 0L..ttl
+            status.put(key,JSONObject().put("fresh",fresh).put("ageMs",age))
+            if (fresh) o.put(key,entry.second)''')
+p.write_text(s)
