@@ -888,3 +888,70 @@ rep('        for(key in keys.dropLast(90))days.remove(key)', '''        val cuto
         for(key in keys)if(key<earliest||key>day)days.remove(key)
         for(key in keys.dropLast(90))days.remove(key)''')
 p.write_text(s)
+
+# Add optional automatic clock on the trusted home screen only. A user must
+# explicitly enable it; the clock never starts a background Activity.
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('    private var bidClockDialog: android.app.Dialog? = null', '''    private var bidClockDialog: android.app.Dialog? = null
+    private var bidClockIdleSince=android.os.SystemClock.elapsedRealtime()
+    private val bidClockAutoHandler=android.os.Handler(android.os.Looper.getMainLooper())
+    private val bidClockAutoCheck=object:Runnable{
+        override fun run(){
+            if(!speedForeground||isFinishing||isDestroyed)return
+            val prefs=getSharedPreferences("bid_clock",MODE_PRIVATE)
+            if(!prefs.getBoolean("auto",false)||!hasWindowFocus()||
+                !::bidGpsSpeed.isInitialized||!bidGpsSpeed.stationaryNow()){
+                bidClockIdleSince=android.os.SystemClock.elapsedRealtime()
+            }else if(bidClockDialog==null && webView.url=="file:///android_asset/index.html" &&
+                android.os.SystemClock.elapsedRealtime()-bidClockIdleSince>=60000L){
+                // Ask the live page whether it is safe to obscure its contents.
+                webView.evaluateJavascript("(function(){return window.bidClockHomeEligible ? window.bidClockHomeEligible() : false;})()"){ result ->
+                    if(result=="true"&&speedForeground&&hasWindowFocus()&&bidClockDialog==null&&
+                        prefs.getBoolean("auto",false)&&bidGpsSpeed.stationaryNow()&&
+                        android.os.SystemClock.elapsedRealtime()-bidClockIdleSince>=60000L)showBidClock()
+                }
+            }
+            bidClockAutoHandler.postDelayed(this,2000L)
+        }
+    }
+    override fun onUserInteraction(){
+        super.onUserInteraction()
+        bidClockIdleSince=android.os.SystemClock.elapsedRealtime()
+    }''')
+rep('        super.onResume()', '''        super.onResume()
+        bidClockIdleSince=android.os.SystemClock.elapsedRealtime()
+        bidClockAutoHandler.removeCallbacks(bidClockAutoCheck)
+        bidClockAutoHandler.postDelayed(bidClockAutoCheck,2000L)''')
+rep('        closeBidClock()\n        speedForeground = false', '        bidClockAutoHandler.removeCallbacks(bidClockAutoCheck)\n        closeBidClock()\n        speedForeground = false')
+rep('    override fun onDestroy() {\n        closeBidClock()', '    override fun onDestroy() {\n        bidClockAutoHandler.removeCallbacks(bidClockAutoCheck)\n        closeBidClock()')
+rep('        val old=bidClockDialog\n        bidClockDialog=null', '        val old=bidClockDialog\n        bidClockIdleSince=android.os.SystemClock.elapsedRealtime()\n        bidClockDialog=null')
+rep('val keys=arrayOf("large","seconds","date")','val keys=arrayOf("large","seconds","date","auto")')
+rep('prefs.getBoolean("seconds",false),prefs.getBoolean("date",true))','prefs.getBoolean("seconds",false),prefs.getBoolean("date",true),prefs.getBoolean("auto",false))')
+rep('arrayOf("Ceas mare","Secunde","Dată"),checked','arrayOf("Ceas mare","Secunde","Dată","Automat după 60 secunde la staționare"),checked')
+p.write_text(s)
+# Conservative eligibility: only a visible, unobscured MASTER page, not editor,
+# dialogs, or any personal theme. No automatic activation if uncertain.
+p=root/'app/src/main/assets/index.html'
+s=p.read_text()
+rep('</body>', '''<script>
+window.bidClockHomeEligible=function(){
+ if(document.hidden)return false;
+ const visible=e=>!!e&&e.getClientRects().length>0&&getComputedStyle(e).visibility!=='hidden'&&getComputedStyle(e).display!=='none';
+ if(!visible(document.getElementById('stage')))return false;
+ if(Array.from(document.querySelectorAll('.on,[role="dialog"],dialog,[aria-modal="true"]')).some(visible))return false;
+ if(visible(document.getElementById('bfLive')))return false;
+ return true;
+};
+</script></body>''')
+p.write_text(s)
+# Add an explicit device test checklist for the newly integrated features.
+(root/'tests/editor10022/test_clock_contract.js').write_text("""const fs=require('fs'),a=require('assert');
+const s=fs.readFileSync(__dirname+'/../../app/src/main/java/ro/dj88bid/car/MainActivity.kt','utf8');
+const gps=fs.readFileSync(__dirname+'/../../app/src/main/java/ro/dj88bid/car/BidGpsSpeed.kt','utf8');
+a.ok(s.includes('bidClockAutoHandler.removeCallbacks(bidClockAutoCheck)'));
+a.ok(s.includes('prefs.getBoolean("auto",false)'));
+a.ok(s.includes('result=="true"&&speedForeground&&hasWindowFocus()'));
+a.ok(gps.includes('age in 0L..3000L'));
+console.log('4 clock safety contract checks passed (static)');
+""")
