@@ -114,3 +114,27 @@ rep('        running=false;++epoch;stage=reason;note(reason);ui.removeCallbacks(
 rep('            render();ui.postDelayed(this,1000)', '''            render();persistReport();ui.postDelayed(this,1000)''')
 rep('clipboard.setPrimaryClip(ClipData.newPlainText("BID CAN diagnostic",summary()))', '''clipboard.setPrimaryClip(ClipData.newPlainText("BID CAN diagnostic",report.text.toString()))''')
 p.write_text(s)
+
+# Decode only authenticated Binder samples with the reused BID experimental decoders.
+# Older OEM field mappings remain candidates, never certified instrument values.
+s=p.read_text()
+rep('    private val samples = ArrayDeque<String>()', '''    private val samples = ArrayDeque<String>()
+    private var candidate = "—"
+    private fun decodeCandidate(bytes: ByteArray, isBody: Boolean): String {
+        if (isBody) {
+            val value = QfVehiclePacket.decode(bytes) ?: return "Format caroserie necunoscut"
+            return "Candidat: km/h=" + (value.speed ?: "—") +
+                "; RPM=" + (value.rpm ?: "—") + "; combustibil brut scalat=" + (value.fuel ?: "—") +
+                "; kilometraj=" + (value.odometer ?: "—") + "; consum=" + (value.consumption ?: "—")
+        }
+        val mask = QfCabinPacket.doors(bytes) ?: return "Format uși necunoscut"
+        return "Candidat mască uși: " + mask
+    }''')
+rep('        notes.clear();samples.clear();bodyCount=0;doorCount=0;lastBody=0;lastDoor=0', '''        candidate="—"
+        notes.clear();samples.clear();bodyCount=0;doorCount=0;lastBody=0;lastDoor=0''')
+rep('                        val item=(if(isBody)', '''                        candidate=decodeCandidate(bytes,isBody)
+                        val item=(if(isBody)''')
+rep('            appendLine("Etapă: $phase")', '''            appendLine("Etapă: $phase")
+            appendLine("Decodare experimentală ultim mesaj (mapare OEM mai veche, nevalidată): " + candidate)''')
+rep('Nicio valoare interpretată sau simulată. Nicio inițializare cu acreditări OEM.', 'Candidați din mesaje recepționate; nicio valoare simulată. Nicio inițializare cu acreditări OEM.')
+p.write_text(s)
