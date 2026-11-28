@@ -1,0 +1,32 @@
+name: BID - JADX tool download
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/bid-10022-integration]
+    paths: ['.github/workflows/bid-jadx-tool.yml']
+permissions:
+  contents: read
+jobs:
+  tool:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Download official JADX 1.5.3
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 -o jadx-1.5.3.zip https://github.com/skylot/jadx/releases/download/v1.5.3/jadx-1.5.3.zip
+          unzip -q jadx-1.5.3.zip -d jadx
+          chmod +x jadx/bin/jadx
+          jadx/bin/jadx --version
+          sha256sum jadx-1.5.3.zip > JADX_SHA256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BID-JADX-1.5.3
+          path: |
+            jadx-1.5.3.zip
+            JADX_SHA256.txt
+          if-no-files-found: error
+          retention-days: 7
