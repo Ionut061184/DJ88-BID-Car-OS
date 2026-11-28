@@ -2147,3 +2147,42 @@ t=root/'tests/editor10022/test_orientation161.js'
 u=t.read_text()
 t.write_text(u.replace("j=s.indexOf('function value(e)',i)","j=s.indexOf('function mediaWidget162(',i)",1))
 (root/'tests/editor10022/test_media162.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function mediaWidget162('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.mediaWidget162,d={authorized:true,title:'Song',artist:'Artist',album:'Album',playing:true,position:65000,duration:185000};a.equal(f('mediaTitle',d),'Song');a.equal(f('mediaArtist',d),'Artist');a.equal(f('mediaAlbum',d),'Album');a.equal(f('mediaProgress',d),'1:05 / 3:05');a.equal(f('mediaState',d),'Redare');a.equal(f('mediaState',{...d,playing:false}),'Pauză / oprit');a.equal(f('mediaTitle',{...d,authorized:false}),'—');a.equal(f('mediaProgress',{...d,position:200000}),'—');a.equal(f('mediaTitle',null),'—');console.log('9 media widget checks passed');""")
+
+# Album artwork from the authorized active Android media session, bounded and local.
+p=root/'app/src/main/java/ro/dj88bid/car/BidMediaAccess162.kt'
+s=p.read_text()
+rep('    field(MediaMetadata.METADATA_KEY_ALBUM,"album")','''    field(MediaMetadata.METADATA_KEY_ALBUM,"album")
+    try {
+     val bitmap=data?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
+       ?:data?.getBitmap(MediaMetadata.METADATA_KEY_ART)
+       ?:data?.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
+     if(bitmap!=null&&bitmap.width>0&&bitmap.height>0){
+      val factor=minOf(1.0,192.0/maxOf(bitmap.width,bitmap.height))
+      val scaled=android.graphics.Bitmap.createScaledBitmap(bitmap,maxOf(1,(bitmap.width*factor).toInt()),maxOf(1,(bitmap.height*factor).toInt()),true)
+      val bytes=java.io.ByteArrayOutputStream()
+      if(scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG,75,bytes)&&bytes.size()<=100000)
+       out.put("art","data:image/jpeg;base64,"+android.util.Base64.encodeToString(bytes.toByteArray(),android.util.Base64.NO_WRAP))
+      if(scaled!==bitmap)scaled.recycle()
+     }
+    }catch(_:Exception){}''')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const types={mediaTitle:", "const types={mediaArtwork:'Copertă album',mediaTitle:")
+rep("function value(e){", """function artworkValue164(d){
+ return d?.authorized===true&&typeof d.art==='string'&&d.art.length<=134000&&d.art.startsWith('data:image/jpeg;base64,')&&/^[A-Za-z0-9+/=]+$/.test(d.art.slice(23))?d.art:null;
+}
+function paintArtwork164(n){
+ const url=artworkValue164(catalogDeviceReading154(performance.now()).media);
+ n.style.backgroundImage=url?'url("'+url+'")':'none';
+ n.style.backgroundSize='contain';n.style.backgroundRepeat='no-repeat';n.style.backgroundPosition='center';
+}
+function value(e){""")
+rep("switch(e.type){case 'mediaTitle':", "switch(e.type){case 'mediaArtwork':return artworkValue164(catalogDeviceReading154(performance.now()).media)?'':'—';case 'mediaTitle':")
+rep("if(e.type==='analogClock'){n.append(analogClock154());", "if(e.type==='mediaArtwork')paintArtwork164(n);if(e.type==='analogClock'){n.append(analogClock154());")
+rep("if(e.type==='analogClock')paintClock154(n,new Date());", "if(e.type==='mediaArtwork')paintArtwork164(n);if(e.type==='analogClock')paintClock154(n,new Date());")
+p.write_text(s)
+t=root/'tests/editor10022/test_media162.js'
+u=t.read_text()
+t.write_text(u.replace("j=s.indexOf('function value(e)',i)","j=s.indexOf('function artworkValue164(',i)",1))
+(root/'tests/editor10022/test_artwork164.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function artworkValue164('),j=s.indexOf('function paintArtwork164(',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.artworkValue164,u='data:image/jpeg;base64,/9j/AA==';a.equal(f({authorized:true,art:u}),u);a.equal(f({authorized:false,art:u}),null);a.equal(f({authorized:true,art:'https://example.com/image.jpg'}),null);a.equal(f({authorized:true,art:u+'!'}),null);a.equal(f(null),null);console.log('5 artwork checks passed');""")
