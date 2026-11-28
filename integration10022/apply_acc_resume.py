@@ -175,3 +175,126 @@ rep('"; kilometraj=" + (value.odometer ?: "—") + "; consum=" + (value.consumpt
                 "; centură=" + (value.driverBeltUnfastened ?: "—") +
                 "; lichid=" + (value.washerFlag ?: "—")''')
 p.write_text(s)
+
+# Foreground-only passive receiver for the already audited OEM broadcast format.
+# Broadcast sender is not authenticated: never use these candidates for safety alerts.
+p=root/'app/src/main/java/ro/dj88bid/car/BidPassiveCan.kt'
+assert not p.exists()
+p.write_text('''package ro.dj88bid.car
+
+import android.app.Activity
+import android.content.*
+import android.os.Build
+import android.os.SystemClock
+import org.json.JSONObject
+
+class BidPassiveCan(private val activity: Activity) {
+    private val values = mutableMapOf<String, Pair<Long, JSONObject>>()
+    private var active = false
+    private var count = 0L
+    private val receiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (!active) return
+            try {
+                val now = SystemClock.elapsedRealtime()
+                when (intent.action) {
+                    "com.qf.vehicle.action.DATA_SHARE" -> {
+                        val p = intent.getByteArrayExtra("extra_DATA_SHARE") ?: return
+                        if (p.size < 2 || p.size > 79 || (p[0].toInt() and 255) != 46) return
+                        val type = p[1].toInt() and 255
+                        val o = JSONObject()
+                        val key = when (type) {
+                            2 -> {
+                                val v = QfVehiclePacket.decode(p)
+                                if (v == null) { values.remove("body"); return }
+                                o.put("speed",v.speed ?: JSONObject.NULL)
+                                o.put("rpm",v.rpm ?: JSONObject.NULL)
+                                o.put("fuelRawScaled",v.fuel ?: JSONObject.NULL)
+                                o.put("odometer",v.odometer ?: JSONObject.NULL)
+                                "body"
+                            }
+                            1 -> {
+                                val v = QfCabinPacket.climate(p)
+                                if (v == null) { values.remove("climate"); return }
+                                o.put("left",v.left ?: JSONObject.NULL).put("right",v.right ?: JSONObject.NULL)
+                                "climate"
+                            }
+                            3 -> {
+                                val v = QfCabinPacket.doors(p)
+                                if (v == null) { values.remove("doors"); return }
+                                o.put("mask",v); "doors"
+                            }
+                            4 -> {
+                                val v = QfRadarPacket.levels(p)
+                                if (v == null) { values.remove("radar"); return }
+                                val a = org.json.JSONArray()
+                                v.forEach { a.put(it ?: JSONObject.NULL) }
+                                o.put("levels",a); "radar"
+                            }
+                            else -> return
+                        }
+                        values[key] = Pair(now,o)
+                    }
+                    "com.qf.vehicle.action.TEMP_STRING" -> {
+                        val v = QfOutsideTemperature.parse(intent.getStringExtra("extra_string"))
+                        if (v == null) { values.remove("temperature"); return }
+                        values["temperature"] = Pair(now,JSONObject().put("celsius",v))
+                    }
+                    else -> return
+                }
+                count++
+            } catch (_: RuntimeException) {}
+        }
+    }
+    fun start() {
+        if (active) return
+        values.clear()
+        val f = IntentFilter("com.qf.vehicle.action.DATA_SHARE")
+        f.addAction("com.qf.vehicle.action.TEMP_STRING")
+        try {
+            if (Build.VERSION.SDK_INT >= 33) activity.registerReceiver(receiver,f,Context.RECEIVER_EXPORTED)
+            else activity.registerReceiver(receiver,f)
+            active = true
+        } catch (_: RuntimeException) { active = false }
+    }
+    fun stop() {
+        if (active) try { activity.unregisterReceiver(receiver) } catch (_: RuntimeException) {}
+        active = false
+        values.clear()
+    }
+    fun snapshot(): String {
+        val now = SystemClock.elapsedRealtime()
+        val o = JSONObject().put("verified",false).put("active",active).put("messages",count)
+        for ((key,entry) in values) {
+            val ttl = when(key) { "temperature" -> 120000L; "doors","climate" -> 30000L; else -> 5000L }
+            if (active && now-entry.first in 0L..ttl) o.put(key,entry.second)
+        }
+        return o.toString()
+    }
+}
+''')
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('    private lateinit var bidAcc: BidAccResume', '''    private lateinit var bidAcc: BidAccResume
+    private val passiveCan by lazy { BidPassiveCan(this) }''')
+rep('        if (::bidAcc.isInitialized) bidAcc.resumed()', '''        if (::bidAcc.isInitialized) bidAcc.resumed()
+        passiveCan.start()''')
+rep('        if (::bidAcc.isInitialized) bidAcc.paused()', '''        passiveCan.stop()
+        if (::bidAcc.isInitialized) bidAcc.paused()''')
+rep('        if (::bidAcc.isInitialized) bidAcc.close()', '''        passiveCan.stop()
+        if (::bidAcc.isInitialized) bidAcc.close()''')
+rep('        fun standbyHistory(): String', '''        fun passiveCanReport() = runOnUiThread {
+            if (webView.url != "file:///android_asset/index.html" || !hasWindowFocus()) return@runOnUiThread
+            android.app.AlertDialog.Builder(this@MainActivity)
+                .setTitle("CANBUS pasiv · candidați nevalidați")
+                .setMessage(passiveCan.snapshot())
+                .setPositiveButton("Închide",null).show()
+        }
+
+        @JavascriptInterface
+        fun standbyHistory(): String''')
+p.write_text(s)
+p=root/'app/src/main/assets/index.html'
+s=p.read_text()
+rep('>Test recepție CANBUS QF001</button>', '>Test recepție CANBUS QF001</button><button onclick="if(window.BID)BID.passiveCanReport()">Date CANBUS pasive</button>')
+p.write_text(s)
