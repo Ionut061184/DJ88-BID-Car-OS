@@ -1184,3 +1184,43 @@ const h=f(items,2,'horizontal',false,1280,720),v=f(items,2,'vertical',false,1280
 a.ok(h[1].x>h[0].x);a.equal(h[0].y,h[1].y);a.ok(v[1].y>v[0].y);a.equal(v[0].x,v[1].x);a.equal(h[0].action,'app');a.equal(h[2],items[2]);a.equal(h[3],items[3]);a.equal(h[4],items[4]);a.equal(items[0].x,10);a.equal(f(items,0,'horizontal',false,1280,720),null);a.equal(f([],2,'horizontal',false,1280,720),null);
 const z=f([...items,{id:'f',type:'button',appKey:'pkg/f'}],3,'horizontal',true,1280,720);a.ok(z[0].y>z[1].y);console.log('12 favorite layout checks passed');
 """)
+
+# Make favorite rearrangement collision-aware, and allow explicit selection
+# rather than moving every shortcut on the personal page.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("function favoriteLayout50(items,cols,orientation,curve,width,height){", """function favoriteOverlap51(a,b){return [a.x,a.y,a.w,a.h,b.x,b.y,b.w,b.h].every(Number.isFinite)&&a.w>0&&a.h>0&&b.w>0&&b.h>0&&a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
+function favoriteLayout50(items,cols,orientation,curve,width,height,ids=null,spacing=8){""")
+rep("const eligible=items.filter(e=>e.type==='button'&&e.appKey&&!e.locked&&!e.group);","const eligible=items.filter(e=>e.type==='button'&&e.appKey&&!e.locked&&!e.group&&(!ids||ids.includes(e.id)));")
+rep("const rows=Math.ceil(eligible.length/cols),gap=8,top=64,margin=16;","const rows=Math.ceil(eligible.length/cols),gap=Number.isFinite(spacing)?Math.max(0,Math.min(32,Math.round(spacing))):8,top=64,margin=16;")
+rep("const favoriteApply50=document.createElement('button');", """const favoriteSpacing51=document.createElement('input');favoriteSpacing51.type='number';favoriteSpacing51.min=0;favoriteSpacing51.max=32;favoriteSpacing51.value=8;
+const spacingLabel51=document.createElement('label');spacingLabel51.textContent='Spațiere (px)';spacingLabel51.append(favoriteSpacing51);favoritePanel50.append(spacingLabel51);
+const favoriteOnly51=document.createElement('input');favoriteOnly51.type='checkbox';
+const onlyLabel51=document.createElement('label');onlyLabel51.textContent='Doar scurtăturile selectate din listă';onlyLabel51.append(favoriteOnly51);favoritePanel50.append(onlyLabel51);
+const favoriteList51=document.createElement('div');favoritePanel50.append(favoriteList51);
+const favoriteChosen51=new Set();let favoriteContext51='';
+function refreshFavorite51(){
+ const key=draft?String(draft.id)+'/'+String(draft.pageId):'';
+ if(key!==favoriteContext51){favoriteChosen51.clear();favoriteContext51=key;}
+ favoriteList51.replaceChildren();
+ for(const e of draft?.elements||[]){
+  if(e.type!=='button'||!e.appKey||e.locked||e.group)continue;
+  const row=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.checked=favoriteChosen51.has(e.id);
+  check.onchange=()=>{if(check.checked)favoriteChosen51.add(e.id);else favoriteChosen51.delete(e.id);};
+  row.append(check,document.createTextNode(String(e.label||e.appKey)));favoriteList51.append(row);
+ }
+}
+const favoriteApply50=document.createElement('button');""")
+rep("favoriteCurve50.checked,W,H);","favoriteCurve50.checked,W,H,favoriteOnly51.checked?[...favoriteChosen51]:null,favoriteSpacing51.valueAsNumber);")
+rep("if(!confirm('Rearanjezi scurtăturile independente? Alte elemente rămân pe poziție și pot fi suprapuse.'))return;", """const changed=validated.filter((e,i)=>e!==draft.elements[i]&&['x','y','w','h'].some(k=>e[k]!==draft.elements[i][k]));
+ if(!changed.length)return;
+ const unchanged=validated.filter(e=>!changed.includes(e));
+ if(changed.some(e=>unchanged.some(b=>favoriteOverlap51(e,b)))&&!confirm('Noua poziție se suprapune peste alte elemente. Aplici totuși?'))return;
+ if(!confirm('Aplici noua dispunere a '+changed.length+' scurtături?'))return;""")
+rep("function refreshPrecision(){", "function refreshPrecision(){refreshFavorite51();")
+p.write_text(s)
+# Include the geometry helper in the isolated test context and check selection.
+t=root/'tests/editor10022/test_favorite_layout50.js'
+u=t.read_text().replace("i=s.indexOf('function favoriteLayout50(')","i=s.indexOf('function favoriteOverlap51(')")
+u += "\nconst sel=f(items,2,'horizontal',false,1280,720,['b'],20);a.equal(sel[0],items[0]);a.ok(sel[1]!==items[1]);a.equal(f(items,2,'horizontal',false,1280,720,[]),null);a.equal(c.favoriteOverlap51({x:0,y:0,w:10,h:10},{x:9,y:9,w:10,h:10}),true);a.equal(c.favoriteOverlap51({x:0,y:0,w:10,h:10},{x:10,y:0,w:10,h:10}),false);\n"
+t.write_text(u)
