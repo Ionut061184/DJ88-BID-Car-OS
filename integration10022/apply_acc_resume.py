@@ -1420,3 +1420,17 @@ recoveryExport56.onclick=()=>{
 };
 storagePanel55.append(storageCheck55,recoveryExport56);""")
 p.write_text(s)
+
+# Exercise the real budget helper together with persistence in the existing VM.
+t=root/'tests/editor10022/test_persistence_noop.js'
+u=t.read_text()
+a="const i=s.indexOf('function persist(next)'),j=s.indexOf("
+b="const i=s.indexOf('function bidStorageBudget55('),j=s.indexOf("
+assert u.count(a)==1
+u=u.replace(a,b,1)
+a="j=s.indexOf('\\n',i)"
+b="j=s.indexOf('\\n',s.indexOf('function persist(next)'))"
+assert u.count(a)==1
+u=u.replace(a,b,1)
+u += "\nconst stable=data.get('main'),recovery=data.get('backup'),count=writes;const huge={themes:[{image:'x'.repeat(1800001)}],active:null,applied:null};a.equal(c.persist(huge),false);a.equal(data.get('main'),stable);a.equal(data.get('backup'),recovery);a.equal(writes,count);console.log('4 oversized persistence rollback checks passed');\n"
+t.write_text(u)
