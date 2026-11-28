@@ -17,6 +17,7 @@ import android.util.Log
 class BidAccResume(private val activity: Activity) {
     private var registered = false
     private val prefs = activity.getSharedPreferences("bid_acc_diagnostic", Context.MODE_PRIVATE)
+    private val session = java.util.UUID.randomUUID().toString()
     private var lastAction = ""
     private var lastAt = -10000L
     private fun record(action: String) {
@@ -24,8 +25,18 @@ class BidAccResume(private val activity: Activity) {
         if (action == lastAction && now - lastAt < 1000L) return
         lastAction = action
         lastAt = now
+        val entry = org.json.JSONObject().apply {
+            put("event", action)
+            put("elapsedMs", now)
+            put("wallMs", System.currentTimeMillis())
+            put("processSession", session)
+        }
+        val history = try { org.json.JSONArray(prefs.getString("history", "[]")) } catch (_: Exception) { org.json.JSONArray() }
+        val next = org.json.JSONArray()
+        for (i in maxOf(0, history.length() - 63) until history.length()) next.put(history.get(i))
+        next.put(entry)
         prefs.edit().putString("last_event", action)
-            .putLong("last_elapsed_ms", now).apply()
+            .putLong("last_elapsed_ms", now).putString("history", next.toString()).commit()
         Log.i("BID-ACC", action)
     }
     private val receiver = object : BroadcastReceiver() {
@@ -39,8 +50,12 @@ class BidAccResume(private val activity: Activity) {
         }
     }
     fun resumed() = record("activity_resumed")
+    fun paused() = record("activity_paused")
+    fun homeIntent() = record("home_intent_received")
+    fun snapshot(): String = prefs.getString("history", "[]") ?: "[]"
     fun start() {
         if (registered) return
+        record("activity_created")
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_SCREEN_OFF)
