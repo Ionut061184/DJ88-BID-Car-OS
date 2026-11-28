@@ -138,3 +138,17 @@ rep('            appendLine("Etapă: $phase")', '''            appendLine("Etap�
             appendLine("Decodare experimentală ultim mesaj (mapare OEM mai veche, nevalidată): " + candidate)''')
 rep('Nicio valoare interpretată sau simulată. Nicio inițializare cu acreditări OEM.', 'Candidați din mesaje recepționate; nicio valoare simulată. Nicio inițializare cu acreditări OEM.')
 p.write_text(s)
+
+# Keep separate candidate channels so a door message cannot erase body evidence.
+s=p.read_text()
+rep('    private var candidate = "—"', '''    private var bodyCandidate = "—"
+    private var doorCandidate = "—"''')
+rep('        candidate="—"', '''        bodyCandidate="—";doorCandidate="—"''')
+rep('                        candidate=decodeCandidate(bytes,isBody)', '''                        if (isBody) bodyCandidate=decodeCandidate(bytes,true)
+                        else doorCandidate=decodeCandidate(bytes,false)''')
+rep('            appendLine("Decodare experimentală ultim mesaj (mapare OEM mai veche, nevalidată): " + candidate)', '''            appendLine("Decodare experimentală (mapare OEM mai veche, nevalidată):")
+            appendLine("Caroserie: " + if (running && lastBody>0L && now-lastBody<=5000L) bodyCandidate else "— · fără date recente")
+            appendLine("Uși: " + if (running && lastDoor>0L && now-lastDoor<=30000L) doorCandidate else "— · fără date recente")
+            appendLine("Ultimul candidat caroserie (istoric): " + bodyCandidate)
+            appendLine("Ultimul candidat uși (istoric): " + doorCandidate)''')
+p.write_text(s)
