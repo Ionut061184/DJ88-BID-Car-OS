@@ -1796,3 +1796,39 @@ rep('    inner class Bridge {','''    inner class Bridge {
 ''')
 p.write_text(s)
 (root/'tests/editor10022/test_clock154.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function clockHands154('),j=s.indexOf('function analogClock154(',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.clockHands154;a.equal(JSON.stringify(f(12,0,0)),'[0,0,0]');a.equal(JSON.stringify(f(3,30,0)),'[105,180,0]');a.equal(JSON.stringify(f(6,0,30)),'[180.25,3,180]');console.log('3 analog clock checks passed');""")
+
+# Reference trip widgets use the already collected, opt-in GPS aggregate.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const types={analogClock:", "const types={tripDistance:'Distanță GPS sesiune',tripAverage:'Viteză medie GPS',tripMaximum:'Viteză maximă GPS',tripMoving:'Durată deplasare GPS',tripStopped:'Durată staționare GPS',tripTotal:'Durată măsurată GPS',analogClock:")
+rep("function value(e){", """function tripWidget155(type,data){
+ if(!data||data.enabled!==true||!data.session)return '—';
+ const d=data.session,fmt=(n)=>Number.isFinite(n)&&n>=0?n:null;
+ const units={tripDistance:['distanceKm',2,' km'],tripAverage:['averageMovingKmh',1,' km/h'],tripMaximum:['maxKmh',1,' km/h']};
+ if(units[type]){const [key,precision,unit]=units[type],n=fmt(d[key]);return n===null?'—':n.toFixed(precision)+unit;}
+ const m=fmt(d.movingSeconds),s=fmt(d.stoppedSeconds);
+ const n=type==='tripMoving'?m:type==='tripStopped'?s:type==='tripTotal'&&m!==null&&s!==null?m+s:null;
+ if(n===null||!Number.isFinite(n))return '—';
+ const sec=Math.floor(n);return [Math.floor(sec/3600),Math.floor(sec/60)%60,sec%60].map(v=>String(v).padStart(2,'0')).join(':');
+}
+function value(e){""")
+rep("switch(e.type){case 'analogClock':", "switch(e.type){case 'tripDistance':case 'tripAverage':case 'tripMaximum':case 'tripMoving':case 'tripStopped':case 'tripTotal':return tripWidget155(e.type,catalogDeviceReading154(performance.now()).trip);case 'analogClock':")
+p.write_text(s)
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('''            val result=JSONObject()
+            try {
+                val audio=getSystemService(AUDIO_SERVICE) as AudioManager''','''            val result=JSONObject()
+            try {
+                val prefs=getSharedPreferences("bid_trip",MODE_PRIVATE)
+                val trip=JSONObject().put("enabled",prefs.getBoolean("enabled",false))
+                if(trip.optBoolean("enabled")&&!prefs.getBoolean("reset",false)){
+                    val raw=prefs.getString("session",null)
+                    if(raw!=null)trip.put("session",JSONObject(raw))
+                }
+                result.put("trip",trip)
+            }catch(_:Exception){}
+            try {
+                val audio=getSystemService(AUDIO_SERVICE) as AudioManager''')
+p.write_text(s)
+(root/'tests/editor10022/test_trip_widget155.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function tripWidget155('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.tripWidget155,d={enabled:true,session:{distanceKm:12.345,averageMovingKmh:40,maxKmh:80,movingSeconds:3661,stoppedSeconds:59}};a.equal(f('tripDistance',d),'12.35 km');a.equal(f('tripAverage',d),'40.0 km/h');a.equal(f('tripMaximum',d),'80.0 km/h');a.equal(f('tripMoving',d),'01:01:01');a.equal(f('tripStopped',d),'00:00:59');a.equal(f('tripTotal',d),'01:02:00');a.equal(f('tripTotal',{...d,enabled:false}),'—');a.equal(f('tripDistance',{enabled:true,session:{distanceKm:-1}}),'—');a.equal(f('tripMaximum',null),'—');console.log('9 trip widget checks passed');""")
