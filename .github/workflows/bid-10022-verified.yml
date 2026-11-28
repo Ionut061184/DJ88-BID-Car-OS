@@ -356,6 +356,20 @@ jobs:
           assert n==1, "Unexpected application identifier configuration"
           p.write_text(s)
           PY
+      - name: Verify final integrated source before expensive compilation
+        working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
+        run: |
+          set -euo pipefail
+          for f in app/src/main/assets/*.js; do node --check "$f"; done
+          cp app/src/main/assets/bid_theme_builder.js tests/editor10022/bid_theme_builder.js
+          for f in tests/editor10022/test_*.js; do node "$f"; done
+      - name: Export consolidated source for direct development
+        working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          tar --exclude='./dist' --exclude='./.gradle' --exclude='./app/build' --exclude='./build' --exclude='./local.properties' --exclude='./.git' -czf dist/DJ88-BID-CONSOLIDATED-SOURCE.tar.gz .
+          sha256sum dist/DJ88-BID-CONSOLIDATED-SOURCE.tar.gz > dist/consolidated-source.sha256
       - name: Compile isolated test APK
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         env:
