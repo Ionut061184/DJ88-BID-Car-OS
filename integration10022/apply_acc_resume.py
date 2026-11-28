@@ -622,3 +622,70 @@ rep("paletteChannel30.append(new Option('Contur','borderColor'),new Option('Text
 # Keep the current schema unchanged; reject invalid or empty palette channel selections.
 rep("if(!['borderColor','color'].includes(channel))return elements;","if(!['borderColor','color'].includes(channel)||!Array.isArray(elements))return elements;")
 p.write_text(s)
+
+# Local GPS trip summary, explicitly opt-in, no coordinates retained.
+p=root/'app/src/main/java/ro/dj88bid/car/BidGpsSpeed.kt'
+s=p.read_text()
+rep('    private var lastFix = 0L', '''    private var lastFix = 0L
+    private val tripPrefs = activity.getSharedPreferences("bid_trip", Context.MODE_PRIVATE)
+    private var tripLast = 0L
+    private var tripSpeed = 0.0
+    private var tripMeters = 0.0
+    private var tripMovingMs = 0L
+    private var tripStoppedMs = 0L
+    private var tripMax = 0.0
+    private fun tripRecord(speed: Double, now: Long) {
+        if (!tripPrefs.getBoolean("enabled",false)) { tripLast=0L; return }
+        val dt = now-tripLast
+        if (tripLast>0L && dt in 1L..4000L) {
+            tripMeters += (tripSpeed+speed)*0.5*dt/1000.0
+            if (tripSpeed>=0.5 || speed>=0.5) tripMovingMs+=dt else tripStoppedMs+=dt
+        }
+        tripLast=now
+        tripSpeed=speed
+        tripMax=maxOf(tripMax,speed)
+        val state=org.json.JSONObject().put("distanceKm",tripMeters/1000.0)
+            .put("movingSeconds",tripMovingMs/1000).put("stoppedSeconds",tripStoppedMs/1000)
+            .put("maxKmh",tripMax*3.6)
+            .put("averageMovingKmh",if(tripMovingMs>0)tripMeters*3600.0/tripMovingMs else 0.0)
+        tripPrefs.edit().putString("session",state.toString()).apply()
+    }
+    private fun tripResetIfRequested() {
+        if (!tripPrefs.getBoolean("reset",false)) return
+        tripLast=0L;tripSpeed=0.0;tripMeters=0.0;tripMovingMs=0L;tripStoppedMs=0L;tripMax=0.0
+        tripPrefs.edit().remove("reset").remove("session").apply()
+    }''')
+rep('        lastFix = 0L\\n        emit', '        lastFix = 0L\\n        tripLast = 0L\\n        emit')
+rep('        lastFix = SystemClock.elapsedRealtime()\\n        drive.onFix(location)', '''        lastFix = SystemClock.elapsedRealtime()
+        tripResetIfRequested()
+        tripRecord(speed.toDouble(),lastFix)
+        drive.onFix(location)''')
+p.write_text(s)
+# Explicit parked configuration and read-only local summary in general settings.
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('    inner class Bridge {', '''    inner class Bridge {
+        @JavascriptInterface
+        fun openBidTripSummary() = runOnUiThread {
+            if(webView.url!="file:///android_asset/index.html" || !hasWindowFocus() || isFinishing)return@runOnUiThread
+            val prefs=getSharedPreferences("bid_trip",MODE_PRIVATE)
+            val enabled=prefs.getBoolean("enabled",false)
+            val data=try{JSONObject(prefs.getString("session","{}")?:"{}")}catch(_:Exception){JSONObject()}
+            val report=if(!data.has("distanceKm"))"Nicio măsurătoare GPS validă." else
+                String.format(java.util.Locale.US,"Distanță estimată: %.2f km\\nDeplasare: %d s\\nStaționare: %d s\\nMedie în mișcare: %.1f km/h\\nMaxim: %.1f km/h",
+                    data.optDouble("distanceKm"),data.optLong("movingSeconds"),data.optLong("stoppedSeconds"),data.optDouble("averageMovingKmh"),data.optDouble("maxKmh"))
+            android.app.AlertDialog.Builder(this@MainActivity)
+                .setTitle("Statistici GPS locale BID")
+                .setMessage(report+"\\nDoar fixuri GPS valide în prim-plan; fără trasee salvate. Configurează numai la staționare.")
+                .setPositiveButton(if(enabled)"Oprește măsurarea" else "Activează măsurarea"){_,_->
+                    prefs.edit().putBoolean("enabled",!enabled).putBoolean("reset",true).remove("session").apply()
+                }
+                .setNeutralButton("Resetează"){_,_->prefs.edit().putBoolean("reset",true).remove("session").apply()}
+                .setNegativeButton("Închide",null).show()
+        }
+''')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_general.js'
+s=p.read_text()
+rep("button('Închide',","button('Statistici GPS locale',()=>{try{native().openBidTripSummary();}catch(_){}});\\nbutton('Închide',")
+p.write_text(s)
