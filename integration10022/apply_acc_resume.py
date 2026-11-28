@@ -447,3 +447,33 @@ p.write_text(s)
 t=root/'tests/editor10022/test_inner_visibility.js'
 with t.open('a') as f:
  f.write("\na.equal(f({group:'g'},'hideInnerLabel',true),false);\n")
+
+# Avoid carrying pre-standby CAN samples into the next screen session.
+p=root/'app/src/main/java/ro/dj88bid/car/BidPassiveCan.kt'
+s=p.read_text()
+rep('            if (!active) return', '''            if (!active) return
+            if (intent.action == Intent.ACTION_SCREEN_OFF || intent.action == Intent.ACTION_SCREEN_ON) {
+                values.clear()
+                return
+            }''')
+rep('        f.addAction("com.qf.action.BACKCAR_STOP")', '''        f.addAction("com.qf.action.BACKCAR_STOP")
+        f.addAction(Intent.ACTION_SCREEN_OFF)
+        f.addAction(Intent.ACTION_SCREEN_ON)''')
+p.write_text(s)
+
+# Provide useful numerical candidates on the existing CAN status surface, explicitly
+# experimental and never a replacement for the vehicle instruments.
+p=root/'app/src/main/assets/index.html'
+s=p.read_text()
+rep(" el.textContent=recent?'CANBUS: date experimentale':'CANBUS: fără date recente';",
+    """ const parts=[];
+ if(recent&&v.body){
+   if(Number.isFinite(v.body.rpm))parts.push(v.body.rpm+' rpm');
+   if(Number.isFinite(v.body.fuelRawScaled))parts.push('comb. brut '+v.body.fuelRawScaled);
+ }
+ if(recent&&v.temperature&&Number.isFinite(v.temperature.celsius))parts.push(v.temperature.celsius+' °C ext.');
+ el.textContent=recent?('CANBUS test: '+(parts.length?parts.join(' · '):'date experimentale')):'CANBUS: fără date recente';""")
+p.write_text(s)
+
+# Retain a diagnostic distinction between activity recreation and process recreation.
+# This source is copied into the archive by CI after this script.
