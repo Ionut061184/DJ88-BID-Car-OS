@@ -374,6 +374,8 @@ jobs:
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         env:
           BID_GOOGLE_MAPS_KEY: ${{ secrets.BID_GOOGLE_MAPS_KEY }}
+          BID_YANDEX_MAPS_KEY: ${{ secrets.BID_YANDEX_MAPS_KEY }}
+          BID_BAIDU_MAPS_KEY: ${{ secrets.BID_BAIDU_MAPS_KEY }}
           BID_SIGNING_STORE_B64: ${{ secrets.BID_SIGNING_STORE_B64 }}
           BID_SIGNING_PASSWORD: ${{ secrets.BID_SIGNING_PASSWORD }}
         run: |
