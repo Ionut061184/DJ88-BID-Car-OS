@@ -2053,3 +2053,97 @@ t=root/'tests/editor10022/test_battery159.js'
 u=t.read_text()
 t.write_text(u.replace("j=s.indexOf('function value(e)',i)","j=s.indexOf('function orientationWidget161(',i)",1))
 (root/'tests/editor10022/test_orientation161.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function orientationWidget161('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.orientationWidget161;a.equal(f('deviceCompass',{azimuth:90}),'E 90°');a.equal(f('deviceCompass',{azimuth:359.9}),'N 0°');a.equal(f('deviceCompass',{azimuth:360}),'—');a.equal(f('deviceInclination',{pitch:10,roll:-2}),'Dispozitiv: 10.0° / -2.0°');a.equal(f('deviceInclination',{pitch:91,roll:0}),'—');a.equal(f('deviceCompass',null),'—');console.log('6 orientation widget checks passed');""")
+
+# Media metadata via Android active sessions, explicit user-granted notification access.
+src=root/'app/src/main/java/ro/dj88bid/car'
+(src/'BidMediaAccess162.kt').write_text('''package ro.dj88bid.car
+import android.service.notification.NotificationListenerService
+import android.content.Context
+import android.content.ComponentName
+import android.media.MediaMetadata
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
+import android.os.SystemClock
+import org.json.JSONObject
+
+class BidMediaAccess162:NotificationListenerService() {
+ companion object {
+  fun snapshot(context:Context):JSONObject {
+   val out=JSONObject()
+   try {
+    val manager=context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+    val controllers=manager.getActiveSessions(ComponentName(context,BidMediaAccess162::class.java))
+    out.put("authorized",true)
+    val controller=controllers.firstOrNull{it.playbackState?.state==PlaybackState.STATE_PLAYING}?:controllers.firstOrNull()?:return out
+    val data=controller.metadata
+    val state=controller.playbackState
+    out.put("package",controller.packageName)
+    fun field(key:String,name:String){data?.getString(key)?.take(160)?.let{out.put(name,it)}}
+    field(MediaMetadata.METADATA_KEY_TITLE,"title")
+    field(MediaMetadata.METADATA_KEY_ARTIST,"artist")
+    field(MediaMetadata.METADATA_KEY_ALBUM,"album")
+    val duration=data?.getLong(MediaMetadata.METADATA_KEY_DURATION)?:0L
+    if(duration>0L)out.put("duration",duration)
+    if(state!=null){
+     out.put("playing",state.state==PlaybackState.STATE_PLAYING)
+     var position=state.position
+     if(position>=0L){
+      val elapsed=SystemClock.elapsedRealtime()-state.lastPositionUpdateTime
+      if(state.state==PlaybackState.STATE_PLAYING&&state.lastPositionUpdateTime>0L&&elapsed in 0L..600000L&&state.playbackSpeed.isFinite())
+       position+=(elapsed*state.playbackSpeed).toLong()
+      out.put("position",if(duration>0L)position.coerceIn(0L,duration) else position.coerceAtLeast(0L))
+     }
+    }
+   }catch(_:SecurityException){out.put("authorized",false)}catch(_:Exception){}
+   return out
+  }
+ }
+}
+''')
+p=root/'app/src/main/AndroidManifest.xml'
+s=p.read_text()
+rep('    </application>','''        <service android:name=".BidMediaAccess162" android:label="BID — acces multimedia opțional" android:exported="true" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
+        </service>
+    </application>''')
+p.write_text(s)
+p=src/'MainActivity.kt'
+s=p.read_text()
+rep('            try {result.put("orientation",catalogOrientation161.snapshot())}catch(_:Exception){}','''            try {result.put("orientation",catalogOrientation161.snapshot())}catch(_:Exception){}
+            try {result.put("media",BidMediaAccess162.snapshot(this@MainActivity))}catch(_:Exception){}''')
+rep('    inner class Bridge {','''    inner class Bridge {
+        @JavascriptInterface
+        fun openMediaAccess162()=runOnUiThread{
+            if(webView.url!="file:///android_asset/index.html"||!hasWindowFocus()||isFinishing)return@runOnUiThread
+            android.app.AlertDialog.Builder(this@MainActivity).setTitle("Acces multimedia opțional")
+                .setMessage("Android solicită acces la notificări pentru citirea sesiunilor media. BID folosește numai metadatele sesiunilor media; nu citește, salvează sau transmite notificările. Poți refuza sau revoca accesul.")
+                .setPositiveButton("Setări Android"){_,_->try{startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))}catch(_:Exception){}}
+                .setNegativeButton("Anulează",null).show()
+        }
+''')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_general.js'
+s=p.read_text()
+rep("button('Închide',","button('Acces multimedia opțional',()=>{try{native().openMediaAccess162();}catch(_){}});\nbutton('Închide',")
+p.write_text(s)
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const types={deviceCompass:", "const types={mediaTitle:'Titlu melodie',mediaArtist:'Artist',mediaAlbum:'Album',mediaProgress:'Progres redare',mediaState:'Stare player',deviceCompass:")
+rep("function value(e){", """function mediaWidget162(type,d){
+ if(!d||d.authorized!==true)return '—';
+ const keys={mediaTitle:'title',mediaArtist:'artist',mediaAlbum:'album'};
+ if(keys[type])return typeof d[keys[type]]==='string'&&d[keys[type]].trim()?d[keys[type]].slice(0,160):'—';
+ if(type==='mediaState')return d.playing===true?'Redare':d.playing===false?'Pauză / oprit':'—';
+ if(type==='mediaProgress'){
+ const fmt=n=>{const s=Math.floor(n/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
+ return Number.isFinite(d.position)&&Number.isFinite(d.duration)&&d.duration>0&&d.position>=0&&d.position<=d.duration?fmt(d.position)+' / '+fmt(d.duration):'—';
+ }
+ return '—';
+}
+function value(e){""")
+rep("switch(e.type){case 'deviceCompass':", "switch(e.type){case 'mediaTitle':case 'mediaArtist':case 'mediaAlbum':case 'mediaProgress':case 'mediaState':return mediaWidget162(e.type,catalogDeviceReading154(performance.now()).media);case 'deviceCompass':")
+p.write_text(s)
+t=root/'tests/editor10022/test_orientation161.js'
+u=t.read_text()
+t.write_text(u.replace("j=s.indexOf('function value(e)',i)","j=s.indexOf('function mediaWidget162(',i)",1))
+(root/'tests/editor10022/test_media162.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function mediaWidget162('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.mediaWidget162,d={authorized:true,title:'Song',artist:'Artist',album:'Album',playing:true,position:65000,duration:185000};a.equal(f('mediaTitle',d),'Song');a.equal(f('mediaArtist',d),'Artist');a.equal(f('mediaAlbum',d),'Album');a.equal(f('mediaProgress',d),'1:05 / 3:05');a.equal(f('mediaState',d),'Redare');a.equal(f('mediaState',{...d,playing:false}),'Pauză / oprit');a.equal(f('mediaTitle',{...d,authorized:false}),'—');a.equal(f('mediaProgress',{...d,position:200000}),'—');a.equal(f('mediaTitle',null),'—');console.log('9 media widget checks passed');""")
