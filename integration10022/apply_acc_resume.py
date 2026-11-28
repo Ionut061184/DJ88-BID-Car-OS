@@ -1862,3 +1862,51 @@ function value(e){""")
 rep("switch(e.type){case 'tripDistance':", "switch(e.type){case 'gpsAltitude':case 'gpsCourse':return gpsWidget156(e.type,gpsCatalog156?.data,performance.now()-(gpsCatalog156?.at??-Infinity),document.hidden);case 'tripDistance':")
 p.write_text(s)
 (root/'tests/editor10022/test_gps_widgets156.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function gpsWidget156('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.gpsWidget156;a.equal(f('gpsAltitude',{altitude:123.6},0,false),'124 m');a.equal(f('gpsAltitude',{altitude:-25},4000,false),'-25 m');a.equal(f('gpsAltitude',{altitude:12},4001,false),'—');a.equal(f('gpsCourse',{course:90},0,false),'E 90°');a.equal(f('gpsCourse',{course:359.9},0,false),'N 0°');a.equal(f('gpsCourse',{course:360},0,false),'—');a.equal(f('gpsCourse',{course:90},0,true),'—');a.equal(f('gpsCourse',null,0,false),'—');console.log('8 GPS widget checks passed');""")
+
+# Keep pure trip test independent of newly inserted browser event handlers.
+t=root/'tests/editor10022/test_trip_widget155.js'
+u=t.read_text()
+a="j=s.indexOf('function value(e)',i)"
+assert u.count(a)==1
+t.write_text(u.replace(a,"j=s.indexOf('let gpsCatalog156=',i)",1))
+# Add GNSS satellite status using Android's foreground GPS listener.
+p=root/'app/src/main/java/ro/dj88bid/car/BidGpsSpeed.kt'
+s=p.read_text()
+rep('    private var running = false', '''    private var running = false
+    private var gnssRegistered157=false
+    private val gnss157=object:android.location.GnssStatus.Callback(){
+        override fun onSatelliteStatusChanged(status:android.location.GnssStatus){
+            if(!running)return
+            var used=0
+            for(i in 0 until status.satelliteCount)if(status.usedInFix(i))used++
+            emit("if(window.bidGnss157)window.bidGnss157("+used+","+status.satelliteCount+");")
+        }
+        override fun onStopped(){emit("if(window.bidGnss157)window.bidGnss157(null,null);")}
+    }''')
+rep('            running = true\n            drive.start()', '''            running = true
+            if(Build.VERSION.SDK_INT>=24)try{gnssRegistered157=m.registerGnssStatusCallback(gnss157,handler)}catch(_:Exception){}
+            drive.start()''')
+rep('        running = false\n        drive.stop()', '''        running = false
+        if(Build.VERSION.SDK_INT>=24&&gnssRegistered157)try{manager?.unregisterGnssStatusCallback(gnss157)}catch(_:Exception){}
+        gnssRegistered157=false
+        emit("if(window.bidGnss157)window.bidGnss157(null,null);")
+        drive.stop()''')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const types={gpsAltitude:", "const types={gpsSatellites:'Sateliți GPS utilizați / vizibili',gpsAltitude:")
+rep("let gpsCatalog156=null;", """let gnssSample157=null;
+function gnssValue157(used,total,age,hidden){
+ if(hidden||!Number.isFinite(age)||age<0||age>5000||!Number.isInteger(used)||!Number.isInteger(total)||used<0||total<used||total>512)return '—';
+ return used+' / '+total;
+}
+window.bidGnss157=(used,total)=>{gnssSample157=document.hidden?null:{used,total,at:performance.now()};};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)gnssSample157=null;});
+let gpsCatalog156=null;""")
+rep("switch(e.type){case 'gpsAltitude':", "switch(e.type){case 'gpsSatellites':return gnssValue157(gnssSample157?.used,gnssSample157?.total,performance.now()-(gnssSample157?.at??-Infinity),document.hidden);case 'gpsAltitude':")
+# Adjust the previous pure-test boundary again to exclude all browser hooks.
+t=root/'tests/editor10022/test_trip_widget155.js'
+u=t.read_text()
+t.write_text(u.replace("j=s.indexOf('let gpsCatalog156=',i)","j=s.indexOf('let gnssSample157=',i)",1))
+p.write_text(s)
+(root/'tests/editor10022/test_gnss157.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function gnssValue157('),j=s.indexOf('window.bidGnss157=',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.gnssValue157;a.equal(f(7,12,0,false),'7 / 12');a.equal(f(0,0,0,false),'0 / 0');a.equal(f(12,7,0,false),'—');a.equal(f(7,12,5001,false),'—');a.equal(f(7,12,0,true),'—');a.equal(f(null,null,0,false),'—');console.log('6 GNSS widget checks passed');""")
