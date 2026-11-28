@@ -556,3 +556,32 @@ p=root/'app/src/main/assets/bid_general.js'
 s=p.read_text()
 rep("button('Închide',","button('Caută pachete iconițe în Google Play',()=>{try{native().openBidIconPackStore();}catch(_){}});\nbutton('Închide',")
 p.write_text(s)
+
+# Extend personal palette operations to a selectable visual channel.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("function bidPalette30(elements,color){", "function bidPalette30(elements,color,channel='borderColor'){")
+rep("return elements.map(e=>e.locked||e.group?e:{...e,borderColor:color});", "if(!['borderColor','color'].includes(channel))return elements;return elements.map(e=>e.locked||e.group?e:{...e,[channel]:color});")
+rep("const paletteApply30=document.createElement('button');", """const paletteChannel30=document.createElement('select');paletteChannel30.append(new Option('Contur','borderColor'),new Option('Text','color'));palette30.append(paletteChannel30);
+const paletteApply30=document.createElement('button');""")
+rep("bidPalette30(draft.elements,paletteColor30.value);if(!next.some((e,i)=>e.borderColor!==draft.elements[i].borderColor))", "bidPalette30(draft.elements,paletteColor30.value,paletteChannel30.value);if(!next.some((e,i)=>e[paletteChannel30.value]!==draft.elements[i][paletteChannel30.value]))")
+rep("function bidPalettePages30(t,color){","function bidPalettePages30(t,color,channel='borderColor'){")
+rep("elements:bidPalette30(t.elements,color),otherPages:(t.otherPages||[]).map(p=>({...p,elements:bidPalette30(p.elements,color)}))","elements:bidPalette30(t.elements,color,channel),otherPages:(t.otherPages||[]).map(p=>({...p,elements:bidPalette30(p.elements,color,channel)}))")
+rep("bidPalettePages30(draft,paletteColor30.value)","bidPalettePages30(draft,paletteColor30.value,paletteChannel30.value)")
+rep("Accent global contur — ecran personal","Paletă globală — ecran personal")
+p.write_text(s)
+t=root/'tests/editor10022/test_palette30.js'
+with t.open('a') as f:
+ f.write("\na.equal(c.bidPalette30(input,'#abcdef','color')[0].color,'#abcdef');a.equal(c.bidPalette30(input,'#abcdef','id'),input);a.equal(c.bidPalette30(input,'#abcdef','color')[1],input[1]);\n")
+# Improve lifecycle diagnostic with explicit process identifier and activity session.
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('val history = homeState + "\\n" + events','val history = homeState + "\\nPID Android: " + android.os.Process.myPid() + "\\n" + events')
+p.write_text(s)
+# Preserve complete passive diagnostic for comparison with the OEM screen.
+rep('                .setPositiveButton("Închide",null).create()', '''                .setNeutralButton("Copiază") { _, _ ->
+                    val clipboard = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("BID CAN pasiv",formatted()))
+                }
+                .setPositiveButton("Închide",null).create()''')
+p.write_text(s)
