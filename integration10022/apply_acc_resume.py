@@ -17,6 +17,7 @@ rep('        super.onDestroy()','''        if (::bidAcc.isInitialized) bidAcc.cl
         super.onDestroy()''')
 rep('        webView.loadUrl("file:///android_asset/index.html")','''        bidAcc = BidAccResume(this)
         bidAcc.start()
+        if (intent.hasCategory(Intent.CATEGORY_HOME)) bidAcc.homeIntent()
         webView.loadUrl("file:///android_asset/index.html")''')
 rep('    override fun onLowMemory() {','''    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -53,7 +54,14 @@ rep('    inner class Bridge {', '''    inner class Bridge {
         @JavascriptInterface
         fun showStandbyHistory() = runOnUiThread {
             if (webView.url != "file:///android_asset/index.html" || !hasWindowFocus()) return@runOnUiThread
-            val history = if (::bidAcc.isInitialized) bidAcc.snapshot() else "[]"
+            val events = if (::bidAcc.isInitialized) bidAcc.snapshot() else "[]"
+            val home = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            val chosen = packageManager.resolveActivity(home, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+            val chosenPackage = chosen?.activityInfo?.packageName
+            val homeState = if (chosenPackage == packageName) "BID este HOME implicit"
+                else if (chosenPackage == null || chosenPackage == "android") "HOME implicit neconfirmat"
+                else "HOME rezolvat: " + chosenPackage
+            val history = homeState + "\\n" + events
             android.app.AlertDialog.Builder(this@MainActivity)
                 .setTitle("BID · diagnostic standby")
                 .setMessage(history)
