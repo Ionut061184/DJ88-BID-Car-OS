@@ -2102,7 +2102,7 @@ class BidMediaAccess162:NotificationListenerService() {
 ''')
 p=root/'app/src/main/AndroidManifest.xml'
 s=p.read_text()
-rep('    </application>','''        <service android:name=".BidMediaAccess162" android:label="BID — acces multimedia opțional" android:exported="true" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+rep('</application>','''        <service android:name=".BidMediaAccess162" android:label="BID — acces multimedia opțional" android:exported="true" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
         </service>
     </application>''')
