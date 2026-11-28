@@ -335,16 +335,33 @@ jobs:
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         env:
           BID_GOOGLE_MAPS_KEY: ${{ secrets.BID_GOOGLE_MAPS_KEY }}
+          BID_SIGNING_STORE_B64: ${{ secrets.BID_SIGNING_STORE_B64 }}
+          BID_SIGNING_PASSWORD: ${{ secrets.BID_SIGNING_PASSWORD }}
         run: |
           set -euo pipefail
           gradle --no-daemon assembleLabSafeDebug
           mkdir -p dist
           cp app/build/outputs/apk/labSafe/debug/app-labSafe-debug.apk dist/DJ88-BID-10022-TEST.apk
+          if [[ -n "$BID_SIGNING_STORE_B64" || -n "$BID_SIGNING_PASSWORD" ]]; then
+            [[ -n "$BID_SIGNING_STORE_B64" && -n "$BID_SIGNING_PASSWORD" ]] || { echo "Both signing secrets must be configured"; exit 1; }
+            umask 077
+            KEYSTORE="$(mktemp)"
+            trap 'rm -f "$KEYSTORE"' EXIT
+            printf '%s' "$BID_SIGNING_STORE_B64" | base64 --decode > "$KEYSTORE"
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$KEYSTORE" --ks-type PKCS12 --ks-key-alias bid-test --ks-pass env:BID_SIGNING_PASSWORD --key-pass env:BID_SIGNING_PASSWORD --out dist/BID-stable.apk dist/DJ88-BID-10022-TEST.apk
+            mv dist/BID-stable.apk dist/DJ88-BID-10022-TEST.apk
+            printf '%s\n' 'BID stable test signing' > dist/signing-mode.txt
+          else
+            printf '%s\n' 'Debug fallback; not the stable BID signing identity' > dist/signing-mode.txt
+          fi
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/DJ88-BID-10022-TEST.apk > dist/signature.txt
+          if [[ -n "$BID_SIGNING_STORE_B64" ]]; then
+            grep -qi '35d505b38a436f122a995819dabdd2cc545893d2743e730a475bf58ab8454149' dist/signature.txt || { echo "Unexpected signing certificate"; exit 1; }
+          fi
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/DJ88-BID-10022-TEST.apk > dist/package.txt
           grep -q "name='ro.dj88bid.car.widgetlab.test10022'" dist/package.txt
           sha256sum dist/*.apk > dist/SHA256SUMS.txt
-          printf '%s\n' 'Separate debug-signed test application. Does not update the existing BID package. Test only while parked. Google Maps authorization may require the new package and certificate. Device behavior not validated.' > dist/README.txt
+          printf '%s\n' 'Separate test application. See signing-mode.txt for signing identity. Does not update the original BID package. Test only while parked. Google Maps authorization may require the new package and certificate. Device behavior not validated.' > dist/README.txt
       - name: Record final cumulative source and test evidence
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
