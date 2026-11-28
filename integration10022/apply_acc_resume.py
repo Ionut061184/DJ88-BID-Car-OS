@@ -1434,3 +1434,31 @@ assert u.count(a)==1
 u=u.replace(a,b,1)
 u += "\nconst stable=data.get('main'),recovery=data.get('backup'),count=writes;const huge={themes:[{image:'x'.repeat(1800001)}],active:null,applied:null};a.equal(c.persist(huge),false);a.equal(data.get('main'),stable);a.equal(data.get('backup'),recovery);a.equal(writes,count);console.log('4 oversized persistence rollback checks passed');\n"
 t.write_text(u)
+
+# Export current saved themes as well as the distinct recovery point.
+# Both use the existing document picker, never overwrite local state.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("storagePanel55.append(storageCheck55,recoveryExport56);", """const currentExport56=document.createElement('button');currentExport56.type='button';currentExport56.textContent='Exportă toate temele salvate';
+currentExport56.onclick=()=>{
+ if(!allowed())return;
+ try{
+  const raw=localStorage.getItem(KEY);if(!raw){message('Nu există teme salvate.');return;}
+  const doc=JSON.parse(raw),validated=snapshot(doc);
+  if(doc.active!==validated.active)throw Error('Copie invalidă.');
+  if(typeof window.BIDThemeFiles?.exportDocument!=='function'){message('Selector de fișiere indisponibil.');return;}
+  if(!confirm('Exportă toate temele salvate? Modificările nesalvate nu sunt incluse.'))return;
+  window.BIDThemeFiles.exportDocument('BID-backup-'+new Date().toISOString().slice(0,10),JSON.stringify({version:1,...validated}));
+ }catch(_){message('Temele salvate nu pot fi validate sau exportate.');}
+};
+storagePanel55.append(storageCheck55,currentExport56,recoveryExport56);""")
+p.write_text(s)
+# Validate backup documents as JSON objects before writing, independently of JS.
+p=root/'app/src/main/java/ro/dj88bid/car/BidThemeFiles.kt'
+s=p.read_text()
+rep('        val safe=name.replace(', '''        try{JSONObject(json)}catch(_:Exception){reply("export",false,"Document JSON invalid.");return@runOnUiThread}
+        val safe=name.replace(''')
+rep('                    val value=Charsets.UTF_8.newDecoder()', '                    val value=Charsets.UTF_8.newDecoder()')
+rep('                    reply(kind,true,"Fișier citit. Se verifică structura.",value)', '''                    JSONObject(value)
+                    reply(kind,true,"Fișier JSON citit. Se verifică structura temei.",value)''')
+p.write_text(s)
