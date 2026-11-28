@@ -1985,3 +1985,71 @@ t=root/'tests/editor10022/test_connectivity158.js'
 u=t.read_text()
 t.write_text(u.replace("j=s.indexOf('function value(e)',i)","j=s.indexOf('function batteryWidget159(',i)",1))
 (root/'tests/editor10022/test_battery159.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function batteryWidget159('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.batteryWidget159;a.equal(f('androidBatteryPercent',{percent:75.5}),'76%');a.equal(f('androidBatteryPercent',{percent:101}),'—');a.equal(f('androidBatteryTemp',{temperature:32.5}),'32.5 °C');a.equal(f('androidBatteryTemp',{}),'—');a.equal(f('androidBatteryCharge',{charging:true}),'Alimentat / încărcare');a.equal(f('androidBatteryCharge',{charging:false}),'Nu se încarcă');a.equal(f('androidBatteryCharge',null),'—');console.log('7 Android battery widget checks passed');""")
+
+# Add device orientation widgets via optional Android rotation-vector sensor.
+# Register only while BID is foreground; never treat mounting angle as car tilt.
+src=root/'app/src/main/java/ro/dj88bid/car'
+(src/'BidOrientationSensor161.kt').write_text('''package ro.dj88bid.car
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.os.SystemClock
+import org.json.JSONObject
+class BidOrientationSensor161(context:Context):SensorEventListener {
+ private val manager=context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+ private val sensor=manager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+ private var active=false
+ private var last=0L
+ private var values=FloatArray(0)
+ fun start(){
+  if(active||sensor==null)return
+  try{active=manager?.registerListener(this,sensor,SensorManager.SENSOR_DELAY_UI)==true}catch(_:Exception){}
+ }
+ fun stop(){active=false;last=0L;values=FloatArray(0);try{manager?.unregisterListener(this)}catch(_:Exception){}}
+ override fun onAccuracyChanged(s:Sensor?,accuracy:Int){if(accuracy==SensorManager.SENSOR_STATUS_UNRELIABLE)last=0L}
+ override fun onSensorChanged(e:SensorEvent){
+  if(!active||e.sensor.type!=Sensor.TYPE_ROTATION_VECTOR||e.accuracy==SensorManager.SENSOR_STATUS_UNRELIABLE)return
+  try{
+   val matrix=FloatArray(9)
+   SensorManager.getRotationMatrixFromVector(matrix,e.values)
+   val result=SensorManager.getOrientation(matrix,FloatArray(3))
+   if(result.all{it.isFinite()}){values=result;last=SystemClock.elapsedRealtime()}
+  }catch(_:Exception){last=0L}
+ }
+ fun snapshot():JSONObject{
+  val out=JSONObject()
+  if(!active||last==0L||SystemClock.elapsedRealtime()-last !in 0L..3000L||values.size!=3)return out
+  fun deg(v:Float)=Math.toDegrees(v.toDouble())
+  return out.put("azimuth",(deg(values[0])+360)%360).put("pitch",deg(values[1])).put("roll",deg(values[2]))
+ }
+}
+''')
+p=src/'MainActivity.kt'
+s=p.read_text()
+rep('    private var speedForeground = false','''    private var speedForeground = false
+    private val catalogOrientation161 by lazy { BidOrientationSensor161(this) }''')
+rep('        super.onResume()','''        super.onResume()
+        catalogOrientation161.start()''')
+rep('        super.onPause()','''        catalogOrientation161.stop()
+        super.onPause()''')
+rep('            try {result.put("connectivity",BidConnectivity.snapshot(this@MainActivity))}catch(_:Exception){}','''            try {result.put("connectivity",BidConnectivity.snapshot(this@MainActivity))}catch(_:Exception){}
+            try {result.put("orientation",catalogOrientation161.snapshot())}catch(_:Exception){}''')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const types={androidBatteryPercent:", "const types={deviceCompass:'Busolă dispozitiv Android',deviceInclination:'Înclinare dispozitiv Android',androidBatteryPercent:")
+rep("function value(e){", """function orientationWidget161(type,d){
+ if(!d)return '—';
+ if(type==='deviceCompass'){const n=d.azimuth;if(!Number.isFinite(n)||n<0||n>=360)return '—';return ['N','NE','E','SE','S','SV','V','NV'][Math.round(n/45)%8]+' '+(Math.round(n)%360)+'°';}
+ if(type==='deviceInclination'){const {pitch,roll}=d;if(!Number.isFinite(pitch)||!Number.isFinite(roll)||Math.abs(pitch)>90.01||Math.abs(roll)>180.01)return '—';return 'Dispozitiv: '+pitch.toFixed(1)+'° / '+roll.toFixed(1)+'°';}
+ return '—';
+}
+function value(e){""")
+rep("switch(e.type){case 'androidBatteryPercent':", "switch(e.type){case 'deviceCompass':case 'deviceInclination':return orientationWidget161(e.type,catalogDeviceReading154(performance.now()).orientation);case 'androidBatteryPercent':")
+p.write_text(s)
+t=root/'tests/editor10022/test_battery159.js'
+u=t.read_text()
+t.write_text(u.replace("j=s.indexOf('function value(e)',i)","j=s.indexOf('function orientationWidget161(',i)",1))
+(root/'tests/editor10022/test_orientation161.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function orientationWidget161('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.orientationWidget161;a.equal(f('deviceCompass',{azimuth:90}),'E 90°');a.equal(f('deviceCompass',{azimuth:359.9}),'N 0°');a.equal(f('deviceCompass',{azimuth:360}),'—');a.equal(f('deviceInclination',{pitch:10,roll:-2}),'Dispozitiv: 10.0° / -2.0°');a.equal(f('deviceInclination',{pitch:91,roll:0}),'—');a.equal(f('deviceCompass',null),'—');console.log('6 orientation widget checks passed');""")
