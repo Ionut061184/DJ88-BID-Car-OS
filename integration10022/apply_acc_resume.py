@@ -760,3 +760,131 @@ p=root/'app/src/main/assets/bid_general.js'
 s=p.read_text()
 rep("button('Închide',","button('Istoric GPS — 1, 7, 30 zile',()=>{try{native().openBidTripHistory();}catch(_){}});\\nbutton('Închide',")
 p.write_text(s)
+
+# Optional parked clock screen. A fresh GPS fix at rest is mandatory; unknown
+# speed, motion, loss of focus, pause, or any touch closes the overlay.
+p=root/'app/src/main/java/ro/dj88bid/car/BidGpsSpeed.kt'
+s=p.read_text()
+rep('    private var lastFix = 0L', '''    private var lastFix = 0L
+    private var lastValidSpeed = Float.NaN
+    fun stationaryNow(): Boolean {
+        val age=SystemClock.elapsedRealtime()-lastFix
+        return running && lastFix>0L && age in 0L..3000L && lastValidSpeed.isFinite() && lastValidSpeed<0.3f
+    }''')
+rep('        lastFix = 0L\n        tripLast = 0L', '        lastFix = 0L\n        lastValidSpeed = Float.NaN\n        tripLast = 0L')
+rep('        lastFix = SystemClock.elapsedRealtime()\n        tripResetIfRequested()', '        lastFix = SystemClock.elapsedRealtime()\n        lastValidSpeed = speed\n        tripResetIfRequested()')
+# Reject invalid coordinates and accuracy rather than letting NaN pass comparisons.
+rep('!location.hasAccuracy() || location.accuracy > 50f', '!location.hasAccuracy() || !location.accuracy.isFinite() || location.accuracy<0f || location.accuracy > 50f || !location.latitude.isFinite() || !location.longitude.isFinite() || location.latitude !in -90.0..90.0 || location.longitude !in -180.0..180.0')
+p.write_text(s)
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('    inner class Bridge {', '''    private var bidClockDialog: android.app.Dialog? = null
+    private val bidClockHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private fun closeBidClock() {
+        bidClockHandler.removeCallbacksAndMessages(null)
+        val old=bidClockDialog
+        bidClockDialog=null
+        old?.dismiss()
+    }
+    private fun showBidClock() {
+        if(!speedForeground || !hasWindowFocus() || isFinishing || isDestroyed ||
+            !::bidGpsSpeed.isInitialized || !bidGpsSpeed.stationaryNow()) {
+            android.widget.Toast.makeText(this,"Ceas disponibil numai cu GPS valid și vehicul staționar.",android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        closeBidClock()
+        val prefs=getSharedPreferences("bid_clock",MODE_PRIVATE)
+        val dialog=android.app.Dialog(this,android.R.style.Theme_Material_NoActionBar)
+        val panel=android.widget.LinearLayout(this).apply{
+            orientation=android.widget.LinearLayout.VERTICAL
+            gravity=android.view.Gravity.CENTER
+            setBackgroundColor(android.graphics.Color.BLACK)
+            isClickable=true
+        }
+        val clock=android.widget.TextView(this).apply{
+            textSize=if(prefs.getBoolean("large",true))64f else 42f
+            setTextColor(android.graphics.Color.parseColor("#E5D4BD"))
+            gravity=android.view.Gravity.CENTER
+        }
+        val date=android.widget.TextView(this).apply{
+            textSize=20f;gravity=android.view.Gravity.CENTER
+            setTextColor(android.graphics.Color.parseColor("#B59B80"))
+        }
+        val hint=android.widget.TextView(this).apply{
+            text="Atinge pentru revenire";textSize=16f
+            setTextColor(android.graphics.Color.LTGRAY)
+        }
+        panel.addView(clock);panel.addView(date);panel.addView(hint)
+        panel.setOnClickListener{closeBidClock()}
+        for(v in listOf(clock,date,hint))v.setOnClickListener{closeBidClock()}
+        dialog.setContentView(panel)
+        bidClockDialog=dialog
+        dialog.setOnDismissListener{
+            if(bidClockDialog===dialog){bidClockDialog=null;bidClockHandler.removeCallbacksAndMessages(null)}
+        }
+        dialog.show()
+        dialog.window?.apply{
+            setLayout(-1,-1)
+            val a=attributes
+            a.screenBrightness=0.15f
+            attributes=a
+            decorView.systemUiVisibility=5894
+        }
+        val update=object:Runnable{
+            override fun run(){
+                if(bidClockDialog!==dialog || !dialog.isShowing || !speedForeground ||
+                    isFinishing || isDestroyed || !bidGpsSpeed.stationaryNow()){
+                    closeBidClock();return
+                }
+                val now=java.util.Date()
+                clock.text=java.text.SimpleDateFormat(if(prefs.getBoolean("seconds",false))"HH:mm:ss" else "HH:mm",java.util.Locale.getDefault()).format(now)
+                date.text=if(prefs.getBoolean("date",true))java.text.SimpleDateFormat("EEEE, dd MMMM yyyy",java.util.Locale.getDefault()).format(now) else ""
+                bidClockHandler.postDelayed(this,500L)
+            }
+        }
+        bidClockHandler.post(update)
+    }
+    inner class Bridge {
+        @JavascriptInterface
+        fun openBidParkedClock() = runOnUiThread {
+            if(webView.url=="file:///android_asset/index.html"&&hasWindowFocus())showBidClock()
+        }
+        @JavascriptInterface
+        fun configureBidParkedClock() = runOnUiThread {
+            if(webView.url!="file:///android_asset/index.html"||!hasWindowFocus()||
+                !::bidGpsSpeed.isInitialized||!bidGpsSpeed.stationaryNow())return@runOnUiThread
+            val prefs=getSharedPreferences("bid_clock",MODE_PRIVATE)
+            val keys=arrayOf("large","seconds","date")
+            val checked=booleanArrayOf(prefs.getBoolean("large",true),prefs.getBoolean("seconds",false),prefs.getBoolean("date",true))
+            android.app.AlertDialog.Builder(this@MainActivity).setTitle("Ceas BID la staționare")
+                .setMultiChoiceItems(arrayOf("Ceas mare","Secunde","Dată"),checked){_,i,value->checked[i]=value}
+                .setPositiveButton("Salvează"){_,_->
+                    if(bidGpsSpeed.stationaryNow()){
+                        val edit=prefs.edit();for(i in keys.indices)edit.putBoolean(keys[i],checked[i]);edit.apply()
+                    }
+                }.setNegativeButton("Anulează",null).show()
+        }
+''')
+rep('    override fun onPause() {', '    override fun onPause() {\n        closeBidClock()')
+rep('    override fun onDestroy() {', '    override fun onDestroy() {\n        closeBidClock()')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_general.js'
+s=p.read_text()
+rep("button('Închide',","button('Ceas economic la staționare',()=>{try{native().openBidParkedClock();}catch(_){}});\nbutton('Setări ceas economic',()=>{try{native().configureBidParkedClock();}catch(_){}});\nbutton('Închide',")
+p.write_text(s)
+# Distinguish invalid GPS input from an actual stop; also prevent accumulation
+# across a history reset, midnight, or an opt-out while GPS is unavailable.
+p=root/'app/src/main/java/ro/dj88bid/car/BidGpsSpeed.kt'
+s=p.read_text()
+rep('    private var tripLast = 0L','    private var tripLast = 0L\n    private var tripDay = ""')
+rep('        val today=days.optJSONObject(day)?:org.json.JSONObject()', '''        val today=days.optJSONObject(day)?:org.json.JSONObject()
+        val sameDay=tripDay==day
+        tripDay=day''')
+rep('            tripMeters+=distance;dayMeters+=distance','            tripMeters+=distance;if(sameDay)dayMeters+=distance')
+rep('if(tripSpeed>=0.5||speed>=0.5){tripMovingMs+=dt;dayMoving+=dt}', 'if(tripSpeed>=0.5||speed>=0.5){tripMovingMs+=dt;if(sameDay)dayMoving+=dt}')
+rep('else {tripStoppedMs+=dt;dayStopped+=dt}', 'else {tripStoppedMs+=dt;if(sameDay)dayStopped+=dt}')
+rep('        for(key in keys.dropLast(90))days.remove(key)', '''        val cutoff=java.util.Calendar.getInstance().apply{add(java.util.Calendar.DAY_OF_YEAR,-89)}
+        val earliest=java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.US).format(cutoff.time)
+        for(key in keys)if(key<earliest||key>day)days.remove(key)
+        for(key in keys.dropLast(90))days.remove(key)''')
+p.write_text(s)
