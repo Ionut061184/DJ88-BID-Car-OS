@@ -1315,3 +1315,43 @@ p.write_text(s)
 t=root/'tests/editor10022/test_artwork_style37.js'
 with t.open('a') as f:
  f.write("\na.equal(f({bidArtBadgeImage:'https://example.com/a.png'}).bidArtBadgeImage,'');a.equal(f({bidArtBadgeImage:'data:image/svg+xml;base64,AAAA'}).bidArtBadgeImage,'');a.equal(f({bidArtBadgeImage:'data:image/png;base64,AAAA'}).bidArtBadgeImage,'data:image/png;base64,AAAA');a.equal(f({bidArtBadgeSize:100}).bidArtBadgeSize,50);a.equal(f({bidArtBadgeSize:-1}).bidArtBadgeSize,5);\n")
+
+# Add a cyclic favorites browser inside the personal theme editor. Long press
+# selects the existing shortcut for editing; it never launches an application.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const favoriteList51=document.createElement('div');favoritePanel50.append(favoriteList51);", """const favoriteList51=document.createElement('div');favoritePanel50.append(favoriteList51);
+const favoriteBrowse54=document.createElement('div');favoriteBrowse54.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+const favoritePrev54=document.createElement('button'),favoriteNext54=document.createElement('button'),favoriteItem54=document.createElement('button');
+favoritePrev54.type=favoriteNext54.type=favoriteItem54.type='button';
+favoritePrev54.textContent='Anterior';favoriteNext54.textContent='Următor';
+favoriteBrowse54.append(favoritePrev54,favoriteItem54,favoriteNext54);favoritePanel50.append(favoriteBrowse54);
+let favoriteIndex54=0,favoriteItems54=[],favoritePress54=null,favoritePressed54=false;
+function favoriteWrap54(i,n){return Number.isInteger(i)&&Number.isInteger(n)&&n>0?((i%n)+n)%n:0;}
+function drawFavorite54(){
+ favoriteIndex54=favoriteWrap54(favoriteIndex54,favoriteItems54.length);
+ const e=favoriteItems54[favoriteIndex54];favoriteItem54.textContent=e?String(e.label||e.appKey)+' ('+(favoriteIndex54+1)+'/'+favoriteItems54.length+')':'Nicio scurtătură';
+ favoriteItem54.disabled=!e;favoritePrev54.disabled=favoriteNext54.disabled=favoriteItems54.length<2;
+}
+function stepFavorite54(n){favoriteIndex54=favoriteWrap54(favoriteIndex54+n,favoriteItems54.length);drawFavorite54();}
+favoritePrev54.onclick=()=>stepFavorite54(-1);favoriteNext54.onclick=()=>stepFavorite54(1);
+function editFavorite54(){
+ if(!allowed()||!draft)return;
+ const item=favoriteItems54[favoriteIndex54],e=draft.elements.find(v=>v.id===item?.id);
+ if(!e||e.locked||e.group||e.type!=='button'||!e.appKey)return;
+ selected=e.id;render();
+}
+function cancelFavoritePress54(){if(favoritePress54!==null){clearTimeout(favoritePress54);favoritePress54=null;}}
+favoriteItem54.onpointerdown=ev=>{
+ cancelFavoritePress54();favoritePressed54=false;
+ if(ev.button!==0||!allowed())return;
+ const id=favoriteItems54[favoriteIndex54]?.id,key=favoriteContext51;
+ favoritePress54=setTimeout(()=>{favoritePress54=null;if(key!==favoriteContext51||id!==favoriteItems54[favoriteIndex54]?.id)return;favoritePressed54=true;editFavorite54();},650);
+};
+favoriteItem54.onpointerup=favoriteItem54.onpointercancel=favoriteItem54.onpointerleave=cancelFavoritePress54;
+favoriteItem54.oncontextmenu=ev=>ev.preventDefault();
+favoriteItem54.onclick=()=>{if(favoritePressed54){favoritePressed54=false;return;}editFavorite54();};""")
+rep("favoriteChosen51.clear();favoriteContext51=key;","favoriteChosen51.clear();favoriteContext51=key;favoriteIndex54=0;cancelFavoritePress54();")
+rep("favoriteList51.replaceChildren();document.getElementById('bidFavoritePreview52')?.remove();","favoriteList51.replaceChildren();document.getElementById('bidFavoritePreview52')?.remove();favoriteItems54=(draft?.elements||[]).filter(e=>e.type==='button'&&e.appKey&&!e.locked&&!e.group);drawFavorite54();")
+p.write_text(s)
+(root/'tests/editor10022/test_favorite_wrap54.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function favoriteWrap54(');a.ok(i>=0);const c={};vm.createContext(c);vm.runInContext(s.slice(i,s.indexOf('\\n',i)),c);const f=c.favoriteWrap54;a.equal(f(-1,4),3);a.equal(f(4,4),0);a.equal(f(-9,4),3);a.equal(f(8,0),0);a.equal(f(NaN,4),0);a.equal(f(0,1),0);console.log('6 cyclic editor navigation checks passed');""")
