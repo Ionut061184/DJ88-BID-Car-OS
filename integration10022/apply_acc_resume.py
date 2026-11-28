@@ -655,8 +655,8 @@ rep('    private var lastFix = 0L', '''    private var lastFix = 0L
         tripLast=0L;tripSpeed=0.0;tripMeters=0.0;tripMovingMs=0L;tripStoppedMs=0L;tripMax=0.0
         tripPrefs.edit().remove("reset").remove("session").apply()
     }''')
-rep('        lastFix = 0L\\n        emit', '        lastFix = 0L\\n        tripLast = 0L\\n        emit')
-rep('        lastFix = SystemClock.elapsedRealtime()\\n        drive.onFix(location)', '''        lastFix = SystemClock.elapsedRealtime()
+rep('        lastFix = 0L\n        emit', '        lastFix = 0L\n        tripLast = 0L\n        emit')
+rep('        lastFix = SystemClock.elapsedRealtime()\n        drive.onFix(location)', '''        lastFix = SystemClock.elapsedRealtime()
         tripResetIfRequested()
         tripRecord(speed.toDouble(),lastFix)
         drive.onFix(location)''')
