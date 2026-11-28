@@ -1109,3 +1109,30 @@ artReset37.onclick=()=>{if(!allowed()||!draft)return;const e=draft.elements.find
 artPanel37.append(artApply37,artReset37);""")
 rep("sat37,bright37,artApply37])", "sat37,bright37,artApply37,artReset37])")
 p.write_text(s)
+
+# Optional personal automotive text badge, separate from the original artwork.
+# Never modify the MASTER image or rewrite imported imagery.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("return {bidFont:font,bidArtHue:hue,bidArtMirror:v.bidArtMirror===true,bidArtSaturation:bound(v.bidArtSaturation,100,0,200),bidArtBrightness:bound(v.bidArtBrightness,100,40,160)};", """const badge=typeof v.bidArtBadge==='string'?Array.from(v.bidArtBadge.trim()).slice(0,20).join(''):'';
+ const badgeColor=typeof v.bidArtBadgeColor==='string'&&/^#[0-9a-f]{6}$/i.test(v.bidArtBadgeColor)?v.bidArtBadgeColor:'#e5d4bd';
+ return {bidFont:font,bidArtHue:hue,bidArtMirror:v.bidArtMirror===true,bidArtSaturation:bound(v.bidArtSaturation,100,0,200),bidArtBrightness:bound(v.bidArtBrightness,100,40,160),bidArtBadge:badge,bidArtBadgeColor:badgeColor,bidArtBadgeX:bound(v.bidArtBadgeX,50,10,90),bidArtBadgeY:bound(v.bidArtBadgeY,80,10,90)};""")
+rep("if(artStyle37.bidArtMirror)art.style.scale='-1 1';", """if(artStyle37.bidArtMirror)art.style.scale='-1 1';
+ if(artStyle37.bidArtBadge){
+  const badge=document.createElement('span');badge.className='bidPersonalAutoBadge';badge.textContent=artStyle37.bidArtBadge;
+  badge.style.cssText='position:absolute;transform:translate(-50%,-50%);pointer-events:none;white-space:nowrap;max-width:90%;overflow:hidden;text-overflow:ellipsis;font-size:clamp(8px,2vw,20px);font-weight:bold;text-shadow:0 1px 3px #000;z-index:2';
+  badge.style.left=artStyle37.bidArtBadgeX+'%';badge.style.top=artStyle37.bidArtBadgeY+'%';badge.style.color=artStyle37.bidArtBadgeColor;
+  n.append(badge);
+ }""")
+rep("const artApply37=document.createElement('button');", """const badge37=document.createElement('input');badge37.type='text';badge37.maxLength=20;badge37.placeholder='BID / siglă text';
+const badgeColor37=document.createElement('input');badgeColor37.type='color';
+const badgeX37=document.createElement('input');badgeX37.type='range';badgeX37.min=10;badgeX37.max=90;
+const badgeY37=document.createElement('input');badgeY37.type='range';badgeY37.min=10;badgeY37.max=90;
+for(const [title,control] of [['Emblemă text personală',badge37],['Culoare emblemă',badgeColor37],['Poziție emblemă X',badgeX37],['Poziție emblemă Y',badgeY37]]){const row=document.createElement('label');row.textContent=title;row.append(control);artPanel37.append(row);}
+const artApply37=document.createElement('button');""")
+rep("bidArtBrightness:bright37.valueAsNumber}", "bidArtBrightness:bright37.valueAsNumber,bidArtBadge:badge37.value,bidArtBadgeColor:badgeColor37.value,bidArtBadgeX:badgeX37.valueAsNumber,bidArtBadgeY:badgeY37.valueAsNumber}")
+rep("bright37.value=String(style.bidArtBrightness);for(const c of [font37,hue37,mirror37,sat37,bright37,artApply37,artReset37])", "bright37.value=String(style.bidArtBrightness);badge37.value=style.bidArtBadge;badgeColor37.value=style.bidArtBadgeColor;badgeX37.value=String(style.bidArtBadgeX);badgeY37.value=String(style.bidArtBadgeY);for(const c of [font37,hue37,mirror37,sat37,bright37,badge37,badgeColor37,badgeX37,badgeY37,artApply37,artReset37])")
+p.write_text(s)
+t=root/'tests/editor10022/test_artwork_style37.js'
+with t.open('a') as f:
+ f.write("\na.equal(f({bidArtBadge:' BID '}).bidArtBadge,'BID');a.equal(f({bidArtBadge:42}).bidArtBadge,'');a.equal(f({bidArtBadge:'x'.repeat(30)}).bidArtBadge.length,20);a.equal(f({bidArtBadgeColor:'bad'}).bidArtBadgeColor,'#e5d4bd');a.equal(f({bidArtBadgeX:999}).bidArtBadgeX,90);a.equal(f({bidArtBadgeY:-1}).bidArtBadgeY,10);\n")
