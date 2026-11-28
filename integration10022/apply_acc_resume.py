@@ -513,3 +513,46 @@ p=root/'app/src/main/java/ro/dj88bid/car/BidGoogleMap.kt'
 s=p.read_text()
 rep('previous="";lastCamera="";settings=""', 'previous="";lastCamera="";settings="";loaded=false')
 p.write_text(s)
+
+# Extend the existing palette to cover all personal pages, preserving protected elements.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("palette30.append(paletteApply30);", """function bidPalettePages30(t,color){
+ if(!t||!/^#[0-9a-f]{6}$/i.test(color))return t;
+ return {...t,elements:bidPalette30(t.elements,color),otherPages:(t.otherPages||[]).map(p=>({...p,elements:bidPalette30(p.elements,color)}))};
+}
+const paletteAll30=document.createElement('button');paletteAll30.type='button';paletteAll30.textContent='Accent pe toate ecranele temei';
+paletteAll30.onclick=()=>{if(!allowed()||!draft)return;let next;try{next=theme(bidPalettePages30(draft,paletteColor30.value));}catch(err){message('Paletă incompatibilă');return;}if(!confirm('Aplici accentul tuturor ecranelor acestei teme personale?'))return;const page=draft.pageId;checkpoint();draft=pageView(next,page);render();};
+palette30.append(paletteApply30,paletteAll30);""")
+# No duplicate native widget identifiers: the existing binding key uses element identity.
+# Verify page duplication preserves source content while assigning distinct IDs.
+p.write_text(s)
+t=root/'tests/editor10022/test_palette_pages30.js'
+t.write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');
+const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),c={};vm.createContext(c);
+let i=s.indexOf('function bidPalette30('),j=s.indexOf('const palette30=',i);a.ok(i>=0&&j>i);vm.runInContext(s.slice(i,j),c);
+i=s.indexOf('function bidPalettePages30(');j=s.indexOf('const paletteAll30=',i);a.ok(i>=0&&j>i);vm.runInContext(s.slice(i,j),c);
+const t={pageId:'p1',elements:[{borderColor:'#000000'}],otherPages:[{pageId:'p2',elements:[{locked:true,borderColor:'#000000'},{borderColor:'#111111'}]}]};
+const r=c.bidPalettePages30(t,'#abcdef');a.equal(r.elements[0].borderColor,'#abcdef');a.equal(r.otherPages[0].elements[0].borderColor,'#000000');a.equal(r.otherPages[0].elements[1].borderColor,'#abcdef');a.equal(t.otherPages[0].elements[1].borderColor,'#111111');a.equal(r.otherPages[0].pageId,'p2');a.equal(c.bidPalettePages30(t,'bad'),t);console.log('6 multipage palette checks passed');
+""")
+# Add a supported store search for icon packs. Installing and interpreting pack
+# resources are separate features; do not claim this is an icon-pack importer.
+p=root/'app/src/main/java/ro/dj88bid/car/MainActivity.kt'
+s=p.read_text()
+rep('    inner class Bridge {', '''    inner class Bridge {
+        @JavascriptInterface
+        fun openBidIconPackStore() = runOnUiThread {
+            if (webView.url != "file:///android_asset/index.html" || !hasWindowFocus() || isFinishing) return@runOnUiThread
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("market://search?q=icon%20pack&c=apps")))
+            } catch (_: Exception) {
+                try { startActivity(Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://play.google.com/store/search?q=icon%20pack&c=apps"))) }
+                catch (_: Exception) { android.widget.Toast.makeText(this@MainActivity,"Magazin indisponibil",android.widget.Toast.LENGTH_SHORT).show() }
+            }
+        }
+''')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_general.js'
+s=p.read_text()
+rep("button('Închide',","button('Caută pachete iconițe în Google Play',()=>{try{native().openBidIconPackStore();}catch(_){}});\nbutton('Închide',")
+p.write_text(s)
