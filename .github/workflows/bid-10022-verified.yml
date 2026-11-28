@@ -323,6 +323,27 @@ jobs:
         run: |
           python integration10022/apply_acc_resume.py DJ88-BID-10022-PROIECT-INTEGRAT
           cp integration10022/BidAccResume.kt DJ88-BID-10022-PROIECT-INTEGRAT/app/src/main/java/ro/dj88bid/car/
+      - name: Reuse BID packet decoders and regression tests from audited Update 5
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin a64ac55dc7fd160e7e8a88386867ca8df8d53cd0
+          ROOT=DJ88-BID-10022-PROIECT-INTEGRAT
+          SRC=app/src/main/java/ro/dj88bid/car
+          TMP="$(mktemp -d)"
+          for name in QfVehiclePacket QfCabinPacket QfRadarPacket QfOutsideTemperature; do
+            git show "a64ac55dc7fd160e7e8a88386867ca8df8d53cd0:$SRC/$name.java" > "$TMP/$name.java"
+            git show "a64ac55dc7fd160e7e8a88386867ca8df8d53cd0:tests/${name}Test.java" > "$TMP/${name}Test.java"
+            if [ -e "$ROOT/$SRC/$name.java" ]; then
+              cmp "$TMP/$name.java" "$ROOT/$SRC/$name.java"
+            else
+              cp "$TMP/$name.java" "$ROOT/$SRC/"
+            fi
+          done
+          javac -encoding UTF-8 -d "$TMP/classes" "$TMP/"*.java
+          for name in QfVehiclePacket QfCabinPacket QfRadarPacket QfOutsideTemperature; do
+            java -cp "$TMP/classes" "ro.dj88bid.car.${name}Test"
+          done
+          rm -rf "$TMP"
       - name: Configure separate test application
         working-directory: DJ88-BID-10022-PROIECT-INTEGRAT
         run: |
