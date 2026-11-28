@@ -1711,3 +1711,29 @@ button('Yandex · SDK opțional',()=>{try{native().openNativeProviderMap('yandex
 button('Baidu · SDK opțional',()=>{try{native().openNativeProviderMap('baidu');}catch(_){}});
 button('Închide',""")
 p.write_text(s)
+
+# Extend criterion 37 with direct selectable color tint and intensity.
+# Only personal automotive artwork is affected, never the approved MASTER.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("bidArtBadgeSize:bound(v.bidArtBadgeSize,20,5,50)};", "bidArtBadgeSize:bound(v.bidArtBadgeSize,20,5,50),bidArtTint:/^#[0-9a-f]{6}$/i.test(typeof v.bidArtTint==='string'?v.bidArtTint:'')?v.bidArtTint:'#70232e',bidArtTintAmount:bound(v.bidArtTintAmount,0,0,100)};")
+rep("if(artStyle37.bidArtMirror)art.style.transform=e.flip?'none':'scaleX(-1)';", """if(artStyle37.bidArtMirror)art.style.transform=e.flip?'none':'scaleX(-1)';
+ if(artStyle37.bidArtTintAmount>0){
+  const tint=document.createElement('span');tint.className='bidAutoTint152';
+  tint.setAttribute('aria-hidden','true');
+  Object.assign(tint.style,{position:'absolute',inset:'0',pointerEvents:'none',background:artStyle37.bidArtTint,opacity:String(artStyle37.bidArtTintAmount/100),mixBlendMode:'color',borderRadius:'inherit'});
+  art.style.isolation='isolate';art.append(tint);
+ }""")
+rep("const mirror37=document.createElement('input');mirror37.type='checkbox';", """const mirror37=document.createElement('input');mirror37.type='checkbox';
+const tint152=document.createElement('input');tint152.type='color';tint152.value='#70232e';
+const tintAmount152=document.createElement('input');tintAmount152.type='range';tintAmount152.min='0';tintAmount152.max='100';tintAmount152.value='0';""")
+rep("['Oglindire grafică auto',mirror37]", "['Oglindire grafică auto',mirror37],['Culoare grafică auto',tint152],['Intensitate recolorare',tintAmount152]")
+rep("bidArtBadgeSize:badgeSize53.valueAsNumber}", "bidArtBadgeSize:badgeSize53.valueAsNumber,bidArtTint:tint152.value,bidArtTintAmount:tintAmount152.valueAsNumber}")
+rep("mirror37.checked=style.bidArtMirror;", "mirror37.checked=style.bidArtMirror;tint152.value=style.bidArtTint;tintAmount152.value=String(style.bidArtTintAmount);")
+# Include controls in the existing locked-element guard.
+a="for(const c of [font37,hue37,mirror37,"
+assert s.count(a)==1
+s=s.replace(a,a+"tint152,tintAmount152,",1)
+p.write_text(s)
+with (root/'tests/editor10022/test_artwork_style37.js').open('a') as f:
+ f.write("\na.equal(f({}).bidArtTintAmount,0);a.equal(f({bidArtTint:'#123456'}).bidArtTint,'#123456');a.equal(f({bidArtTint:'invalid'}).bidArtTint,'#70232e');a.equal(f({bidArtTintAmount:200}).bidArtTintAmount,100);a.equal(f({bidArtTintAmount:-1}).bidArtTintAmount,0);a.equal(f({bidArtTintAmount:NaN}).bidArtTintAmount,0);\n")
