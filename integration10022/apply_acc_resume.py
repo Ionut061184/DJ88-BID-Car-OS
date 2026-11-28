@@ -1509,3 +1509,53 @@ rep("n.addEventListener('pointerdown',ev=>{clear();start={x:ev.clientX,y:ev.clie
 rep("if(Date.now()<blockUntil){ev.preventDefault();ev.stopImmediatePropagation();}", "if(Date.now()<blockUntil||!ready()){ev.preventDefault();ev.stopImmediatePropagation();}")
 p.write_text(s)
 (root/'tests/editor10022/test_favorites_runtime148.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function favoriteRuntimeAllowed148('),j=s.indexOf('function mountFavorites(t)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.favoriteRuntimeAllowed148,t={id:'t',pageId:'p',elements:[{group:'g',groupMode:'favorites'}]};a.equal(f(t,t,'g',false,true,false,false,false),true);a.equal(f({...t,pageId:'q'},t,'g',false,true,false,false,false),false);a.equal(f(t,t,'g',true,true,false,false,false),false);a.equal(f(t,t,'g',false,false,false,false,false),false);a.equal(f(t,t,'g',false,true,true,false,false),false);a.equal(f(t,t,'g',false,true,false,true,false),false);a.equal(f(t,t,'g',false,true,false,false,true),false);a.equal(f(t,t,'missing',false,true,false,false,false),false);console.log('8 runtime favorites guard checks passed');""")
+
+# Consolidated finalization batch: interoperable backups and editable CAN data.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("recoveryExport56.onclick=()=>{\n if(!allowed())return;", "recoveryExport56.onclick=()=>{\n if(!allowed()||fileRequest||!draft)return;")
+rep("currentExport56.onclick=()=>{\n if(!allowed())return;", "currentExport56.onclick=()=>{\n if(!allowed()||fileRequest||!draft)return;")
+for prefix in ('BID-recovery-','BID-backup-'):
+    old="window.BIDThemeFiles.exportDocument('"+prefix+"'+new Date().toISOString().slice(0,10),JSON.stringify({version:1,...validated}));"
+    new="const payload=JSON.stringify({format:'BID-full-backup',version:1,data:{version:1,...validated},palettes});\n  if(new Blob([payload]).size>6000000)throw Error('Backup prea mare.');\n  fileRequest={kind:'export',theme:draft.id};\n  window.BIDThemeFiles.exportDocument('"+prefix+"'+new Date().toISOString().slice(0,10),payload);\n  fileMessage('Alege destinația documentului.');"
+    rep(old,new)
+rep("}catch(_){message('Copia de recuperare nu poate fi validată sau exportată.');}", "}catch(_){fileRequest=null;message('Copia de recuperare nu poate fi validată sau exportată.');}")
+rep("}catch(_){message('Temele salvate nu pot fi validate sau exportate.');}", "}catch(_){fileRequest=null;message('Temele salvate nu pot fi validate sau exportate.');}")
+# Accept legacy raw snapshots from builds 142–149 through the same confirmed import path.
+rep("window.bidThemeFileResult=r=>", """function normalizeBackup150(doc,currentPalettes){
+ if(doc&&doc.version===1&&!doc.format&&Array.isArray(doc.themes)){
+  return {format:'BID-full-backup',version:1,data:doc,palettes:currentPalettes};
+ }
+ return doc;
+}
+window.bidThemeFileResult=r=>""")
+rep("const doc=JSON.parse(r.data);if(doc.version!==1)", "const doc=normalizeBackup150(JSON.parse(r.data),palettes);if(!doc||doc.version!==1)")
+rep("$('bfJson').value=r.data;backupImportPending=true;", "$('bfJson').value=JSON.stringify(doc);backupImportPending=true;")
+# Reject references to missing active themes before replacing existing library.
+rep("const next=snapshot(b.data);const pp=", "const next=snapshot(b.data);if(b.data.active!==next.active)throw Error('Tema activă din backup este invalidă.');const pp=")
+# CAN data stays explicitly experimental; expiry independent of native callbacks.
+rep("const types={clock:", "const types={canSpeed:'CAN test · viteză',canRpm:'CAN test · RPM',canFuel:'CAN test · combustibil brut',canOdometer:'CAN test · kilometraj',canConsumption:'CAN test · consum brut',canOutside:'CAN test · temperatură ext.',canDoors:'CAN test · mască uși',canClimate:'CAN test · climatizare brută',clockSeconds:'Ceas cu secunde',clock:")
+rep("function value(e){", """function canWidgetValue150(type,packet,elapsed,hidden){
+ if(hidden||!packet||packet.active!==true||!Number.isFinite(elapsed)||elapsed<0)return 'CAN test · —';
+ const channels={canSpeed:['body','speed',' km/h',5000],canRpm:['body','rpm',' rpm',5000],canFuel:['body','fuelRawScaled',' brut',5000],canOdometer:['body','odometer',' km',5000],canConsumption:['body','consumption',' brut',5000],canOutside:['temperature','celsius',' °C',120000],canDoors:['doors','mask',' mască',30000]};
+ const spec=channels[type]|| (type==='canClimate'?['climate','left','',30000]:null);
+ if(!spec)return 'CAN test · —';
+ const [ch,key,unit,limit]=spec,meta=packet.channels?.[ch],data=packet[ch];
+ if(meta?.fresh!==true||!Number.isFinite(meta.ageMs)||meta.ageMs<0||meta.ageMs+elapsed>limit||!data)return 'CAN test · —';
+ if(type==='canClimate'){
+  const fmt=v=>typeof v==='string'&&/^(LO|HI)$/.test(v)?v:Number.isFinite(v)?String(v)+' brut':'—';
+  return 'CAN test · '+fmt(data.left)+' / '+fmt(data.right);
+ }
+ const n=data[key];return Number.isFinite(n)&& (type==='canOutside'||n>=0)?'CAN test · '+String(n)+unit:'CAN test · —';
+}
+function value(e){""")
+rep("switch(e.type){case 'clock':", "switch(e.type){case 'canSpeed':case 'canRpm':case 'canFuel':case 'canOdometer':case 'canConsumption':case 'canOutside':case 'canDoors':case 'canClimate':return canWidgetValue150(e.type,window.bidCanLatest150?.packet,performance.now()-(window.bidCanLatest150?.at??-Infinity),document.hidden);case 'clockSeconds':return new Date().toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',second:'2-digit'});case 'clock':")
+p.write_text(s)
+p=root/'app/src/main/assets/index.html'
+s=p.read_text()
+rep("window.bidCanStatus=function(v){", """window.bidCanLatest150=null;
+document.addEventListener('visibilitychange',()=>{if(document.hidden)window.bidCanLatest150=null;});
+window.bidCanStatus=function(v){
+ window.bidCanLatest150=v&&v.active&&!document.hidden?{packet:v,at:performance.now()}:null;""")
+p.write_text(s)
+(root/'tests/editor10022/test_final_batch150.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8');const c={};vm.createContext(c);for(const [start,end] of [['function canWidgetValue150(','function value(e)'],['function normalizeBackup150(','window.bidThemeFileResult=r=>']]){const i=s.indexOf(start),j=s.indexOf(end,i);a.ok(i>=0&&j>i);vm.runInContext(s.slice(i,j),c);}const f=c.canWidgetValue150,b={active:true,channels:{body:{fresh:true,ageMs:100},climate:{fresh:true,ageMs:0}},body:{speed:0,odometer:377000,fuelRawScaled:12.5},climate:{left:'LO',right:22}};a.equal(f('canSpeed',b,0,false),'CAN test · 0 km/h');a.equal(f('canOdometer',b,0,false),'CAN test · 377000 km');a.equal(f('canFuel',b,0,false),'CAN test · 12.5 brut');a.equal(f('canRpm',b,0,false),'CAN test · —');a.equal(f('canSpeed',b,4901,false),'CAN test · —');a.equal(f('canSpeed',b,0,true),'CAN test · —');a.equal(f('canSpeed',{...b,active:false},0,false),'CAN test · —');a.equal(f('canClimate',b,0,false),'CAN test · LO / 22 brut');a.equal(f('canSpeed',null,0,false),'CAN test · —');const old={version:1,themes:[],active:null},p=[{name:'BID'}],n=c.normalizeBackup150(old,p);a.equal(n.format,'BID-full-backup');a.equal(n.data,old);a.equal(n.palettes,p);a.equal(c.normalizeBackup150(n,p),n);a.equal(c.normalizeBackup150(null,p),null);console.log('14 CAN freshness and legacy backup checks passed');""")
