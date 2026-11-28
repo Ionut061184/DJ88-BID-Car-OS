@@ -22,11 +22,20 @@ jobs:
           chmod +x jadx/bin/jadx
           jadx/bin/jadx --version
           sha256sum jadx-1.5.3.zip > JADX_SHA256.txt
+      - name: Retrieve official Android signing utility
+        run: |
+          set -euo pipefail
+          sdkmanager "build-tools;35.0.0" >/dev/null
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" apksigner.jar
+          java -jar apksigner.jar version
+          sha256sum apksigner.jar > APKSIGNER_SHA256.txt
       - uses: actions/upload-artifact@v4
         with:
           name: BID-JADX-1.5.3
           path: |
             jadx-1.5.3.zip
             JADX_SHA256.txt
+            apksigner.jar
+            APKSIGNER_SHA256.txt
           if-no-files-found: error
           retention-days: 7
