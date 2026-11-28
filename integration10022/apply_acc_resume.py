@@ -2186,3 +2186,25 @@ t=root/'tests/editor10022/test_media162.js'
 u=t.read_text()
 t.write_text(u.replace("j=s.indexOf('function value(e)',i)","j=s.indexOf('function artworkValue164(',i)",1))
 (root/'tests/editor10022/test_artwork164.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function artworkValue164('),j=s.indexOf('function paintArtwork164(',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.artworkValue164,u='data:image/jpeg;base64,/9j/AA==';a.equal(f({authorized:true,art:u}),u);a.equal(f({authorized:false,art:u}),null);a.equal(f({authorized:true,art:'https://example.com/image.jpg'}),null);a.equal(f({authorized:true,art:u+'!'}),null);a.equal(f(null),null);console.log('5 artwork checks passed');""")
+
+# Complete the media reference controls with a combined elapsed/remaining readout.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("const types={mediaArtwork:", "const types={mediaRemaining:'Timp rămas melodie',mediaElapsed:'Timp redat melodie',mediaPercent:'Procent redare',mediaTrack:'Melodie și artist',mediaArtwork:")
+rep("function value(e){", """function mediaExtra165(type,d){
+ if(d?.authorized!==true)return '—';
+ if(type==='mediaTrack'){const fields=[d.title,d.artist].filter(x=>typeof x==='string'&&x.trim()).map(x=>x.slice(0,160));return fields.join(' · ')||'—';}
+ const p=d.position,t=d.duration;
+ if(!Number.isFinite(p)||p<0)return '—';
+ const fmt=n=>{const s=Math.floor(n/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
+ if(type==='mediaElapsed')return fmt(p);
+ if(!Number.isFinite(t)||t<=0||p>t)return '—';
+ if(type==='mediaRemaining')return '−'+fmt(t-p);
+ if(type==='mediaPercent')return Math.round(p/t*100)+'%';
+ return '—';
+}
+function value(e){""")
+rep("switch(e.type){case 'mediaArtwork':", "switch(e.type){case 'mediaRemaining':case 'mediaElapsed':case 'mediaPercent':case 'mediaTrack':return mediaExtra165(e.type,catalogDeviceReading154(performance.now()).media);case 'mediaArtwork':")
+# Avoid applying invalid negative/NaN sensor data and keep artwork local.
+p.write_text(s)
+(root/'tests/editor10022/test_media_extra165.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function mediaExtra165('),j=s.indexOf('function value(e)',i);a.ok(i>=0&&j>i);const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);const f=c.mediaExtra165,d={authorized:true,title:'Song',artist:'Artist',position:60000,duration:180000};a.equal(f('mediaTrack',d),'Song · Artist');a.equal(f('mediaElapsed',d),'1:00');a.equal(f('mediaRemaining',d),'−2:00');a.equal(f('mediaPercent',d),'33%');a.equal(f('mediaPercent',{...d,duration:0}),'—');a.equal(f('mediaRemaining',{...d,position:190000}),'—');a.equal(f('mediaTrack',{...d,authorized:false}),'—');console.log('7 additional media checks passed');""")
