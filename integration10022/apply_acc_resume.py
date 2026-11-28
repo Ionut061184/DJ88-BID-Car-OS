@@ -1559,3 +1559,155 @@ window.bidCanStatus=function(v){
  window.bidCanLatest150=v&&v.active&&!document.hidden?{packet:v,at:performance.now()}:null;""")
 p.write_text(s)
 (root/'tests/editor10022/test_final_batch150.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8');const c={};vm.createContext(c);for(const [start,end] of [['function canWidgetValue150(','function value(e)'],['function normalizeBackup150(','window.bidThemeFileResult=r=>']]){const i=s.indexOf(start),j=s.indexOf(end,i);a.ok(i>=0&&j>i);vm.runInContext(s.slice(i,j),c);}const f=c.canWidgetValue150,b={active:true,channels:{body:{fresh:true,ageMs:100},climate:{fresh:true,ageMs:0}},body:{speed:0,odometer:377000,fuelRawScaled:12.5},climate:{left:'LO',right:22}};a.equal(f('canSpeed',b,0,false),'CAN test · 0 km/h');a.equal(f('canOdometer',b,0,false),'CAN test · 377000 km');a.equal(f('canFuel',b,0,false),'CAN test · 12.5 brut');a.equal(f('canRpm',b,0,false),'CAN test · —');a.equal(f('canSpeed',b,4901,false),'CAN test · —');a.equal(f('canSpeed',b,0,true),'CAN test · —');a.equal(f('canSpeed',{...b,active:false},0,false),'CAN test · —');a.equal(f('canClimate',b,0,false),'CAN test · LO / 22 brut');a.equal(f('canSpeed',null,0,false),'CAN test · —');const old={version:1,themes:[],active:null},p=[{name:'BID'}],n=c.normalizeBackup150(old,p);a.equal(n.format,'BID-full-backup');a.equal(n.data,old);a.equal(n.palettes,p);a.equal(c.normalizeBackup150(n,p),n);a.equal(c.normalizeBackup150(null,p),null);console.log('14 CAN freshness and legacy backup checks passed');""")
+
+# Original BID live wallpaper; no proprietary Car Launcher assets.
+p=root/'app/src/main/AndroidManifest.xml'
+s=p.read_text()
+rep('</application>', '''    <service android:name=".BidLiveWallpaper" android:exported="true" android:permission="android.permission.BIND_WALLPAPER" android:label="BID Champagne Live">
+        <intent-filter><action android:name="android.service.wallpaper.WallpaperService" /></intent-filter>
+        <meta-data android:name="android.service.wallpaper" android:resource="@xml/bid_live_wallpaper" />
+    </service>
+    <activity android:name=".BidProviderMapActivity" android:exported="false" />
+    <meta-data android:name="ro.dj88bid.YANDEX_KEY" android:value="PLACEHOLDER_YANDEX" />
+    <meta-data android:name="com.baidu.lbsapi.API_KEY" android:value="PLACEHOLDER_BAIDU" />
+</application>''')
+s=s.replace('PLACEHOLDER_YANDEX',chr(36)+'{bidYandexKey}').replace('PLACEHOLDER_BAIDU',chr(36)+'{bidBaiduKey}')
+p.write_text(s)
+xml=root/'app/src/main/res/xml/bid_live_wallpaper.xml'
+xml.parent.mkdir(parents=True,exist_ok=True)
+xml.write_text('<wallpaper xmlns:android="http://schemas.android.com/apk/res/android" />')
+src=root/'app/src/main/java/ro/dj88bid/car'
+(src/'BidLiveWallpaper.kt').write_text('''package ro.dj88bid.car
+import android.service.wallpaper.WallpaperService
+import android.os.Handler
+import android.os.Looper
+import android.graphics.*
+import android.view.SurfaceHolder
+import kotlin.math.*
+class BidLiveWallpaper: WallpaperService() {
+ override fun onCreateEngine(): Engine = Live()
+ inner class Live: Engine() {
+  private val handler=Handler(Looper.getMainLooper())
+  private val paint=Paint(Paint.ANTI_ALIAS_FLAG)
+  private var visible=false
+  private var surface=false
+  private val tick=Runnable { drawFrame() }
+  private fun drawFrame(){
+   handler.removeCallbacks(tick)
+   if(!visible||!surface)return
+   val c=try{surfaceHolder.lockCanvas()}catch(_:Exception){null}
+   if(c!=null)try{
+    c.drawColor(Color.rgb(20,7,12))
+    val phase=(android.os.SystemClock.elapsedRealtime()%12000L)/12000.0*2*PI
+    for(i in 0 until 96){
+     paint.color=Color.argb((45+100*(1+sin(phase+i*0.71))/2).toInt(),222,193,145)
+     c.drawCircle(((i*137)%997)/997f*c.width,((i*263)%991)/991f*c.height,if(i%13==0)1.8f else 0.8f,paint)
+    }
+   }finally{try{surfaceHolder.unlockCanvasAndPost(c)}catch(_:Exception){}}
+   if(visible&&surface)handler.postDelayed(tick,100L)
+  }
+  override fun onVisibilityChanged(v:Boolean){visible=v;handler.removeCallbacks(tick);if(v)drawFrame()}
+  override fun onSurfaceChanged(h:SurfaceHolder,f:Int,w:Int,y:Int){super.onSurfaceChanged(h,f,w,y);surface=true;drawFrame()}
+  override fun onSurfaceDestroyed(h:SurfaceHolder){surface=false;handler.removeCallbacks(tick);super.onSurfaceDestroyed(h)}
+  override fun onDestroy(){visible=false;handler.removeCallbacks(tick);super.onDestroy()}
+ }
+}
+''')
+p=root/'app/build.gradle.kts'
+s=p.read_text()
+s += '''
+val bidYandexKey = System.getenv("BID_YANDEX_MAPS_KEY").orEmpty()
+val bidBaiduKey = System.getenv("BID_BAIDU_MAPS_KEY").orEmpty()
+android.defaultConfig.manifestPlaceholders["bidYandexKey"] = bidYandexKey
+android.defaultConfig.manifestPlaceholders["bidBaiduKey"] = bidBaiduKey
+dependencies {
+    if (bidYandexKey.isNotBlank()) implementation("com.yandex.android:maps.mobile:4.45.0-lite")
+    if (bidBaiduKey.isNotBlank()) implementation("com.baidu.lbsyun:BaiduMapSDK_Map:9.0.0")
+}
+'''
+p.write_text(s)
+(src/'BidProviderMapActivity.kt').write_text('''package ro.dj88bid.car
+import android.app.Activity
+import android.app.AlertDialog
+import android.os.Bundle
+import android.view.View
+import android.content.pm.PackageManager
+import android.widget.Toast
+class BidProviderMapActivity:Activity(){
+ private var view:View?=null
+ private var factory:Any?=null
+ private var provider=""
+ private var started=false
+ private var yandexStarted=false
+ private var viewStarted=false
+ private fun call(obj:Any,method:String){obj.javaClass.getMethod(method).invoke(obj)}
+ override fun onCreate(state:Bundle?){
+  super.onCreate(state)
+  provider=intent.getStringExtra("provider").orEmpty()
+  val name=when(provider){"yandex"->"ro.dj88bid.YANDEX_KEY";"baidu"->"com.baidu.lbsapi.API_KEY";else->{finish();return}}
+  val key=packageManager.getApplicationInfo(packageName,PackageManager.GET_META_DATA).metaData?.getString(name).orEmpty()
+  if(key.isBlank()){fail("SDK neconfigurat: este necesară cheia proprie a furnizorului.");return}
+  AlertDialog.Builder(this).setTitle("Hartă "+provider)
+   .setMessage("Furnizorul extern procesează date de conectare și interacțiune conform politicii sale. BID nu solicită aici locația GPS. Continui numai dacă accepți politica furnizorului.")
+   .setNegativeButton("Renunță"){_,_->finish()}
+   .setOnCancelListener{finish()}
+   .setPositiveButton("Accept și deschid"){_,_->open(key)}.show()
+ }
+ private fun fail(text:String){Toast.makeText(this,text,Toast.LENGTH_LONG).show();finish()}
+ private fun open(key:String){
+  try{
+   if(provider=="yandex"){
+    val cls=Class.forName("com.yandex.mapkit.MapKitFactory")
+    cls.getMethod("setApiKey",String::class.java).invoke(null,key)
+    cls.getMethod("initialize",android.content.Context::class.java).invoke(null,applicationContext)
+    factory=cls.getMethod("getInstance").invoke(null)
+    view=Class.forName("com.yandex.mapkit.mapview.MapView").getConstructor(android.content.Context::class.java).newInstance(this) as View
+    setContentView(view)
+    if(started)startYandex()
+   }else{
+    val cls=Class.forName("com.baidu.mapapi.SDKInitializer")
+    cls.getMethod("setAgreePrivacy",android.content.Context::class.java,Boolean::class.javaPrimitiveType!!).invoke(null,applicationContext,true)
+    cls.getMethod("initialize",android.content.Context::class.java).invoke(null,applicationContext)
+    view=Class.forName("com.baidu.mapapi.map.MapView").getConstructor(android.content.Context::class.java).newInstance(this) as View
+    setContentView(view)
+    if(started)call(view!!,"onResume")
+   }
+  }catch(_:Exception){fail("Hartă indisponibilă: verifică SDK, autorizarea și arhitectura dispozitivului.")}
+  catch(_:LinkageError){fail("SDK incompatibil cu dispozitivul.")}
+ }
+ private fun startYandex(){
+  if(!yandexStarted){factory?.let{call(it,"onStart");yandexStarted=true}}
+  if(!viewStarted){view?.let{call(it,"onStart");viewStarted=true}}
+ }
+ override fun onStart(){super.onStart();started=true;if(provider=="yandex")try{startYandex()}catch(_:Exception){fail("Hartă indisponibilă.")}}
+ override fun onResume(){super.onResume();if(provider=="baidu")try{view?.let{call(it,"onResume")}}catch(_:Exception){fail("Hartă indisponibilă.")}}
+ override fun onPause(){if(provider=="baidu")try{view?.let{call(it,"onPause")}}catch(_:Exception){};super.onPause()}
+ override fun onStop(){started=false;if(provider=="yandex"){try{if(viewStarted)view?.let{call(it,"onStop")}}catch(_:Exception){};try{if(yandexStarted)factory?.let{call(it,"onStop")}}catch(_:Exception){};viewStarted=false;yandexStarted=false};super.onStop()}
+ override fun onDestroy(){if(provider=="baidu")try{view?.let{call(it,"onDestroy")}}catch(_:Exception){};view=null;super.onDestroy()}
+}
+''')
+p=src/'MainActivity.kt'
+s=p.read_text()
+rep('    inner class Bridge {','''    inner class Bridge {
+        @JavascriptInterface
+        fun openNativeProviderMap(provider:String)=runOnUiThread{
+            if(webView.url!="file:///android_asset/index.html"||!hasWindowFocus()||isFinishing||provider !in listOf("yandex","baidu"))return@runOnUiThread
+            startActivity(Intent(this@MainActivity,BidProviderMapActivity::class.java).putExtra("provider",provider))
+        }
+        @JavascriptInterface
+        fun chooseBidLiveWallpaper()=runOnUiThread{
+            if(webView.url!="file:///android_asset/index.html"||!hasWindowFocus()||isFinishing)return@runOnUiThread
+            try{
+                startActivity(Intent(android.app.WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+                    .putExtra(android.app.WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,android.content.ComponentName(this@MainActivity,BidLiveWallpaper::class.java)))
+            }catch(_:Exception){android.widget.Toast.makeText(this@MainActivity,"Fundal live indisponibil pe firmware",android.widget.Toast.LENGTH_LONG).show()}
+        }
+''')
+p.write_text(s)
+p=root/'app/src/main/assets/bid_general.js'
+s=p.read_text()
+rep("button('Închide',","""button('BID Champagne · fundal live Android',()=>{try{native().chooseBidLiveWallpaper();}catch(_){}});
+button('Yandex · SDK opțional',()=>{try{native().openNativeProviderMap('yandex');}catch(_){}});
+button('Baidu · SDK opțional',()=>{try{native().openNativeProviderMap('baidu');}catch(_){}});
+button('Închide',""")
+p.write_text(s)
