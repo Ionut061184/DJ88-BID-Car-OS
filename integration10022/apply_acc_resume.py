@@ -1462,3 +1462,14 @@ rep('                    val value=Charsets.UTF_8.newDecoder()', '              
 rep('                    reply(kind,true,"Fișier citit. Se verifică structura.",value)', '''                    JSONObject(value)
                     reply(kind,true,"Fișier JSON citit. Se verifică structura temei.",value)''')
 p.write_text(s)
+
+# Both persistence suites must execute the real helper as well as persist().
+# Keep the earlier-stage test unchanged until the helper is actually integrated.
+t=root/'tests/editor10022/test_validated_persistence.js'
+u=t.read_text()
+a="const start=s.indexOf('function persist(next)'),end=s.indexOf('\\n',start);"
+b="const start=s.indexOf('function bidStorageBudget55('),end=s.indexOf('\\n',s.indexOf('function persist(next)'));"
+assert u.count(a)==1,a
+u=u.replace(a,b,1)
+u += "\nconst beforeMain=data.get('main'),beforeBackup=data.get('backup'),beforeState=c.state; a.equal(c.persist({themes:[{image:'x'.repeat(1800001)}],active:null,applied:null}),false);a.equal(data.get('main'),beforeMain);a.equal(data.get('backup'),beforeBackup);a.equal(c.state,beforeState);console.log('4 additional persistence state-preservation checks passed');\n"
+t.write_text(u)
