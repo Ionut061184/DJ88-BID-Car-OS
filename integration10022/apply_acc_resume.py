@@ -1136,3 +1136,51 @@ p.write_text(s)
 t=root/'tests/editor10022/test_artwork_style37.js'
 with t.open('a') as f:
  f.write("\na.equal(f({bidArtBadge:' BID '}).bidArtBadge,'BID');a.equal(f({bidArtBadge:42}).bidArtBadge,'');a.equal(f({bidArtBadge:'x'.repeat(30)}).bidArtBadge.length,20);a.equal(f({bidArtBadgeColor:'bad'}).bidArtBadgeColor,'#e5d4bd');a.equal(f({bidArtBadgeX:999}).bidArtBadgeX,90);a.equal(f({bidArtBadgeY:-1}).bidArtBadgeY,10);\n")
+
+# Favorite layout assistant: arrange existing independent application buttons.
+# Do not create duplicates, alter actions, or move locked/grouped/native elements.
+p=root/'app/src/main/assets/bid_theme_builder.js'
+s=p.read_text()
+rep("function refreshPrecision(){", """function favoriteLayout50(items,cols,orientation,curve,width,height){
+ if(!Array.isArray(items)||!Number.isInteger(cols)||cols<1||cols>8||!['horizontal','vertical'].includes(orientation)||!Number.isFinite(width)||!Number.isFinite(height)||width<320||height<240)return null;
+ const eligible=items.filter(e=>e.type==='button'&&e.appKey&&!e.locked&&!e.group);
+ if(!eligible.length)return null;
+ const rows=Math.ceil(eligible.length/cols),gap=8,top=64,margin=16;
+ const nx=orientation==='horizontal'?cols:rows,ny=orientation==='horizontal'?rows:cols;
+ const w=Math.min(160,Math.floor((width-2*margin-(nx-1)*gap)/nx)),h=Math.min(100,Math.floor((height-top-margin-(ny-1)*gap-(curve?32:0))/ny));
+ if(w<48||h<36)return null;
+ const positions=new Map();
+ eligible.forEach((e,i)=>{
+  const xIndex=orientation==='horizontal'?i%cols:Math.floor(i/cols),yIndex=orientation==='horizontal'?Math.floor(i/cols):i%cols;
+  const x=Math.round((width-(nx*w+(nx-1)*gap))/2+xIndex*(w+gap));
+  const bend=curve&&nx>1?Math.round(32*Math.pow((2*xIndex/(nx-1))-1,2)):0;
+  positions.set(e.id,{x,y:top+yIndex*(h+gap)+bend,w,h});
+ });
+ return items.map(e=>positions.has(e.id)?{...e,...positions.get(e.id)}:e);
+}
+const favoritePanel50=document.createElement('fieldset');
+const favoriteLegend50=document.createElement('legend');favoriteLegend50.textContent='Aranjare aplicații favorite';favoritePanel50.append(favoriteLegend50);
+const favoriteCols50=document.createElement('select');for(let i=1;i<=8;i++)favoriteCols50.append(new Option(String(i),String(i)));favoriteCols50.value='4';
+const favoriteOrient50=document.createElement('select');favoriteOrient50.append(new Option('Orizontal','horizontal'),new Option('Vertical','vertical'));
+const favoriteCurve50=document.createElement('input');favoriteCurve50.type='checkbox';
+for(const [title,control] of [['Elemente pe rând/coloană',favoriteCols50],['Direcție',favoriteOrient50],['Dispunere curbată',favoriteCurve50]]){const row=document.createElement('label');row.textContent=title;row.append(control);favoritePanel50.append(row);}
+const favoriteApply50=document.createElement('button');favoriteApply50.type='button';favoriteApply50.textContent='Aranjează scurtăturile aplicațiilor';
+favoriteApply50.onclick=()=>{
+ if(!allowed()||!draft)return;
+ const next=favoriteLayout50(draft.elements,Number(favoriteCols50.value),favoriteOrient50.value,favoriteCurve50.checked,W,H);
+ if(!next){message('Nu sunt suficiente scurtături eligibile sau spațiu.');return;}
+ let validated;try{validated=next.map((e,i)=>e===draft.elements[i]?e:element(e));}catch(_){message('Geometrie incompatibilă.');return;}
+ if(!confirm('Rearanjezi scurtăturile independente? Alte elemente rămân pe poziție și pot fi suprapuse.'))return;
+ checkpoint();draft.elements=validated;render();
+};
+favoritePanel50.append(favoriteApply50);$('bfControls').append(favoritePanel50);
+function refreshPrecision(){""")
+p.write_text(s)
+(root/'tests/editor10022/test_favorite_layout50.js').write_text("""const fs=require('fs'),vm=require('vm'),a=require('assert');
+const s=fs.readFileSync(__dirname+'/bid_theme_builder.js','utf8'),i=s.indexOf('function favoriteLayout50('),j=s.indexOf('const favoritePanel50=',i);a.ok(i>=0&&j>i);
+const c={};vm.createContext(c);vm.runInContext(s.slice(i,j),c);
+const f=c.favoriteLayout50,items=[{id:'a',type:'button',appKey:'pkg/a',action:'app',x:10},{id:'b',type:'button',appKey:'pkg/b',x:20},{id:'c',type:'button',appKey:'pkg/c',locked:true,x:30},{id:'d',type:'button',appKey:'pkg/d',group:'g',x:40},{id:'e',type:'external',x:50}];
+const h=f(items,2,'horizontal',false,1280,720),v=f(items,2,'vertical',false,1280,720);
+a.ok(h[1].x>h[0].x);a.equal(h[0].y,h[1].y);a.ok(v[1].y>v[0].y);a.equal(v[0].x,v[1].x);a.equal(h[0].action,'app');a.equal(h[2],items[2]);a.equal(h[3],items[3]);a.equal(h[4],items[4]);a.equal(items[0].x,10);a.equal(f(items,0,'horizontal',false,1280,720),null);a.equal(f([],2,'horizontal',false,1280,720),null);
+const z=f([...items,{id:'f',type:'button',appKey:'pkg/f'}],3,'horizontal',true,1280,720);a.ok(z[0].y>z[1].y);console.log('12 favorite layout checks passed');
+""")
